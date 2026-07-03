@@ -27,7 +27,6 @@ Use separate values for login seed and system mailbox:
 ```text
 ADMIN_NOTIFICATION_EMAIL=dautuquy888@gmail.com
 ADMIN_LINE_ID=@827sxbki
-ADMIN_PHONE=0906938893
 ADMIN_SEED_EMAIL=admin@guilua.local
 ADMIN_SEED_PASSWORD=<strong admin password, at least 14 characters>
 ```
@@ -48,7 +47,7 @@ EMAIL_WEBHOOK_API_KEY=<secret string>
 
 Do not use the Gmail login password. In Google Account, enable 2-Step Verification, open Security > App passwords, create an app password for Mail, then paste that generated value into `SMTP_PASSWORD`.
 
-## SLBo Sandbox Env
+## SLBo Runtime Guard Env
 
 ```text
 MEMBER_REGISTRATION_ENABLED=true
@@ -68,7 +67,7 @@ PLATFORM_TREASURY_INITIAL_BALANCE=1000000
 PLATFORM_TREASURY_RESERVE_FLOOR=0
 ```
 
-Keep all `REAL_*` flags false until legal, licensing, payment, custody, audit and operational controls are complete.
+Keep all `REAL_*` flags false for this internal-point deployment. These are backend guardrails and are not shown in the public UI.
 
 ## Market Data
 
@@ -86,24 +85,9 @@ How to get keys:
 - Binance public prices: no API key is needed for the public ticker endpoint used by this app.
 - CoinGecko: go to CoinGecko API, create a Demo API key, then set `COINGECKO_API_KEY`. It is optional but helps quota.
 
-## Google AdSense
+## Ads
 
-Create or log in at <https://adsense.google.com/>:
-
-1. Add the Render site URL.
-2. Copy the `ca-pub-...` client value to `GOOGLE_ADSENSE_CLIENT`.
-3. Create an ad unit and copy the slot id to `GOOGLE_ADSENSE_SLOT`.
-4. Copy the publisher id `pub-...` to `GOOGLE_ADSENSE_PUBLISHER_ID`.
-5. If Google asks for site verification meta, set `GOOGLE_SITE_VERIFICATION`.
-
-```text
-GOOGLE_ADSENSE_CLIENT=ca-pub-xxxxxxxxxxxxxxxx
-GOOGLE_ADSENSE_SLOT=<ad slot id>
-GOOGLE_ADSENSE_PUBLISHER_ID=pub-xxxxxxxxxxxxxxxx
-GOOGLE_SITE_VERIFICATION=<token>
-```
-
-The app injects the AdSense script when `GOOGLE_ADSENSE_CLIENT` is configured and serves `/ads.txt` from `GOOGLE_ADSENSE_PUBLISHER_ID`.
+This deployment does not use Google AdSense. Do not set `GOOGLE_ADSENSE_*` variables for this service. `/ads.txt` is intentionally disabled.
 
 ## Database
 
@@ -122,3 +106,22 @@ RUN_MIGRATIONS_DURING_BUILD=false
 ```
 
 `scripts/start_render.sh` runs `alembic upgrade head` on startup.
+
+## Apply Env by Render API
+
+Create an API key in Render Account Settings, then run locally:
+
+```powershell
+$env:RENDER_API_KEY="<render api key>"
+.\scripts\render_apply_env.ps1 -ServiceId "srv-d93hlhtaeets73dohu0g" -EnvFile ".env.render" -RemoveDeprecated -TriggerDeploy
+```
+
+The helper uses Render API endpoints to add/update service env vars, remove deprecated ad/phone vars, and trigger a deploy. Without `RENDER_API_KEY` or `RENDER_API_TOKEN`, use Dashboard > Environment > Add from .env, then choose **Save, rebuild, and deploy**.
+
+SSH is only for debug shell access:
+
+```bash
+ssh srv-d93hlhtaeets73dohu0g@ssh.oregon.render.com
+```
+
+Do not rely on SSH `export` commands for production env. They are temporary.

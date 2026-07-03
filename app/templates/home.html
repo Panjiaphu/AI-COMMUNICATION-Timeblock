@@ -25,7 +25,7 @@
     <div class="console-balance">
       <small>{{ t("home.hero_rate") }}</small>
       <strong>SLB_POINT</strong>
-      <small>APP_MODE={{ settings.app_mode }}</small>
+      <small>{{ t("wallet.approved_flow") }}</small>
     </div>
     <div class="console-grid">
       <div><small>BO</small><strong>{{ settings.bo_trade_open_seconds }}s + {{ settings.bo_result_wait_seconds }}s</strong></div>
@@ -75,12 +75,10 @@
     <h2>{{ t("meta.product") }}</h2>
     <p class="muted">{{ t("home.notice.body") }}</p>
   </div>
-  <div class="sandbox-flags">
-    <span>REAL_MONEY_ENABLED={{ settings.real_money_enabled|string|lower }}</span>
-    <span>REAL_CRYPTO_WITHDRAW_ENABLED={{ settings.real_crypto_withdraw_enabled|string|lower }}</span>
-    <span>LIVE_SETTLEMENT_ENABLED={{ settings.live_settlement_enabled|string|lower }}</span>
+  <div class="ops-pill-list">
+    <span>{{ t("wallet.request.deposit") }}</span>
+    <span>{{ t("wallet.request.withdraw") }}</span>
+    <span>{{ t("wallet.transfer_title") }}</span>
   </div>
 </section>
-
-{% include "_ad_slot.html" %}
 {% endblock %}

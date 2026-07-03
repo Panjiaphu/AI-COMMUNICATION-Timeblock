@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 {% block content %}
-<section class="slbo-page">
+<section class="slbo-page rapid-page">
   <section class="slbo-room-hero panel rapid-hero">
     <div>
       <p class="eyebrow">{{ t("rapid.kicker") }}</p>
@@ -21,66 +21,95 @@
     </aside>
   </section>
 
-  <section class="rapid-grid">
-    <div class="panel rapid-play-panel">
-      <div class="section-head">
-        <h2>{{ t("rapid.payouts") }}</h2>
-        <span>SLB_POINT</span>
+  {% set latest = entries[0] if entries else none %}
+  <section class="rapid-terminal panel">
+    <div class="rapid-terminal-top">
+      <div class="rapid-brand-mark">G</div>
+      <div>
+        <strong>{{ t("rapid.board_title") }}</strong>
+        <span>{{ t("rapid.stage_desc") }}</span>
       </div>
-      <div class="rapid-payout-grid">
-        {% for play_type, config in rapid_configs.items() %}
-          <article>
-            <strong>{{ t("rapid.type." ~ play_type.value) }}</strong>
-            <span>x{{ config.payout_ratio }}</span>
-            <small>max hit {{ config.max_hit_count }}</small>
-          </article>
-        {% endfor %}
+      <div class="rapid-result-code">
+        <small>{{ t("rapid.latest_result") }}</small>
+        <strong>{{ latest.result_code if latest and latest.result_code else "----" }}</strong>
+      </div>
+      <div class="rapid-clock">
+        <small>{{ t("bo.countdown") }}</small>
+        <strong data-countdown="{{ rapid_clock.remaining }}">{{ rapid_clock.remaining }}s</strong>
       </div>
     </div>
 
-    <aside class="panel rapid-ticket-panel">
-      <div class="section-head compact-head">
-        <h2>{{ t("rapid.submit") }}</h2>
-        <span>{{ t("rapid.session") }} {{ rapid_clock.session_code }}</span>
-      </div>
-      {% if user %}
-        <form class="form" method="post" action="/rapid/entries">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <label>{{ t("rapid.play_type") }}
-            <select name="play_type" required>
-              {% for play_type, config in rapid_configs.items() %}
-                <option value="{{ play_type.value }}">{{ t("rapid.type." ~ play_type.value) }} · x{{ config.payout_ratio }}</option>
-              {% endfor %}
-            </select>
-          </label>
-          <label>{{ t("rapid.selection") }}
-            <input name="selection" placeholder="{{ t('rapid.selection_hint') }}" required>
-          </label>
-          <label>{{ t("rapid.stake") }}
-            <input type="number" name="stake_amount" min="1" step="1" value="100" required>
-          </label>
-          <button class="button primary" type="submit">{{ t("rapid.submit") }}</button>
-        </form>
-      {% else %}
-        <div class="notice-panel">
-          <p>{{ t("rapid.login_required") }}</p>
-          <a class="button primary" href="/login?next=/rapid&lang={{ locale }}">{{ t("nav.login") }}</a>
+    <div class="rapid-terminal-grid">
+      <div class="rapid-board-panel">
+        <div class="rapid-tabs" aria-label="{{ t('rapid.play_type') }}">
+          <span class="active">{{ t("rapid.type.bao_lo_2") }}</span>
+          <span>{{ t("rapid.type.xien_2") }}</span>
+          <span>{{ t("rapid.type.head") }} / {{ t("rapid.type.tail") }}</span>
+          <span>{{ t("rapid.type.even_odd") }}</span>
         </div>
-      {% endif %}
-      {% if request.query_params.get("error") %}
-        <div class="notice-panel warn">{{ request.query_params.get("error") }}</div>
-      {% endif %}
-    </aside>
-  </section>
 
-  <section class="panel rapid-stage">
-    <div class="rapid-number-board" aria-hidden="true">
-      <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span>
-      <span>5</span><span>6</span><span>7</span><span>8</span><span>9</span>
-    </div>
-    <div>
-      <h2>{{ t("rapid.title") }}</h2>
-      <p class="muted">{{ t("home.notice.body") }}</p>
+        {% if user %}
+          <form class="rapid-entry-form" method="post" action="/rapid/entries?lang={{ locale }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="rapid-form-strip">
+              <label>{{ t("rapid.play_type") }}
+                <select name="play_type" required>
+                  {% for play_type, config in rapid_configs.items() %}
+                    <option value="{{ play_type.value }}">{{ t("rapid.type." ~ play_type.value) }} - x{{ config.payout_ratio }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>{{ t("rapid.selection") }}
+                <input id="rapidSelection" name="selection" placeholder="{{ t('rapid.selection_hint') }}" required>
+              </label>
+            </div>
+            <div class="rapid-number-grid">
+              {% for number in range(100) %}
+                <button type="button" data-rapid-number="{{ '%02d'|format(number) }}">
+                  <strong>{{ "%02d"|format(number) }}</strong>
+                  <small>x90</small>
+                </button>
+              {% endfor %}
+            </div>
+            <div class="rapid-bottom-dock">
+              <div class="stake-stepper">
+                <button type="button" data-stake-step="-10">-</button>
+                <label>
+                  <span>{{ t("rapid.stake") }}</span>
+                  <input id="rapidStake" type="number" name="stake_amount" min="1" step="1" value="100" required>
+                </label>
+                <button type="button" data-stake-step="10">+</button>
+              </div>
+              <button class="button primary rapid-confirm" type="submit">{{ t("rapid.submit") }}</button>
+            </div>
+          </form>
+        {% else %}
+          <div class="notice-panel rapid-login-panel">
+            <p>{{ t("rapid.login_required") }}</p>
+            <a class="button primary" href="/login?next=/rapid&lang={{ locale }}">{{ t("nav.login") }}</a>
+          </div>
+        {% endif %}
+        {% if request.query_params.get("error") %}
+          <div class="notice-panel warn">{{ request.query_params.get("error") }}</div>
+        {% endif %}
+      </div>
+
+      <aside class="rapid-result-panel">
+        <div class="section-head compact-head">
+          <h2>{{ t("rapid.result_board") }}</h2>
+          <span>{{ t("rapid.history") }}</span>
+        </div>
+        <div class="rapid-prize-list">
+          <div><span>{{ t("rapid.special") }}</span><strong>{{ latest.result_code.split("-")[0] if latest and latest.result_code else "-----" }}</strong></div>
+          <div><span>{{ t("rapid.head_row") }}</span><strong>0 1 2 3 4</strong></div>
+          <div><span>{{ t("rapid.tail_row") }}</span><strong>5 6 7 8 9</strong></div>
+        </div>
+        <div class="rapid-payout-mini">
+          {% for play_type, config in rapid_configs.items() %}
+            <span>{{ t("rapid.type." ~ play_type.value) }} <strong>x{{ config.payout_ratio }}</strong></span>
+          {% endfor %}
+        </div>
+      </aside>
     </div>
   </section>
 
@@ -129,6 +158,24 @@
       remain = Math.max(0, remain - 1);
       node.textContent = `${remain}s`;
     }, 1000);
+  });
+  const selection = document.getElementById("rapidSelection");
+  document.querySelectorAll("[data-rapid-number]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!selection) return;
+      const value = button.dataset.rapidNumber || "";
+      const current = selection.value.trim();
+      selection.value = current ? `${current},${value}` : value;
+      button.classList.add("selected");
+    });
+  });
+  const stake = document.getElementById("rapidStake");
+  document.querySelectorAll("[data-stake-step]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!stake) return;
+      const step = Number(button.dataset.stakeStep || 0);
+      stake.value = String(Math.max(1, Number(stake.value || 0) + step));
+    });
   });
 })();
 </script>

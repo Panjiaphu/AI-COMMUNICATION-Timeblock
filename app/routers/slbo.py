@@ -2,25 +2,44 @@ from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import JSONResponse, RedirectResponse
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.i18n import resolve_locale
 from app.core.security import get_current_user, require_admin, require_user, verify_csrf
 from app.core.templates import context, templates
 from app.db.session import get_db
-from app.models import BoOrder, BoSide, InternalWallet, PlatformTreasuryAccount, RapidEntry, RapidPlayType, User
+from app.models import (
+    BoOrder,
+    BoSide,
+    InternalWallet,
+    PlatformTreasuryAccount,
+    PointLedgerEntry,
+    PointTransfer,
+    RapidEntry,
+    RapidPlayType,
+    SandboxRequestStatus,
+    SandboxRequestType,
+    SandboxTransaction,
+    User,
+)
 from app.services.slbo import (
     BO_ASSETS,
     RAPID_PLAY_CONFIGS,
+    approve_wallet_request,
     approve_deposit,
     bo_session_clock,
+    create_wallet_request,
     ensure_treasury,
     ensure_wallet,
     get_bo_market_snapshot,
     place_bo_order,
     place_rapid_entry,
     rapid_session_clock,
+    reject_wallet_request,
     sandbox_flags,
+    transfer_points,
 )
 
 
@@ -109,6 +128,106 @@ def rapid_room(request: Request, db: Session = Depends(get_db)):
     )
 
 
+@router.get("/member/wallet")
+def member_wallet(request: Request, db: Session = Depends(get_db)):
+    if not get_settings().member_portal_enabled:
+        return RedirectResponse("/member", status_code=303)
+    user = require_user(request, db)
+    wallet = ensure_wallet(db, user)
+    wallet_requests = (
+        db.query(SandboxTransaction)
+        .filter(SandboxTransaction.user_id == user.id)
+        .order_by(SandboxTransaction.created_at.desc())
+        .limit(30)
+        .all()
+    )
+    transfers = (
+        db.query(PointTransfer)
+        .filter(or_(PointTransfer.sender_user_id == user.id, PointTransfer.receiver_user_id == user.id))
+        .order_by(PointTransfer.created_at.desc())
+        .limit(30)
+        .all()
+    )
+    ledger_entries = (
+        db.query(PointLedgerEntry)
+        .filter(PointLedgerEntry.user_id == user.id)
+        .order_by(PointLedgerEntry.created_at.desc())
+        .limit(40)
+        .all()
+    )
+    return templates.TemplateResponse(
+        request=request,
+        name="member/wallet.html",
+        context=context(
+            request,
+            user=user,
+            wallet=wallet,
+            wallet_requests=wallet_requests,
+            transfers=transfers,
+            ledger_entries=ledger_entries,
+            error=request.query_params.get("error", ""),
+        ),
+    )
+
+
+@router.post("/member/wallet/requests")
+def create_member_wallet_request(
+    request: Request,
+    db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+    request_type: str = Form(...),
+    amount: str = Form(...),
+    transfer_channel: str = Form(""),
+    account_name: str = Form(""),
+    account_identifier: str = Form(""),
+    member_note: str = Form(""),
+):
+    verify_csrf(request, csrf_token)
+    user = require_user(request, db)
+    locale = resolve_locale(request)
+    try:
+        create_wallet_request(
+            db,
+            user=user,
+            request_type=SandboxRequestType(request_type),
+            amount=Decimal(amount),
+            transfer_channel=transfer_channel,
+            account_name=account_name,
+            account_identifier=account_identifier,
+            member_note=member_note,
+        )
+    except (ValueError, InvalidOperation) as exc:
+        db.rollback()
+        return RedirectResponse(f"/member/wallet?lang={locale}&error={str(exc)}", status_code=303)
+    return RedirectResponse(f"/member/wallet?lang={locale}&created=1", status_code=303)
+
+
+@router.post("/member/wallet/transfers")
+def create_member_point_transfer(
+    request: Request,
+    db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+    recipient_identifier: str = Form(...),
+    amount: str = Form(...),
+    memo: str = Form(""),
+):
+    verify_csrf(request, csrf_token)
+    user = require_user(request, db)
+    locale = resolve_locale(request)
+    try:
+        transfer_points(
+            db,
+            sender=user,
+            recipient_identifier=recipient_identifier,
+            amount=Decimal(amount),
+            memo=memo,
+        )
+    except (ValueError, InvalidOperation) as exc:
+        db.rollback()
+        return RedirectResponse(f"/member/wallet?lang={locale}&error={str(exc)}", status_code=303)
+    return RedirectResponse(f"/member/wallet?lang={locale}&transferred=1", status_code=303)
+
+
 @router.post("/rapid/entries")
 def create_rapid_entry(
     request: Request,
@@ -164,6 +283,17 @@ def admin_slbo(request: Request, db: Session = Depends(get_db)):
     treasury = ensure_treasury(db)
     orders = db.query(BoOrder).order_by(BoOrder.created_at.desc()).limit(40).all()
     entries = db.query(RapidEntry).order_by(RapidEntry.created_at.desc()).limit(40).all()
+    pending_requests = (
+        db.query(SandboxTransaction)
+        .filter(SandboxTransaction.status == SandboxRequestStatus.PENDING)
+        .order_by(SandboxTransaction.created_at.asc())
+        .limit(50)
+        .all()
+    )
+    wallet_requests = (
+        db.query(SandboxTransaction).order_by(SandboxTransaction.created_at.desc()).limit(50).all()
+    )
+    transfers = db.query(PointTransfer).order_by(PointTransfer.created_at.desc()).limit(40).all()
     return templates.TemplateResponse(
         request=request,
         name="admin/slbo.html",
@@ -175,6 +305,9 @@ def admin_slbo(request: Request, db: Session = Depends(get_db)):
             treasury=treasury,
             orders=orders,
             entries=entries,
+            pending_requests=pending_requests,
+            wallet_requests=wallet_requests,
+            transfers=transfers,
             bo_clock=bo_session_clock(),
             rapid_clock=rapid_session_clock(),
             sandbox=sandbox_flags(),
@@ -200,5 +333,50 @@ def admin_slbo_deposit(
     try:
         approve_deposit(db, user=user, amount=Decimal(amount), admin=admin, note=note)
     except (ValueError, InvalidOperation) as exc:
+        db.rollback()
         return RedirectResponse(f"/admin/slbo?lang={locale}&error={str(exc)}", status_code=303)
     return RedirectResponse(f"/admin/slbo?lang={locale}&updated=1", status_code=303)
+
+
+@router.post("/admin/slbo/requests/{transaction_id}/approve")
+def admin_approve_wallet_request(
+    transaction_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+    note: str = Form(""),
+):
+    verify_csrf(request, csrf_token)
+    admin = require_admin(request, db)
+    locale = resolve_locale(request)
+    item = db.get(SandboxTransaction, transaction_id)
+    if not item:
+        return RedirectResponse(f"/admin/slbo?lang={locale}&error=not_found", status_code=303)
+    try:
+        approve_wallet_request(db, item=item, admin=admin, note=note)
+    except (ValueError, InvalidOperation) as exc:
+        db.rollback()
+        return RedirectResponse(f"/admin/slbo?lang={locale}&error={str(exc)}", status_code=303)
+    return RedirectResponse(f"/admin/slbo?lang={locale}&reviewed=1", status_code=303)
+
+
+@router.post("/admin/slbo/requests/{transaction_id}/reject")
+def admin_reject_wallet_request(
+    transaction_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+    note: str = Form(""),
+):
+    verify_csrf(request, csrf_token)
+    admin = require_admin(request, db)
+    locale = resolve_locale(request)
+    item = db.get(SandboxTransaction, transaction_id)
+    if not item:
+        return RedirectResponse(f"/admin/slbo?lang={locale}&error=not_found", status_code=303)
+    try:
+        reject_wallet_request(db, item=item, admin=admin, note=note)
+    except ValueError as exc:
+        db.rollback()
+        return RedirectResponse(f"/admin/slbo?lang={locale}&error={str(exc)}", status_code=303)
+    return RedirectResponse(f"/admin/slbo?lang={locale}&reviewed=1", status_code=303)

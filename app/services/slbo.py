@@ -14,11 +14,13 @@ from app.core.config import get_settings
 from app.models import (
     BoOrder,
     BoSide,
+    EmailNotification,
     GameRequestStatus,
     InternalWallet,
     PlatformLedgerEntry,
     PlatformTreasuryAccount,
     PointLedgerEntry,
+    PointTransfer,
     RapidEntry,
     RapidPlayType,
     ReferralCommission,
@@ -167,16 +169,59 @@ def ensure_treasury(db: Session, currency: str | None = None) -> PlatformTreasur
 
 
 def create_deposit_request(db: Session, user: User, amount: Decimal, note: str = "") -> SandboxTransaction:
-    amount = _positive_amount(amount)
-    item = SandboxTransaction(
-        reference_code=_unique_code(db, SandboxTransaction, "SD"),
-        user_id=user.id,
+    return create_wallet_request(
+        db,
+        user=user,
         request_type=SandboxRequestType.DEPOSIT,
         amount=amount,
+        member_note=note,
+    )
+
+
+def create_wallet_request(
+    db: Session,
+    *,
+    user: User,
+    request_type: SandboxRequestType,
+    amount: Decimal,
+    transfer_channel: str = "",
+    account_name: str = "",
+    account_identifier: str = "",
+    member_note: str = "",
+) -> SandboxTransaction:
+    amount = _positive_amount(amount)
+    if request_type == SandboxRequestType.WITHDRAW:
+        wallet = ensure_wallet(db, user)
+        if _money(wallet.available_balance) < amount:
+            raise ValueError("insufficient_balance")
+    prefix = "WD" if request_type == SandboxRequestType.WITHDRAW else "DP"
+    item = SandboxTransaction(
+        reference_code=_unique_code(db, SandboxTransaction, prefix),
+        user_id=user.id,
+        request_type=request_type,
+        amount=amount,
         currency=_currency(None),
-        member_note=note.strip(),
+        transfer_channel=transfer_channel.strip()[:80],
+        account_name=account_name.strip()[:120],
+        account_identifier=account_identifier.strip()[:255],
+        member_note=member_note.strip(),
     )
     db.add(item)
+    _queue_wallet_ops_email(
+        db,
+        user=user,
+        subject=f"Guilua wallet request {item.reference_code}",
+        body=(
+            f"Member: {user.email}\n"
+            f"UID: {user.uid or user.id}\n"
+            f"Type: {request_type.value}\n"
+            f"Amount: {amount} {_currency(None)}\n"
+            f"Channel: {item.transfer_channel or '-'}\n"
+            f"Account: {item.account_name or '-'} / {item.account_identifier or '-'}\n"
+            f"Note: {item.member_note or '-'}"
+        ),
+        event_type="wallet_request_created",
+    )
     db.commit()
     db.refresh(item)
     return item
@@ -212,12 +257,160 @@ def approve_deposit(
         entry_type=WalletLedgerType.DEPOSIT_APPROVED,
         reference_type="sandbox_deposit",
         reference_id=item.reference_code,
-        reason=note or "Approved sandbox point deposit",
+        reason=note or "Approved internal point deposit",
         created_by=admin,
     )
     db.commit()
     db.refresh(item)
     return item
+
+
+def approve_wallet_request(
+    db: Session,
+    *,
+    item: SandboxTransaction,
+    admin: User,
+    note: str = "",
+) -> SandboxTransaction:
+    if item.status != SandboxRequestStatus.PENDING:
+        raise ValueError("request_not_pending")
+    user = item.user
+    if not user:
+        raise ValueError("invalid_member")
+    amount = _positive_amount(item.amount)
+    wallet = ensure_wallet(db, user, item.currency)
+    item.status = SandboxRequestStatus.APPROVED
+    item.admin_note = note.strip()
+    item.reviewed_by_user_id = admin.id
+    item.reviewed_at = datetime.now(timezone.utc)
+    if item.request_type == SandboxRequestType.DEPOSIT:
+        wallet.total_deposit = _money(wallet.total_deposit) + amount
+        _credit_wallet(
+            db,
+            wallet=wallet,
+            amount=amount,
+            entry_type=WalletLedgerType.DEPOSIT_APPROVED,
+            reference_type="wallet_request",
+            reference_id=item.reference_code,
+            reason=note or "Admin approved point deposit request",
+            created_by=admin,
+        )
+    elif item.request_type == SandboxRequestType.WITHDRAW:
+        wallet.total_withdraw = _money(wallet.total_withdraw) + amount
+        _debit_wallet(
+            db,
+            wallet=wallet,
+            amount=amount,
+            entry_type=WalletLedgerType.WITHDRAW_APPROVED,
+            reference_type="wallet_request",
+            reference_id=item.reference_code,
+            reason=note or "Admin approved point withdrawal request",
+            created_by=admin,
+        )
+    else:
+        raise ValueError("invalid_request_type")
+    _queue_member_email(
+        db,
+        user=user,
+        subject=f"Guilua request {item.reference_code} approved",
+        body=f"Your {item.request_type.value} request for {amount} {item.currency} has been approved.",
+        event_type="wallet_request_approved",
+    )
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def reject_wallet_request(
+    db: Session,
+    *,
+    item: SandboxTransaction,
+    admin: User,
+    note: str = "",
+) -> SandboxTransaction:
+    if item.status != SandboxRequestStatus.PENDING:
+        raise ValueError("request_not_pending")
+    item.status = SandboxRequestStatus.REJECTED
+    item.admin_note = note.strip()
+    item.reviewed_by_user_id = admin.id
+    item.reviewed_at = datetime.now(timezone.utc)
+    if item.user:
+        _queue_member_email(
+            db,
+            user=item.user,
+            subject=f"Guilua request {item.reference_code} updated",
+            body=f"Your {item.request_type.value} request for {item.amount} {item.currency} was not approved. Note: {note or '-'}",
+            event_type="wallet_request_rejected",
+        )
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def transfer_points(
+    db: Session,
+    *,
+    sender: User,
+    recipient_identifier: str,
+    amount: Decimal,
+    memo: str = "",
+) -> PointTransfer:
+    amount = _positive_amount(amount)
+    recipient = _find_member_for_transfer(db, recipient_identifier)
+    if not recipient or recipient.id == sender.id or recipient.is_admin or not recipient.is_active:
+        raise ValueError("invalid_recipient")
+    sender_wallet = ensure_wallet(db, sender)
+    receiver_wallet = ensure_wallet(db, recipient, sender_wallet.currency)
+    reference_code = _unique_code(db, PointTransfer, "PT")
+    _debit_wallet(
+        db,
+        wallet=sender_wallet,
+        amount=amount,
+        entry_type=WalletLedgerType.TRANSFER_OUT,
+        reference_type="point_transfer",
+        reference_id=reference_code,
+        reason=f"Transfer to {recipient.uid or recipient.email}",
+    )
+    _credit_wallet(
+        db,
+        wallet=receiver_wallet,
+        amount=amount,
+        entry_type=WalletLedgerType.TRANSFER_IN,
+        reference_type="point_transfer",
+        reference_id=reference_code,
+        reason=f"Transfer from {sender.uid or sender.email}",
+    )
+    transfer = PointTransfer(
+        reference_code=reference_code,
+        sender_user_id=sender.id,
+        receiver_user_id=recipient.id,
+        amount=amount,
+        currency=sender_wallet.currency,
+        memo=memo.strip(),
+    )
+    db.add(transfer)
+    _queue_wallet_ops_email(
+        db,
+        user=sender,
+        subject=f"Guilua point transfer {reference_code}",
+        body=(
+            f"Sender: {sender.email} ({sender.uid or sender.id})\n"
+            f"Receiver: {recipient.email} ({recipient.uid or recipient.id})\n"
+            f"Amount: {amount} {sender_wallet.currency}\n"
+            f"Memo: {memo.strip() or '-'}"
+        ),
+        event_type="point_transfer_completed",
+    )
+    _queue_member_email(
+        db,
+        user=recipient,
+        subject=f"Guilua point transfer received {reference_code}",
+        body=f"You received {amount} {sender_wallet.currency} from {sender.uid or sender.email}.",
+        event_type="point_transfer_received",
+    )
+    db.commit()
+    db.refresh(transfer)
+    return transfer
 
 
 def place_bo_order(
@@ -479,7 +672,7 @@ def _create_activity_commissions(
         currency=_currency(None),
         reference_type=reference_type,
         reference_id=reference_id,
-        note="Auto sandbox activity commission from accepted member request.",
+        note="Auto activity commission from accepted member request.",
         status=ReferralCommissionStatus.PENDING,
     )
 
@@ -636,6 +829,51 @@ def _result_price(entry_price: Decimal, buy_wins: bool, reference_code: str) -> 
 def _deterministic_win(reference_code: str, user_id: int, threshold: int) -> bool:
     seed = int(hashlib.sha256(f"{reference_code}:{user_id}".encode("utf-8")).hexdigest(), 16)
     return seed % 100 < threshold
+
+
+def _find_member_for_transfer(db: Session, raw_identifier: str) -> User | None:
+    identifier = raw_identifier.strip()
+    if not identifier:
+        return None
+    normalized_email = identifier.lower()
+    return (
+        db.query(User)
+        .filter(
+            (User.uid == identifier)
+            | (User.referral_code == identifier)
+            | (func.lower(User.email) == normalized_email)
+        )
+        .first()
+    )
+
+
+def _queue_wallet_ops_email(db: Session, *, user: User, subject: str, body: str, event_type: str) -> None:
+    settings = get_settings()
+    if not settings.admin_notification_email:
+        return
+    db.add(
+        EmailNotification(
+            recipient=settings.admin_notification_email,
+            subject=subject,
+            body=body,
+            event_type=event_type,
+            user_id=user.id,
+        )
+    )
+
+
+def _queue_member_email(db: Session, *, user: User, subject: str, body: str, event_type: str) -> None:
+    if not user.email:
+        return
+    db.add(
+        EmailNotification(
+            recipient=user.email,
+            subject=subject,
+            body=body,
+            event_type=event_type,
+            user_id=user.id,
+        )
+    )
 
 
 def _assert_sandbox() -> None:

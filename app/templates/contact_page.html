@@ -9,9 +9,7 @@
   <div class="contact-grid">
     <div><span>Email</span><strong>{{ admin_contact.email }}</strong></div>
     <div><span>LINE</span><strong>{{ admin_contact.line }}</strong></div>
-    <div><span>{{ t("admin.contact.phone") }}</span><strong>{{ admin_contact.phone }}</strong></div>
   </div>
   <a class="button" href="mailto:{{ admin_contact.email }}">{{ t("commerce.contact_cta") }}</a>
 </section>
-{% include "_ad_slot.html" %}
 {% endblock %}

@@ -4,14 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ settings.app_name }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}?v=20260703-slbo">
-    {% if settings.google_site_verification %}
-      <meta name="google-site-verification" content="{{ settings.google_site_verification }}">
-    {% endif %}
-    {% if settings.google_adsense_client %}
-      <meta name="google-adsense-account" content="{{ settings.google_adsense_client }}">
-      <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{ settings.google_adsense_client }}" crossorigin="anonymous"></script>
-    {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}?v=20260703-wallet">
   </head>
   <body>
     <div class="scene-bg" aria-hidden="true">
@@ -48,7 +41,6 @@
     <footer class="footer">
       <span>{{ t("admin.contact.email") }}: {{ admin_contact.email }}</span>
       <span>{{ t("admin.contact.line") }}: {{ admin_contact.line }}</span>
-      <span>{{ t("admin.contact.phone") }}: {{ admin_contact.phone }}</span>
     </footer>
   </body>
 </html>

@@ -8,7 +8,7 @@
       <h1>{{ t("admin.slbo.title") }}</h1>
       <p class="muted">{{ t("admin.slbo.subtitle") }}</p>
     </div>
-    <span class="badge ok">APP_MODE={{ sandbox.app_mode }}</span>
+    <span class="badge ok">{{ t("admin.slbo.ops_badge") }}</span>
   </div>
 
   <section class="admin-slbo-metrics">
@@ -40,7 +40,7 @@
         <h2>{{ t("admin.slbo.deposit_member") }}</h2>
         <span>{{ t("wallet.currency") }}</span>
       </div>
-      <form class="form admin-inline-form" method="post" action="/admin/slbo/deposits">
+      <form class="form admin-inline-form" method="post" action="/admin/slbo/deposits?lang={{ locale }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <label>{{ t("admin.slbo.member") }}
           <select name="user_id" required>
@@ -53,7 +53,7 @@
           <input type="number" name="amount" min="1" step="1" value="1000" required>
         </label>
         <label>{{ t("admin.slbo.note") }}
-          <input name="note" placeholder="sandbox top-up">
+          <input name="note" placeholder="{{ t('admin.slbo.note_hint') }}">
         </label>
         <button class="button primary" type="submit">{{ t("admin.slbo.credit") }}</button>
       </form>
@@ -63,12 +63,63 @@
       <span class="icon">{{ icons.icon("shield") }}</span>
       <h2>{{ t("home.notice.title") }}</h2>
       <p class="muted">{{ t("home.notice.body") }}</p>
-      <div class="sandbox-flags">
-        <span>REAL_MONEY_ENABLED={{ sandbox.real_money_enabled|string|lower }}</span>
-        <span>REAL_CRYPTO_WITHDRAW_ENABLED={{ sandbox.real_crypto_withdraw_enabled|string|lower }}</span>
-        <span>LIVE_SETTLEMENT_ENABLED={{ sandbox.live_settlement_enabled|string|lower }}</span>
+      <div class="ops-pill-list">
+        <span>{{ t("wallet.request.deposit") }}</span>
+        <span>{{ t("wallet.request.withdraw") }}</span>
+        <span>{{ t("wallet.transfer_title") }}</span>
       </div>
     </aside>
+  </section>
+
+  <section class="panel">
+    <div class="section-head">
+      <h2>{{ t("admin.slbo.pending_requests") }}</h2>
+      <span>{{ pending_requests|length }}</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>{{ t("table.ref") }}</th>
+            <th>{{ t("table.member") }}</th>
+            <th>{{ t("table.type") }}</th>
+            <th>{{ t("table.amount") }}</th>
+            <th>{{ t("wallet.channel") }}</th>
+            <th>{{ t("table.action") }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in pending_requests %}
+            <tr>
+              <td>{{ item.reference_code }}</td>
+              <td>{{ item.user.uid if item.user else item.user_id }}<br><small>{{ item.user.email if item.user else "" }}</small></td>
+              <td>{{ t("wallet.request." ~ item.request_type.value) }}</td>
+              <td>{{ format_price(item.amount) }} {{ item.currency }}</td>
+              <td>
+                {{ item.transfer_channel or "-" }}<br>
+                <small>{{ item.account_name or "-" }} / {{ item.account_identifier or "-" }}</small>
+              </td>
+              <td>
+                <div class="action-cell">
+                  <form class="mini-form" method="post" action="/admin/slbo/requests/{{ item.id }}/approve?lang={{ locale }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input name="note" placeholder="{{ t('admin.slbo.note') }}">
+                    <button class="button small primary" type="submit">{{ t("status.approved") }}</button>
+                  </form>
+                  <form class="mini-form" method="post" action="/admin/slbo/requests/{{ item.id }}/reject?lang={{ locale }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input name="note" placeholder="{{ t('admin.slbo.note') }}">
+                    <button class="button small" type="submit">{{ t("status.rejected") }}</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" class="empty">{{ t("member.utility_empty") }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <section class="panel">
@@ -156,5 +207,40 @@
       </div>
     </section>
   </div>
+
+  <section class="panel">
+    <div class="section-head">
+      <h2>{{ t("wallet.transfer_history") }}</h2>
+      <span>{{ transfers|length }}</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>{{ t("table.ref") }}</th>
+            <th>{{ t("wallet.sender") }}</th>
+            <th>{{ t("wallet.receiver") }}</th>
+            <th>{{ t("table.amount") }}</th>
+            <th>{{ t("admin.slbo.note") }}</th>
+            <th>{{ t("table.created") }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in transfers %}
+            <tr>
+              <td>{{ item.reference_code }}</td>
+              <td>{{ item.sender.uid if item.sender else item.sender_user_id }}<br><small>{{ item.sender.email if item.sender else "" }}</small></td>
+              <td>{{ item.receiver.uid if item.receiver else item.receiver_user_id }}<br><small>{{ item.receiver.email if item.receiver else "" }}</small></td>
+              <td>{{ format_price(item.amount) }} {{ item.currency }}</td>
+              <td>{{ item.memo or "-" }}</td>
+              <td>{{ item.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" class="empty">{{ t("member.utility_empty") }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
 </section>
 {% endblock %}

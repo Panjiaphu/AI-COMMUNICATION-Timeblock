@@ -10,7 +10,7 @@
       <div class="proof-row">
         <span>{{ t("bo.chart_note") }}</span>
         <span>{{ t("bo.payout") }}</span>
-        <span>APP_MODE={{ sandbox.app_mode }}</span>
+        <span>{{ t("wallet.currency") }}</span>
       </div>
     </div>
     <aside class="slbo-wallet-card">
@@ -21,6 +21,15 @@
     </aside>
   </section>
 
+  <section class="bo-pro-shell">
+    <aside class="bo-side-rail" aria-label="BO navigation">
+      <span class="rail-logo">G</span>
+      <span>{{ icons.icon("chart") }}<small>{{ t("nav.bo") }}</small></span>
+      <span>{{ icons.icon("wallet") }}<small>{{ t("wallet.title") }}</small></span>
+      <span>{{ icons.icon("shield") }}<small>{{ t("member.support") }}</small></span>
+    </aside>
+
+    <div class="bo-pro-main">
   <section class="bo-terminal">
     <div class="bo-chart-panel panel">
       <div class="section-head">
@@ -72,6 +81,14 @@
       {% if request.query_params.get("error") %}
         <div class="notice-panel warn">{{ request.query_params.get("error") }}</div>
       {% endif %}
+    </aside>
+  </section>
+    </div>
+
+    <aside class="bo-right-rail" aria-label="BO tools">
+      <span>{{ icons.icon("spark") }}<small>{{ t("bo.history") }}</small></span>
+      <span>{{ icons.icon("chart") }}<small>{{ t("bo.tradingview") }}</small></span>
+      <span>{{ icons.icon("affiliate") }}<small>{{ t("nav.member") }}</small></span>
     </aside>
   </section>
 

@@ -21,9 +21,13 @@ from app.models import (
     EmailNotification,
     EmailReply,
     InternalWallet,
+    PointLedgerEntry,
+    PointTransfer,
     ReferralCommission,
     ReferralCommissionStatus,
     ReferralCommissionType,
+    SandboxRequestType,
+    SandboxTransaction,
     SecurityEvent,
     ServiceRequest,
     TransactionRequest,
@@ -38,8 +42,26 @@ from app.services.ip_provider import provision_ip_service
 from app.services.member_services import create_ip_service_request
 from app.services.rates import ensure_default_rates
 from app.services.referrals import create_referral_commissions, ensure_user_referral_identity
-from app.services.slbo import approve_deposit, record_member_loss
+from app.services.slbo import (
+    approve_deposit,
+    approve_wallet_request,
+    create_wallet_request,
+    record_member_loss,
+    transfer_points,
+)
 from app.services.transactions import create_transaction
+
+
+def _delete_wallet_test_user(db, user_id: int) -> None:
+    db.query(PointTransfer).filter(PointTransfer.sender_user_id == user_id).delete(synchronize_session=False)
+    db.query(PointTransfer).filter(PointTransfer.receiver_user_id == user_id).delete(synchronize_session=False)
+    db.query(PointLedgerEntry).filter(PointLedgerEntry.user_id == user_id).delete(synchronize_session=False)
+    db.query(SandboxTransaction).filter(SandboxTransaction.user_id == user_id).delete(synchronize_session=False)
+    db.query(EmailNotification).filter(EmailNotification.user_id == user_id).delete(synchronize_session=False)
+    db.query(InternalWallet).filter(InternalWallet.user_id == user_id).delete(synchronize_session=False)
+    user = db.get(User, user_id)
+    if user:
+        db.delete(user)
 
 
 class FastApiSmokeTest(unittest.TestCase):
@@ -54,8 +76,8 @@ class FastApiSmokeTest(unittest.TestCase):
     def test_home_renders_bilingual_shell(self):
         response = self.client.get("/?lang=zh-TW")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("SLBo 沙盒", response.text)
-        self.assertIn("北部極速號碼", response.text)
+        self.assertIn("Guilua 點數平台", response.text)
+        self.assertIn("北部極速", response.text)
         self.assertIn("/bo?lang=zh-TW", response.text)
         self.assertIn("/rapid?lang=zh-TW", response.text)
         self.assertNotIn("/member/transactions", response.text)
@@ -66,9 +88,11 @@ class FastApiSmokeTest(unittest.TestCase):
     def test_home_renders_rate_reference_mode(self):
         response = self.client.get("/?lang=vi")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("SLBo Sandbox", response.text)
+        self.assertIn("Guilua Point Platform", response.text)
         self.assertIn("Siêu tốc miền Bắc", response.text)
-        self.assertIn("Hoa hồng lỗ chỉ tạo khi cấp dưới đã lỗ hết tổng điểm nạp", response.text)
+        self.assertIn("Hoa hồng lỗ chỉ ghi nhận", response.text)
+        self.assertNotIn("APP_MODE", response.text)
+        self.assertNotIn("REAL_MONEY_ENABLED", response.text)
         self.assertNotIn("/member/transactions", response.text)
         self.assertNotIn("/jobs?lang=vi", response.text)
         self.assertNotIn("/shop?lang=vi", response.text)
@@ -167,7 +191,7 @@ class FastApiSmokeTest(unittest.TestCase):
         self.assertIn("TradingView", response.text)
         self.assertIn("CRYPTOCAP:BTC.D", response.text)
         self.assertIn("CoinGecko + Binance", response.text)
-        self.assertIn("Google AdSense chưa được cấu hình", response.text)
+        self.assertNotIn("Google AdSense", response.text)
 
     def test_crypto_analysis_public_empty_page_renders(self):
         response = self.client.get("/crypto/analysis?lang=vi")
@@ -184,6 +208,7 @@ class FastApiSmokeTest(unittest.TestCase):
         rapid = self.client.get("/rapid?lang=vi")
         self.assertEqual(rapid.status_code, 200)
         self.assertIn("Siêu tốc miền Bắc", rapid.text)
+        self.assertIn("Bảng số miền Bắc", rapid.text)
         self.assertIn("Bao lô 2 số", rapid.text)
 
         market = self.client.get("/api/slbo/market")
@@ -191,10 +216,87 @@ class FastApiSmokeTest(unittest.TestCase):
         payload = market.json()
         self.assertTrue(any(item["code"] == "BTC" for item in payload["assets"]))
 
+    def test_member_point_transfer_and_wallet_request_flow(self):
+        suffix = os.getpid()
+        admin_email = f"wallet-admin-{suffix}@example.com"
+        sender_email = f"wallet-sender-{suffix}@example.com"
+        receiver_email = f"wallet-receiver-{suffix}@example.com"
+        password = "WalletFlow!2026"
+        created_user_ids: list[int] = []
+        with SessionLocal() as db:
+            for existing in db.query(User).filter(User.email.in_([admin_email, sender_email, receiver_email])).all():
+                _delete_wallet_test_user(db, existing.id)
+            admin = User(
+                email=admin_email,
+                password_hash=hash_password(password),
+                full_name="Wallet Admin",
+                locale="vi",
+                is_admin=True,
+                is_active=True,
+                is_email_verified=True,
+            )
+            sender = User(
+                email=sender_email,
+                password_hash=hash_password(password),
+                full_name="Wallet Sender",
+                locale="vi",
+                is_active=True,
+                is_email_verified=True,
+            )
+            receiver = User(
+                email=receiver_email,
+                password_hash=hash_password(password),
+                full_name="Wallet Receiver",
+                locale="vi",
+                is_active=True,
+                is_email_verified=True,
+            )
+            for user in (admin, sender, receiver):
+                ensure_user_referral_identity(db, user)
+                db.add(user)
+            db.commit()
+            db.refresh(admin)
+            db.refresh(sender)
+            db.refresh(receiver)
+            created_user_ids = [admin.id, sender.id, receiver.id]
+
+            approve_deposit(db, user=sender, amount=Decimal("500"), admin=admin, note="seed points")
+            transfer = transfer_points(
+                db,
+                sender=sender,
+                recipient_identifier=receiver.uid,
+                amount=Decimal("125"),
+                memo="member transfer",
+            )
+            self.assertTrue(transfer.reference_code.startswith("PT"))
+
+            sender_wallet = db.query(InternalWallet).filter(InternalWallet.user_id == sender.id).first()
+            receiver_wallet = db.query(InternalWallet).filter(InternalWallet.user_id == receiver.id).first()
+            self.assertEqual(Decimal("375.0000"), sender_wallet.available_balance)
+            self.assertEqual(Decimal("125.0000"), receiver_wallet.available_balance)
+
+            request = create_wallet_request(
+                db,
+                user=sender,
+                request_type=SandboxRequestType.WITHDRAW,
+                amount=Decimal("50"),
+                transfer_channel="ops desk",
+                account_name="Wallet Sender",
+                account_identifier="WD-001",
+            )
+            approve_wallet_request(db, item=request, admin=admin, note="approved")
+            db.refresh(sender_wallet)
+            self.assertEqual(Decimal("325.0000"), sender_wallet.available_balance)
+            self.assertEqual(Decimal("50.0000"), sender_wallet.total_withdraw)
+
+            for user_id in created_user_ids:
+                _delete_wallet_test_user(db, user_id)
+            db.commit()
+
     def test_ads_txt_without_adsense_configuration(self):
         response = self.client.get("/ads.txt")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Google AdSense is not configured", response.text)
+        self.assertIn("Ads disabled", response.text)
 
     def test_crypto_market_keeps_binance_when_coingecko_fails(self):
         old_live = os.environ.get("CRYPTO_MARKET_LIVE_ENABLED")

@@ -58,6 +58,11 @@
         <article><span>{{ t("wallet.profit") }}</span><strong>{{ format_price(wallet.total_profit) }}</strong></article>
       </div>
       <div class="transaction-actions">
+        <a class="action-card" href="/member/wallet?lang={{ locale }}">
+          <span class="icon">{{ icons.icon("wallet") }}</span>
+          <strong>{{ t("wallet.member_title") }}</strong>
+          <small>{{ t("wallet.member_desc") }}</small>
+        </a>
         <a class="action-card" href="/bo?lang={{ locale }}">
           <span class="icon">{{ icons.icon("chart") }}</span>
           <strong>{{ t("home.card.bo.title") }}</strong>
@@ -78,7 +83,6 @@
       <div class="support-box">
         <span>{{ t("admin.contact.email") }}: {{ admin_contact.email }}</span>
         <span>{{ t("admin.contact.line") }}: {{ admin_contact.line }}</span>
-        <span>{{ t("admin.contact.phone") }}: {{ admin_contact.phone }}</span>
       </div>
     </aside>
   </div>

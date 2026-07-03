@@ -79,13 +79,7 @@ def crypto(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/ads.txt", response_class=PlainTextResponse)
 def ads_txt():
-    settings = get_settings()
-    publisher_id = (settings.google_adsense_publisher_id or "").strip()
-    if not publisher_id and settings.google_adsense_client:
-        publisher_id = settings.google_adsense_client.strip().removeprefix("ca-")
-    if not publisher_id:
-        return "# Google AdSense is not configured for this deployment.\n"
-    return f"google.com, {publisher_id}, DIRECT, f08c47fec0942fa0\n"
+    return "# Ads disabled for this deployment.\n"
 
 
 def _published_posts(db: Session, post_type: ContentPostType, locale: str):

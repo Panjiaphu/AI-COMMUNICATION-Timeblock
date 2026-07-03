@@ -49,6 +49,8 @@ class ReferralCommissionStatus(StrEnum):
 class WalletLedgerType(StrEnum):
     DEPOSIT_APPROVED = "deposit_approved"
     WITHDRAW_APPROVED = "withdraw_approved"
+    TRANSFER_IN = "transfer_in"
+    TRANSFER_OUT = "transfer_out"
     BO_STAKE = "bo_stake"
     BO_PAYOUT = "bo_payout"
     RAPID_STAKE = "rapid_stake"
@@ -142,6 +144,14 @@ class User(Base):
     point_ledger_entries: Mapped[list["PointLedgerEntry"]] = relationship(
         back_populates="user",
         foreign_keys="PointLedgerEntry.user_id",
+    )
+    point_transfers_sent: Mapped[list["PointTransfer"]] = relationship(
+        back_populates="sender",
+        foreign_keys="PointTransfer.sender_user_id",
+    )
+    point_transfers_received: Mapped[list["PointTransfer"]] = relationship(
+        back_populates="receiver",
+        foreign_keys="PointTransfer.receiver_user_id",
     )
     sandbox_transactions: Mapped[list["SandboxTransaction"]] = relationship(
         back_populates="user",
@@ -276,6 +286,34 @@ class PointLedgerEntry(Base):
     __table_args__ = (Index("ix_point_ledger_user_created", "user_id", "created_at"),)
 
 
+class PointTransfer(Base):
+    __tablename__ = "point_transfers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    reference_code: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    sender_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    receiver_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    currency: Mapped[str] = mapped_column(String(16), default="SLB_POINT", index=True)
+    status: Mapped[str] = mapped_column(String(32), default="completed", index=True)
+    memo: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+    sender: Mapped[User] = relationship(
+        back_populates="point_transfers_sent",
+        foreign_keys=[sender_user_id],
+    )
+    receiver: Mapped[User] = relationship(
+        back_populates="point_transfers_received",
+        foreign_keys=[receiver_user_id],
+    )
+
+    __table_args__ = (
+        Index("ix_point_transfers_sender_created", "sender_user_id", "created_at"),
+        Index("ix_point_transfers_receiver_created", "receiver_user_id", "created_at"),
+    )
+
+
 class PlatformTreasuryAccount(Base):
     __tablename__ = "platform_treasury_accounts"
 
@@ -321,6 +359,9 @@ class SandboxTransaction(Base):
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 4))
     currency: Mapped[str] = mapped_column(String(16), default="SLB_POINT", index=True)
+    transfer_channel: Mapped[str] = mapped_column(String(80), default="")
+    account_name: Mapped[str] = mapped_column(String(120), default="")
+    account_identifier: Mapped[str] = mapped_column(String(255), default="")
     member_note: Mapped[str] = mapped_column(Text, default="")
     admin_note: Mapped[str] = mapped_column(Text, default="")
     reviewed_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
