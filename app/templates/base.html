@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ settings.app_name }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}?v=20260703-referrals">
+    <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}?v=20260703-slbo">
     {% if settings.google_site_verification %}
       <meta name="google-site-verification" content="{{ settings.google_site_verification }}">
     {% endif %}
@@ -23,13 +23,12 @@
       <a class="brand" href="/?lang={{ locale }}">Guilua</a>
       <nav class="nav">
         <a href="/?lang={{ locale }}">{{ t("nav.home") }}</a>
-        <a href="/jobs?lang={{ locale }}">{{ t("nav.jobs") }}</a>
-        <a href="/shop?lang={{ locale }}">{{ t("nav.shop") }}</a>
-        <a href="/utilities?lang={{ locale }}">{{ t("nav.utilities") }}</a>
-        <a href="/crypto?lang={{ locale }}">{{ t("nav.crypto") }}</a>
-        <a href="/crypto/analysis?lang={{ locale }}">{{ t("nav.crypto_analysis") }}</a>
-        <a href="/?lang=vi">VI</a>
-        <a href="/?lang=zh-TW">中文</a>
+        <a href="/bo?lang={{ locale }}">{{ t("nav.bo") }}</a>
+        <a href="/rapid?lang={{ locale }}">{{ t("nav.rapid") }}</a>
+        <a href="/member?lang={{ locale }}">{{ t("nav.member") }}</a>
+        <a href="{{ request.url.path }}?lang=vi">VI</a>
+        <a href="{{ request.url.path }}?lang=zh-TW">中文</a>
+        <a href="{{ request.url.path }}?lang=en">EN</a>
       </nav>
       <div class="auth-actions">
         {% if user or admin %}

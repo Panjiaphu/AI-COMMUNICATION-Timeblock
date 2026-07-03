@@ -20,6 +20,7 @@ from app.models import (
     ContentPostType,
     EmailNotification,
     EmailReply,
+    InternalWallet,
     ReferralCommission,
     ReferralCommissionStatus,
     ReferralCommissionType,
@@ -37,6 +38,7 @@ from app.services.ip_provider import provision_ip_service
 from app.services.member_services import create_ip_service_request
 from app.services.rates import ensure_default_rates
 from app.services.referrals import create_referral_commissions, ensure_user_referral_identity
+from app.services.slbo import approve_deposit, record_member_loss
 from app.services.transactions import create_transaction
 
 
@@ -52,24 +54,25 @@ class FastApiSmokeTest(unittest.TestCase):
     def test_home_renders_bilingual_shell(self):
         response = self.client.get("/?lang=zh-TW")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("企業客戶 TWD/VND", response.text)
-        self.assertIn("會員免費工具", response.text)
+        self.assertIn("SLBo 沙盒", response.text)
+        self.assertIn("北部極速號碼", response.text)
+        self.assertIn("/bo?lang=zh-TW", response.text)
+        self.assertIn("/rapid?lang=zh-TW", response.text)
         self.assertNotIn("/member/transactions", response.text)
-        self.assertNotIn("手動", response.text)
-        self.assertNotIn("交易", response.text)
+        self.assertNotIn("/jobs?lang=zh-TW", response.text)
+        self.assertNotIn("/shop?lang=zh-TW", response.text)
+        self.assertNotIn("/utilities?lang=zh-TW", response.text)
 
     def test_home_renders_rate_reference_mode(self):
         response = self.client.get("/?lang=vi")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Bảng tham khảo tỷ giá", response.text)
-        self.assertIn("Giá mua", response.text)
-        self.assertIn("Giá bán", response.text)
-        self.assertIn("Đăng ký thành viên", response.text)
+        self.assertIn("SLBo Sandbox", response.text)
+        self.assertIn("Siêu tốc miền Bắc", response.text)
+        self.assertIn("Hoa hồng lỗ chỉ tạo khi cấp dưới đã lỗ hết tổng điểm nạp", response.text)
         self.assertNotIn("/member/transactions", response.text)
-        self.assertNotIn("Quản trị", response.text)
-        self.assertNotIn("Gửi tiền", response.text)
-        self.assertNotIn("giao dịch", response.text)
-        self.assertNotIn("thủ công", response.text)
+        self.assertNotIn("/jobs?lang=vi", response.text)
+        self.assertNotIn("/shop?lang=vi", response.text)
+        self.assertNotIn("/utilities?lang=vi", response.text)
 
     def test_register_is_open(self):
         response = self.client.get("/register?lang=vi")
@@ -170,6 +173,23 @@ class FastApiSmokeTest(unittest.TestCase):
         response = self.client.get("/crypto/analysis?lang=vi")
         self.assertEqual(response.status_code, 200)
         self.assertIn("Phân tích crypto", response.text)
+
+    def test_slbo_public_rooms_render(self):
+        bo = self.client.get("/bo?lang=en")
+        self.assertEqual(bo.status_code, 200)
+        self.assertIn("1-second BO chart", bo.text)
+        self.assertIn("TradingView", bo.text)
+        self.assertIn("BUY", bo.text)
+
+        rapid = self.client.get("/rapid?lang=vi")
+        self.assertEqual(rapid.status_code, 200)
+        self.assertIn("Siêu tốc miền Bắc", rapid.text)
+        self.assertIn("Bao lô 2 số", rapid.text)
+
+        market = self.client.get("/api/slbo/market")
+        self.assertEqual(market.status_code, 200)
+        payload = market.json()
+        self.assertTrue(any(item["code"] == "BTC" for item in payload["assets"]))
 
     def test_ads_txt_without_adsense_configuration(self):
         response = self.client.get("/ads.txt")
@@ -603,6 +623,79 @@ class FastApiSmokeTest(unittest.TestCase):
             self.assertEqual(rows[0].beneficiary.email, "level1@example.com")
             self.assertEqual(rows[1].beneficiary.email, "level2@example.com")
             self.assertEqual(rows[2].beneficiary.email, "level3@example.com")
+
+    def test_loss_deposit_commission_waits_until_downline_loses_all_approved_deposit(self):
+        engine = create_engine("sqlite+pysqlite:///:memory:", connect_args={"check_same_thread": False})
+        Base.metadata.create_all(engine)
+        TestingSession = sessionmaker(bind=engine)
+
+        with TestingSession() as db:
+            level3 = User(email="loss-l3@example.com", password_hash="hash", uid="GLL3", referral_code="RFL3", is_active=True)
+            level2 = User(
+                email="loss-l2@example.com",
+                password_hash="hash",
+                uid="GLL2",
+                referral_code="RFL2",
+                is_active=True,
+                sponsor=level3,
+            )
+            level1 = User(
+                email="loss-l1@example.com",
+                password_hash="hash",
+                uid="GLL1",
+                referral_code="RFL1",
+                is_active=True,
+                sponsor=level2,
+            )
+            source = User(
+                email="loss-source@example.com",
+                password_hash="hash",
+                uid="GLLOSSSRC",
+                referral_code="RFLOSSSRC",
+                is_active=True,
+                sponsor=level1,
+            )
+            admin = User(
+                email="loss-admin@example.com",
+                password_hash="hash",
+                uid="GLLOSSADM",
+                referral_code="RFLOSSADM",
+                is_active=True,
+                is_admin=True,
+            )
+            db.add_all([level3, level2, level1, source, admin])
+            db.commit()
+            db.refresh(source)
+            db.refresh(admin)
+
+            approve_deposit(db, user=source, amount=Decimal("100"), admin=admin)
+            partial = record_member_loss(db, user=source, amount=Decimal("40"), reference_id="partial")
+            self.assertEqual(partial, [])
+            self.assertEqual(
+                db.query(ReferralCommission)
+                .filter(ReferralCommission.commission_type == ReferralCommissionType.LOSS_DEPOSIT)
+                .count(),
+                0,
+            )
+
+            created = record_member_loss(db, user=source, amount=Decimal("60"), reference_id="full")
+            self.assertEqual(len(created), 3)
+            rows = (
+                db.query(ReferralCommission)
+                .filter(ReferralCommission.commission_type == ReferralCommissionType.LOSS_DEPOSIT)
+                .order_by(ReferralCommission.level.asc())
+                .all()
+            )
+            self.assertEqual([Decimal(row.amount) for row in rows], [Decimal("1.0000"), Decimal("2.0000"), Decimal("3.0000")])
+
+            duplicate = record_member_loss(db, user=source, amount=Decimal("1"), reference_id="extra")
+            self.assertEqual(duplicate, [])
+            self.assertEqual(
+                db.query(ReferralCommission)
+                .filter(ReferralCommission.commission_type == ReferralCommissionType.LOSS_DEPOSIT)
+                .count(),
+                3,
+            )
 
     def test_ip_provider_returns_not_configured_without_env(self):
         old_url = os.environ.pop("IP_SERVICE_PROVIDER_URL", None)

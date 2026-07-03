@@ -26,7 +26,11 @@ router = APIRouter()
 
 @router.get("/")
 def home(request: Request, db: Session = Depends(get_db)):
-    return templates.TemplateResponse(request=request, name="home.html", context=context(request, rates=latest_rates(db)))
+    return templates.TemplateResponse(
+        request=request,
+        name="home.html",
+        context=context(request, user=get_current_user(request, db), rates=latest_rates(db)),
+    )
 
 
 @router.get("/crypto")

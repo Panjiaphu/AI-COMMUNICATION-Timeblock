@@ -45,29 +45,37 @@
   <div class="layout">
     <section class="panel">
       <div class="section-head">
-        <h2>{{ t("utilities.title") }}</h2>
-        <span>{{ t("utilities.free") }}</span>
+        <div>
+          <h2>{{ t("member.slbo_title") }}</h2>
+          <span>{{ t("member.slbo_desc") }}</span>
+        </div>
+        <span class="badge ok">{{ wallet.currency }}</span>
+      </div>
+      <div class="wallet-summary-grid">
+        <article><span>{{ t("wallet.balance") }}</span><strong>{{ format_price(wallet.available_balance) }}</strong></article>
+        <article><span>{{ t("wallet.deposit") }}</span><strong>{{ format_price(wallet.total_deposit) }}</strong></article>
+        <article><span>{{ t("wallet.loss") }}</span><strong>{{ format_price(wallet.total_loss) }}</strong></article>
+        <article><span>{{ t("wallet.profit") }}</span><strong>{{ format_price(wallet.total_profit) }}</strong></article>
       </div>
       <div class="transaction-actions">
-        {% for item in utilities %}
-          <a class="action-card" href="{{ item.route_path }}?lang={{ locale }}">
-            <span class="icon">{{ icons.icon("network") }}</span>
-            <strong>{{ item.title }}</strong>
-            <small>{{ item.description }}</small>
-          </a>
-        {% endfor %}
+        <a class="action-card" href="/bo?lang={{ locale }}">
+          <span class="icon">{{ icons.icon("chart") }}</span>
+          <strong>{{ t("home.card.bo.title") }}</strong>
+          <small>{{ t("home.card.bo.desc") }}</small>
+        </a>
+        <a class="action-card" href="/rapid?lang={{ locale }}">
+          <span class="icon">{{ icons.icon("spark") }}</span>
+          <strong>{{ t("home.card.rapid.title") }}</strong>
+          <small>{{ t("home.card.rapid.desc") }}</small>
+        </a>
       </div>
     </section>
 
     <aside class="account-card">
-      <span class="icon">{{ icons.icon("rate") }}</span>
-      <h2>{{ t("nav.rates") }}</h2>
-      {% for pair, rate in rates.items() %}
-        <div class="account-line"><span>{{ pair_label(pair) }}</span><strong>{{ rate.buy_rate }}</strong></div>
-      {% endfor %}
+      <span class="icon">{{ icons.icon("shield") }}</span>
+      <h2>{{ t("member.support") }}</h2>
+      <p>{{ t("member.support_desc") }}</p>
       <div class="support-box">
-        <h3>{{ t("member.support") }}</h3>
-        <p>{{ t("member.support_desc") }}</p>
         <span>{{ t("admin.contact.email") }}: {{ admin_contact.email }}</span>
         <span>{{ t("admin.contact.line") }}: {{ admin_contact.line }}</span>
         <span>{{ t("admin.contact.phone") }}: {{ admin_contact.phone }}</span>
@@ -75,35 +83,38 @@
     </aside>
   </div>
 
-  <section class="panel service-strip">
-    <div>
-      <span class="icon">{{ icons.icon("network") }}</span>
-      <h2>{{ t("services.ip.title") }}</h2>
-      <p class="muted">{{ t("services.ip.desc") }}</p>
+  <section class="panel">
+    <div class="section-head">
+      <h2>{{ t("bo.history") }}</h2>
+      <span>{{ bo_orders|length }}</span>
     </div>
-    <div class="service-strip-actions">
-      <span class="badge ok">{{ service_requests|length }}</span>
-      <a class="button primary" href="/member/services?lang={{ locale }}">{{ t("services.ip.open") }}</a>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ t("table.ref") }}</th><th>{{ t("table.asset") }}</th><th>{{ t("table.amount") }}</th><th>{{ t("table.result") }}</th></tr></thead>
+        <tbody>
+          {% for item in bo_orders %}
+            <tr><td>{{ item.reference_code }}</td><td>{{ item.asset }} {{ item.side.value|upper }}</td><td>{{ format_price(item.stake_amount) }}</td><td>{{ status_label(item.status) }}</td></tr>
+          {% else %}
+            <tr><td colspan="4" class="empty">{{ t("member.utility_empty") }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </section>
 
   <section class="panel">
     <div class="section-head">
-      <h2>{{ t("member.utility_usage") }}</h2>
-      <span>{{ utility_usage|length }}</span>
+      <h2>{{ t("rapid.history") }}</h2>
+      <span>{{ rapid_entries|length }}</span>
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>{{ t("member.utility") }}</th><th>{{ t("member.usage_count") }}</th><th>{{ t("table.updated") }}</th></tr></thead>
+        <thead><tr><th>{{ t("table.ref") }}</th><th>{{ t("table.type") }}</th><th>{{ t("table.amount") }}</th><th>{{ t("table.result") }}</th></tr></thead>
         <tbody>
-          {% for item in utility_usage %}
-            <tr>
-              <td>{{ item.utility_key }}</td>
-              <td>{{ item.usage_count }}</td>
-              <td>{% if item.last_used_at %}{{ item.last_used_at.strftime("%Y-%m-%d %H:%M") }}{% else %}-{% endif %}</td>
-            </tr>
+          {% for item in rapid_entries %}
+            <tr><td>{{ item.reference_code }}</td><td>{{ t("rapid.type." ~ item.play_type.value) }}</td><td>{{ format_price(item.stake_amount) }}</td><td>{{ status_label(item.status) }}</td></tr>
           {% else %}
-            <tr><td colspan="3" class="empty">{{ t("member.utility_empty") }}</td></tr>
+            <tr><td colspan="4" class="empty">{{ t("member.utility_empty") }}</td></tr>
           {% endfor %}
         </tbody>
       </table>

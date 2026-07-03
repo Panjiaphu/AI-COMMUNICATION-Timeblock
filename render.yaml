@@ -30,11 +30,37 @@ services:
       - key: ADMIN_PHONE
         value: "0906938893"
       - key: ADMIN_SEED_EMAIL
-        value: dautuquy888@gmail.com
+        value: admin@guilua.local
       - key: MEMBER_REGISTRATION_ENABLED
         value: true
       - key: MEMBER_PORTAL_ENABLED
         value: true
+      - key: APP_MODE
+        value: sandbox
+      - key: REAL_MONEY_ENABLED
+        value: false
+      - key: REAL_CRYPTO_WITHDRAW_ENABLED
+        value: false
+      - key: LIVE_SETTLEMENT_ENABLED
+        value: false
+      - key: SLBO_POINT_CURRENCY
+        value: SLB_POINT
+      - key: BO_TRADE_OPEN_SECONDS
+        value: 30
+      - key: BO_RESULT_WAIT_SECONDS
+        value: 15
+      - key: BO_PAYOUT_RATIO
+        value: 1.95
+      - key: RAPID_SESSION_SECONDS
+        value: 120
+      - key: RAPID_ENTRY_OPEN_SECONDS
+        value: 105
+      - key: RAPID_RESULT_WAIT_SECONDS
+        value: 15
+      - key: PLATFORM_TREASURY_INITIAL_BALANCE
+        value: 1000000
+      - key: PLATFORM_TREASURY_RESERVE_FLOOR
+        value: 0
       - key: AI_AGENT_API_ENABLED
         value: true
       - key: AI_AGENT_DEFAULT_POST_STATUS

@@ -1,62 +1,17 @@
-# Guilua Finance Webapp
+# Guilua SLBo Sandbox
 
-FastAPI webapp cho Guilua trong giai đoạn rà soát pháp lý.
+FastAPI + Jinja2 webapp for a commercial sandbox prototype:
 
-Trạng thái hiện tại:
-- Public UI hiển thị bảng tham khảo tỷ giá `TWD/VND`, `USDT/TWD`, crypto, tìm việc, shop và tiện ích.
-- Public `/crypto` hiển thị TradingView, macro filter, bảng giá coin và 12 nhóm coin.
-- Public `/jobs`, `/shop`, `/utilities`, `/advertising`, `/build-idea` cho webapp thương mại tham khảo.
-- AI Agent API có API key hash để tạo bài job/shop vào trạng thái draft cho admin duyệt.
-- Admin dashboard dùng để cập nhật giá, quản lý member, bài viết, tiện ích và AI Agent API.
-- Đăng ký thành viên và member portal đang mở bằng env mặc định.
-- UI hỗ trợ tiếng Việt có dấu và tiếng Trung phồn thể.
-- Render deploy sẵn qua Gunicorn/Uvicorn, Alembic và health check `/healthz/`.
+- Public Home, BO Trading, Northern Rapid Number Draw, Member portal.
+- Admin dashboard for rates, members, affiliate/referral, firewall, email ops and SLBo sandbox operations.
+- Internal point wallet (`SLB_POINT`), platform treasury, BO order ledger and rapid number entry ledger.
+- Three UI languages for the main shell: Vietnamese, Traditional Chinese and English.
+- Coin market data uses CoinGecko and Binance in parallel with fallback data.
+- Google AdSense hooks are available by environment variables.
 
-## Tính năng đang mở
+This project is an enterprise sandbox / non-production prototype. It must not process real money, real USDT, private keys, or live settlement before legal, licensing, operational and security audit work is complete.
 
-- Public rate board song ngữ.
-- Crypto dashboard tham khảo giá với TradingView widgets.
-- Coin price merge song song từ CoinGecko và Binance, có cache/fallback để một nguồn lỗi vẫn còn dữ liệu.
-- AdSense hook qua env, kèm `/ads.txt`, ad slot trên các trang public chính.
-- Jobs/shop content posts: `draft`, `published`, `archived`; source `admin` hoặc `ai_agent`.
-- Utilities MVP: QR generator, shortlink tự động hoặc custom alias, ping website, free VPN/download page.
-- Member UID và link giới thiệu 3 cấp; admin có ledger hoa hồng đại lý để ghi nhận, duyệt và đối soát.
-- Admin login bằng signed session cookie và CSRF token.
-- Password hashing bằng PBKDF2.
-- Admin rate settings cho `TWD_VND` và `USDT_TWD`.
-- Admin contact: `dautuquy888@gmail.com`, LINE `@827sxbki`, phone `0906938893`.
-- Alembic migrations cho SQLite/PostgreSQL.
-
-## Env chức năng chính
-
-Member registration và portal đang mở bằng:
-
-```text
-MEMBER_REGISTRATION_ENABLED=true
-MEMBER_PORTAL_ENABLED=true
-CRYPTO_MARKET_LIVE_ENABLED=true
-CRYPTO_MARKET_CACHE_SECONDS=180
-CRYPTO_MARKET_TIMEOUT_SECONDS=2.5
-COINGECKO_API_URL=https://api.coingecko.com/api/v3/simple/price
-BINANCE_API_URL=https://api.binance.com/api/v3/ticker/24hr
-GOOGLE_ADSENSE_CLIENT=<ca-pub-...>
-GOOGLE_ADSENSE_SLOT=<slot id>
-GOOGLE_ADSENSE_PUBLISHER_ID=<pub-...>
-GOOGLE_SITE_VERIFICATION=<meta verification token>
-AI_AGENT_API_ENABLED=true
-AI_AGENT_DEFAULT_POST_STATUS=draft
-AI_AGENT_ALLOW_AUTOPUBLISH=false
-UPLOAD_MAX_MB=5
-UPLOAD_STORAGE_BACKEND=local
-UPLOAD_IMAGE_MAX_WIDTH=1600
-UPLOAD_IMAGE_QUALITY=82
-PUBLIC_BASE_URL=https://fumap-line-webhook.onrender.com
-VPN_DOWNLOAD_URL=
-VPN_SETUP_GUIDE_URL=
-SHOPEE_AFFILIATE_DISCLOSURE_ENABLED=true
-```
-
-## Chạy local
+## Local Run
 
 ```bash
 python -m venv .venv
@@ -76,13 +31,13 @@ alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-Tạo hoặc cập nhật tài khoản admin local:
+Create or update an admin account:
 
 ```bash
-python scripts/create_admin.py --email dautuquy888@gmail.com --password "<mat-khau-admin-manh>"
+python scripts/create_admin.py --email admin@guilua.local --password "<strong-admin-password>"
 ```
 
-## Deploy Render
+## Render Commands
 
 ```text
 Build Command: bash scripts/build_render.sh
@@ -90,96 +45,72 @@ Start Command: bash scripts/start_render.sh
 Health Check Path: /healthz/
 ```
 
-Env tối thiểu:
+## Required Render Env
 
 ```text
 APP_ENV=production
 DEBUG=false
-SECRET_KEY=<secret rieng dai hon 32 ky tu>
+SECRET_KEY=<random secret, at least 32 characters>
 USE_SQLITE=true
 SESSION_COOKIE_SECURE=true
 RUN_MIGRATIONS_DURING_BUILD=false
+PUBLIC_BASE_URL=https://fumap-line-webhook.onrender.com
+
 ADMIN_NOTIFICATION_EMAIL=dautuquy888@gmail.com
 ADMIN_LINE_ID=@827sxbki
 ADMIN_PHONE=0906938893
-ADMIN_SEED_EMAIL=dautuquy888@gmail.com
-ADMIN_SEED_PASSWORD=<mat khau admin manh toi thieu 14 ky tu>
+ADMIN_SEED_EMAIL=admin@guilua.local
+ADMIN_SEED_PASSWORD=<strong password, at least 14 characters>
+
 MEMBER_REGISTRATION_ENABLED=true
 MEMBER_PORTAL_ENABLED=true
-AI_AGENT_API_ENABLED=true
-AI_AGENT_DEFAULT_POST_STATUS=draft
-AI_AGENT_ALLOW_AUTOPUBLISH=false
-UPLOAD_MAX_MB=5
-UPLOAD_STORAGE_BACKEND=local
-UPLOAD_IMAGE_MAX_WIDTH=1600
-UPLOAD_IMAGE_QUALITY=82
-PUBLIC_BASE_URL=https://fumap-line-webhook.onrender.com
-SHOPEE_AFFILIATE_DISCLOSURE_ENABLED=true
+APP_MODE=sandbox
+REAL_MONEY_ENABLED=false
+REAL_CRYPTO_WITHDRAW_ENABLED=false
+LIVE_SETTLEMENT_ENABLED=false
+SLBO_POINT_CURRENCY=SLB_POINT
+BO_TRADE_OPEN_SECONDS=30
+BO_RESULT_WAIT_SECONDS=15
+BO_PAYOUT_RATIO=1.95
+RAPID_SESSION_SECONDS=120
+RAPID_ENTRY_OPEN_SECONDS=105
+RAPID_RESULT_WAIT_SECONDS=15
+PLATFORM_TREASURY_INITIAL_BALANCE=1000000
+PLATFORM_TREASURY_RESERVE_FLOOR=0
+
+CRYPTO_MARKET_LIVE_ENABLED=true
+CRYPTO_MARKET_CACHE_SECONDS=180
+CRYPTO_MARKET_TIMEOUT_SECONDS=2.5
+COINGECKO_API_URL=https://api.coingecko.com/api/v3/simple/price
+COINGECKO_API_KEY=
+BINANCE_API_URL=https://api.binance.com/api/v3/ticker/24hr
+
+GOOGLE_ADSENSE_CLIENT=
+GOOGLE_ADSENSE_SLOT=
+GOOGLE_ADSENSE_PUBLISHER_ID=
+GOOGLE_SITE_VERIFICATION=
+
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USERNAME=dautuquy888@gmail.com
-SMTP_PASSWORD=<gmail app password>
+SMTP_PASSWORD=<gmail app password, not gmail login password>
 SMTP_FROM_EMAIL=dautuquy888@gmail.com
 SMTP_USE_TLS=true
+EMAIL_WEBHOOK_API_KEY=<secret for inbound email webhook>
 ```
 
-Xem thêm trong `docs/deploy-render.md`.
+`ADMIN_SEED_EMAIL` is only the first admin login seed. `ADMIN_NOTIFICATION_EMAIL` is the system/admin operations mailbox. They can and should be separate.
 
-## Lấy API / cấu hình dịch vụ
+## API Keys
 
-- CoinGecko: tạo Demo API key tại trang CoinGecko API, sau đó set `COINGECKO_API_KEY`. Không bắt buộc, nhưng giúp ổn định quota.
-- Binance: app đang dùng public Spot market endpoint, không cần API key cho giá public.
-- Google AdSense: tạo site trong AdSense, lấy `ca-pub-...` cho `GOOGLE_ADSENSE_CLIENT`, tạo ad unit lấy `GOOGLE_ADSENSE_SLOT`, lấy publisher id `pub-...` cho `GOOGLE_ADSENSE_PUBLISHER_ID`, và nếu Google yêu cầu meta verification thì set `GOOGLE_SITE_VERIFICATION`.
-- AI Agent: tạo key trong `/admin/ai-agents`. Raw key chỉ hiển thị một lần, không lưu raw key trong database.
-- Gmail SMTP: bật 2-Step Verification trong Google Account, tạo App Password tại Google Account > Security > App passwords, rồi dán app password vào `SMTP_PASSWORD`. Không dùng mật khẩu đăng nhập Gmail và không commit mật khẩu vào GitHub.
-- Đại lý/referral: member mới có UID và link `/register?ref=...`; admin tạo hoa hồng trong `/admin/referrals`. Mức hiện tại là cấp 1 = 1%, cấp 2 = 2%, cấp 3 = 3% cho `activity` hoặc `loss_deposit`.
-- Upload ảnh bài viết: admin và AI Agent upload ảnh sẽ được nén thành WebP và tạo URL dưới `/static/uploads/...`. `local` chỉ phù hợp MVP trên Render; sản phẩm thật nên dùng Render Disk hoặc storage ngoài như S3/Cloudinary/R2.
-- VPN download: set `VPN_DOWNLOAD_URL` và `VPN_SETUP_GUIDE_URL` khi có phần mềm/hướng dẫn thật.
+- Binance public ticker endpoint does not need an API key.
+- CoinGecko works without a key for light demo traffic. For better quota, create a CoinGecko demo API key and set `COINGECKO_API_KEY`.
+- Google AdSense: create the site at <https://adsense.google.com/>, then set `GOOGLE_ADSENSE_CLIENT=ca-pub-...`, `GOOGLE_ADSENSE_SLOT`, `GOOGLE_ADSENSE_PUBLISHER_ID=pub-...`, and `GOOGLE_SITE_VERIFICATION` if Google asks for meta verification.
+- Gmail SMTP: enable 2-Step Verification, create a Google App Password, and put that app password in `SMTP_PASSWORD`. Do not use or commit the Gmail login password.
 
-## Bổ sung mới: Crypto analysis, login reset và firewall
+## Current Sandbox Limits
 
-- Public `/crypto/analysis` hiển thị bài phân tích crypto do admin hoặc AI Agent tạo.
-- Admin quản lý bài tại `/admin/posts/crypto-analysis`.
-- AI Agent có thể tạo bài bằng `POST /api/agent/posts/crypto_analysis` với các field: `market_session`, `market_bias`, `risk_level`, `tradingview_symbol`, `tradingview_url`, `analysis_category`.
-- Login có `remember_me`, forgot password và reset password bằng email token.
-- Admin Firewall tại `/admin/firewall` có security events, rule block/allow, incident grouping và playbook phòng thủ.
-
-Env bổ sung:
-
-```text
-SESSION_REMEMBER_MAX_AGE_SECONDS=2592000
-PASSWORD_RESET_TOKEN_MAX_AGE_SECONDS=3600
-SECURITY_DASHBOARD_ENABLED=true
-SECURITY_LOGGING_ENABLED=true
-SECURITY_FIREWALL_ENABLED=true
-SECURITY_AUTO_BLOCK_ENABLED=false
-SECURITY_RATE_LIMIT_ENABLED=true
-SECURITY_RATE_LIMIT_WINDOW_SECONDS=60
-SECURITY_RATE_LIMIT_MAX_REQUESTS=120
-SECURITY_LOGIN_RATE_LIMIT_WINDOW_SECONDS=300
-SECURITY_LOGIN_RATE_LIMIT_MAX_ATTEMPTS=10
-SECURITY_ADMIN_RATE_LIMIT_MAX_REQUESTS=80
-SECURITY_AGENT_API_RATE_LIMIT_MAX_REQUESTS=60
-SECURITY_GEOIP_PROVIDER=none
-SECURITY_GEOIP_API_URL=
-SECURITY_GEOIP_API_KEY=
-SECURITY_ALERT_EMAIL=
-SECURITY_ADMIN_IP_RESTRICTION_ENABLED=false
-SECURITY_ADMIN_IP_ALLOWLIST=
-```
-
-GeoIP/IP reputation provider là optional. Khi chưa có provider thật, để `SECURITY_GEOIP_PROVIDER=none`; firewall vẫn ghi log, rate-limit và rule block/allow bình thường. Khi cần lookup quốc gia/ISP thật, dùng một trong các dạng sau:
-
-```text
-SECURITY_GEOIP_PROVIDER=ipinfo
-SECURITY_GEOIP_API_URL=https://ipinfo.io/{ip}/json?token={key}
-SECURITY_GEOIP_API_KEY=<ipinfo-token>
-
-SECURITY_GEOIP_PROVIDER=ipapi
-SECURITY_GEOIP_API_URL=https://ipapi.co/{ip}/json/
-SECURITY_GEOIP_API_KEY=
-
-SECURITY_GEOIP_PROVIDER=ipgeolocation
-SECURITY_GEOIP_API_URL=https://api.ipgeolocation.io/ipgeo?apiKey={key}&ip={ip}
-SECURITY_GEOIP_API_KEY=<ipgeolocation-key>
-```
+- BO and Rapid settlement are synchronous sandbox simulations for demo UX.
+- Account-level target win rate, exposure balancing, max liability guard and background timed settlement are not complete enterprise engines yet.
+- Loss-deposit referral commission is automatic only after a downline member's realized loss reaches all approved deposited points.
+- Real deposits, withdrawals, crypto transfer, KYC/AML, payment gateway and production gambling/financial compliance are not included.

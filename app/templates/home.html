@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 {% block content %}
-<section class="hero">
+<section class="hero slbo-hero">
   <div>
     <p class="eyebrow">{{ t("home.kicker") }}</p>
     <h1>{{ t("home.title") }}</h1>
@@ -12,8 +12,9 @@
       <span>{{ t("home.proof.admin") }}</span>
     </div>
     <div class="hero-actions">
-      <a class="button primary" href="/register?lang={{ locale }}">{{ t("home.primary") }}</a>
-      <a class="button" href="/login?lang={{ locale }}">{{ t("home.secondary") }}</a>
+      <a class="button primary" href="/bo?lang={{ locale }}">{{ t("home.primary") }}</a>
+      <a class="button" href="/rapid?lang={{ locale }}">{{ t("home.secondary") }}</a>
+      <a class="button ghost" href="/member?lang={{ locale }}">{{ t("home.member_cta") }}</a>
     </div>
   </div>
   <div class="hero-console motion-card">
@@ -23,12 +24,12 @@
     </div>
     <div class="console-balance">
       <small>{{ t("home.hero_rate") }}</small>
-      <strong>{{ t("rates.buy") }} {{ rates["TWD_VND"].buy_rate }} VND</strong>
-      <small>{{ t("rates.sell") }} {{ rates["TWD_VND"].sell_rate }} VND</small>
+      <strong>SLB_POINT</strong>
+      <small>APP_MODE={{ settings.app_mode }}</small>
     </div>
     <div class="console-grid">
-      <div><small>USDT -> TWD · {{ t("rates.buy") }}</small><strong>{{ rates["USDT_TWD"].buy_rate }}</strong></div>
-      <div><small>USDT -> TWD · {{ t("rates.sell") }}</small><strong>{{ rates["USDT_TWD"].sell_rate }}</strong></div>
+      <div><small>BO</small><strong>{{ settings.bo_trade_open_seconds }}s + {{ settings.bo_result_wait_seconds }}s</strong></div>
+      <div><small>{{ t("nav.rapid") }}</small><strong>{{ settings.rapid_session_seconds }}s</strong></div>
     </div>
     <div class="console-flow">
       <span>{{ t("home.ops.one") }}</span>
@@ -38,68 +39,48 @@
   </div>
 </section>
 
-<section class="commerce-strip panel">
-  <div class="section-head">
-    <div>
-      <h2>{{ t("meta.product") }}</h2>
-      <span>{{ t("utilities.subtitle") }}</span>
+<section class="grid three">
+  <a class="feature-card gradient-cyan slbo-link-card" href="/bo?lang={{ locale }}">
+    <div class="card-glow"></div>
+    <div class="feature-inner">
+      <span class="icon">{{ icons.icon("chart") }}</span>
+      <h2>{{ t("home.card.bo.title") }}</h2>
+      <p>{{ t("home.card.bo.desc") }}</p>
+      <strong class="card-cta">{{ t("nav.bo") }}</strong>
     </div>
-    <a class="button small" href="/advertising?lang={{ locale }}">{{ t("commerce.contact_cta") }}</a>
-  </div>
-  <div class="commerce-link-grid">
-    <a href="/jobs?lang={{ locale }}"><strong>{{ t("nav.jobs") }}</strong><span>{{ t("jobs.subtitle") }}</span></a>
-    <a href="/shop?lang={{ locale }}"><strong>{{ t("nav.shop") }}</strong><span>{{ t("shop.subtitle") }}</span></a>
-    <a href="/utilities?lang={{ locale }}"><strong>{{ t("nav.utilities") }}</strong><span>{{ t("utilities.subtitle") }}</span></a>
-    <a href="/crypto?lang={{ locale }}"><strong>{{ t("nav.crypto") }}</strong><span>{{ t("crypto.subtitle") }}</span></a>
-    <a href="/build-idea?lang={{ locale }}"><strong>{{ t("build_idea.title") }}</strong><span>{{ t("build_idea.subtitle") }}</span></a>
-  </div>
+  </a>
+  <a class="feature-card gradient-pink delay-1 slbo-link-card" href="/rapid?lang={{ locale }}">
+    <div class="card-glow"></div>
+    <div class="feature-inner">
+      <span class="icon">{{ icons.icon("spark") }}</span>
+      <h2>{{ t("home.card.rapid.title") }}</h2>
+      <p>{{ t("home.card.rapid.desc") }}</p>
+      <strong class="card-cta">{{ t("nav.rapid") }}</strong>
+    </div>
+  </a>
+  <a class="feature-card gradient-violet delay-2 slbo-link-card" href="/member?lang={{ locale }}">
+    <div class="card-glow"></div>
+    <div class="feature-inner">
+      <span class="icon">{{ icons.icon("affiliate") }}</span>
+      <h2>{{ t("home.card.member.title") }}</h2>
+      <p>{{ t("home.card.member.desc") }}</p>
+      <strong class="card-cta">{{ t("nav.member") }}</strong>
+    </div>
+  </a>
 </section>
 
-<section class="grid three">
-  <article class="feature-card gradient-pink">
-    <div class="card-glow"></div>
-    <div class="feature-inner">
-      <span class="icon">{{ icons.icon("send") }}</span>
-      <h2>{{ t("home.card.send.title") }}</h2>
-      <p>{{ t("home.card.send.desc") }}</p>
-      <strong class="card-cta">{{ t("rates.buy") }} {{ rates["TWD_VND"].buy_rate }} · {{ t("rates.sell") }} {{ rates["TWD_VND"].sell_rate }}</strong>
-    </div>
-  </article>
-  <article class="feature-card gradient-cyan delay-1">
-    <div class="card-glow"></div>
-    <div class="feature-inner">
-      <span class="icon">{{ icons.icon("usdt") }}</span>
-      <h2>{{ t("home.card.buy.title") }}</h2>
-      <p>{{ t("home.card.buy.desc") }}</p>
-      <strong class="card-cta">{{ t("rates.buy") }} {{ rates["USDT_TWD"].buy_rate }} · {{ t("rates.sell") }} {{ rates["USDT_TWD"].sell_rate }}</strong>
-    </div>
-  </article>
-  <article class="feature-card gradient-violet delay-2">
-    <div class="card-glow"></div>
-    <div class="feature-inner">
-      <span class="icon">{{ icons.icon("shield") }}</span>
-      <h2>{{ t("home.card.sell.title") }}</h2>
-      <p>{{ t("home.card.sell.desc") }}</p>
-      <strong class="card-cta">{{ admin_contact.line }} · {{ admin_contact.phone }}</strong>
-    </div>
-  </article>
+<section class="panel slbo-notice">
+  <div>
+    <p class="eyebrow">{{ t("home.notice.title") }}</p>
+    <h2>{{ t("meta.product") }}</h2>
+    <p class="muted">{{ t("home.notice.body") }}</p>
+  </div>
+  <div class="sandbox-flags">
+    <span>REAL_MONEY_ENABLED={{ settings.real_money_enabled|string|lower }}</span>
+    <span>REAL_CRYPTO_WITHDRAW_ENABLED={{ settings.real_crypto_withdraw_enabled|string|lower }}</span>
+    <span>LIVE_SETTLEMENT_ENABLED={{ settings.live_settlement_enabled|string|lower }}</span>
+  </div>
 </section>
 
 {% include "_ad_slot.html" %}
-
-<section class="panel">
-  <div class="section-head">
-    <h2>{{ t("nav.rates") }}</h2>
-    <span>{{ t("rates.manual") }}</span>
-  </div>
-  <div class="rate-grid">
-    {% for pair, rate in rates.items() %}
-      <div class="rate-card">
-        <span>{{ pair_label(pair) }}</span>
-        <strong>{{ t("rates.buy") }} {{ rate.buy_rate }}</strong>
-        <small>{{ t("rates.sell") }} {{ rate.sell_rate }} · {{ source_label(rate.source) }}</small>
-      </div>
-    {% endfor %}
-  </div>
-</section>
 {% endblock %}

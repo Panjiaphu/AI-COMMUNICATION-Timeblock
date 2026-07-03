@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block content %}
+<section class="slbo-page">
+  <section class="slbo-room-hero panel">
+    <div>
+      <p class="eyebrow">{{ t("bo.kicker") }}</p>
+      <h1>{{ t("bo.title") }}</h1>
+      <p class="muted">{{ t("bo.subtitle") }}</p>
+      <div class="proof-row">
+        <span>{{ t("bo.chart_note") }}</span>
+        <span>{{ t("bo.payout") }}</span>
+        <span>APP_MODE={{ sandbox.app_mode }}</span>
+      </div>
+    </div>
+    <aside class="slbo-wallet-card">
+      <span class="icon">{{ icons.icon("wallet") }}</span>
+      <small>{{ t("wallet.title") }}</small>
+      <strong>{% if wallet %}{{ format_price(wallet.available_balance) }}{% else %}0{% endif %}</strong>
+      <span>{{ t("wallet.currency") }}</span>
+    </aside>
+  </section>
+
+  <section class="bo-terminal">
+    <div class="bo-chart-panel panel">
+      <div class="section-head">
+        <div>
+          <h2 id="boAssetTitle">BTC / USDT</h2>
+          <span>{{ t("bo.price") }} <strong id="boPrice">--</strong></span>
+        </div>
+        <div class="session-chip">
+          <small>{{ t("bo.session") }} {{ bo_clock.session_code }}</small>
+          <strong data-countdown="{{ bo_clock.remaining }}">{{ bo_clock.remaining }}s</strong>
+          <span>{{ t("bo.state." ~ bo_clock.state) }}</span>
+        </div>
+      </div>
+      <canvas id="boChart" class="bo-canvas" width="980" height="420"></canvas>
+      <div class="bo-asset-row">
+        {% for asset in market.assets %}
+          <button class="asset-pill{% if loop.first %} active{% endif %}" type="button" data-asset="{{ asset.code }}" data-price="{{ asset.price }}" data-tv="{{ asset.tradingview_symbol }}">
+            <span>{{ asset.label }}</span>
+            <strong>{{ format_price(asset.price) }}</strong>
+            <small>{{ asset.source }}</small>
+          </button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <aside class="bo-order-panel panel">
+      <div class="section-head compact-head">
+        <h2>{{ t("bo.payout") }}</h2>
+        <span>{{ t("bo.countdown") }} <strong data-countdown="{{ bo_clock.remaining }}">{{ bo_clock.remaining }}s</strong></span>
+      </div>
+      {% if user %}
+        <form class="form" method="post" action="/bo/orders">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="asset" id="boAssetInput" value="BTC">
+          <label>{{ t("bo.stake") }}
+            <input type="number" name="stake_amount" min="1" step="1" value="100" required>
+          </label>
+          <div class="bo-side-grid">
+            <button class="button primary bo-buy" name="side" value="buy" type="submit">{{ t("bo.buy") }}</button>
+            <button class="button bo-sell" name="side" value="sell" type="submit">{{ t("bo.sell") }}</button>
+          </div>
+        </form>
+      {% else %}
+        <div class="notice-panel">
+          <p>{{ t("bo.login_required") }}</p>
+          <a class="button primary" href="/login?next=/bo&lang={{ locale }}">{{ t("nav.login") }}</a>
+        </div>
+      {% endif %}
+      {% if request.query_params.get("error") %}
+        <div class="notice-panel warn">{{ request.query_params.get("error") }}</div>
+      {% endif %}
+    </aside>
+  </section>
+
+  <section class="layout">
+    <div class="panel tradingview-card">
+      <div class="section-head">
+        <h2>{{ t("bo.tradingview") }}</h2>
+        <a class="button small" id="boTvLink" target="_blank" rel="noopener" href="https://www.tradingview.com/chart/?symbol=BINANCE%3ABTCUSDT">TradingView</a>
+      </div>
+      <div class="tv-mini-wrap">
+        <div class="tradingview-widget-container">
+          <div class="tradingview-widget-container__widget"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js" async>
+          {
+            "symbols": [["Bitcoin","BINANCE:BTCUSDT|1D"],["Ethereum","BINANCE:ETHUSDT|1D"],["Gold","OANDA:XAUUSD|1D"],["Oil","TVC:USOIL|1D"]],
+            "chartOnly": false,
+            "width": "100%",
+            "height": "360",
+            "locale": "{{ 'zh_TW' if locale == 'zh-TW' else ('en' if locale == 'en' else 'vi_VN') }}",
+            "colorTheme": "dark",
+            "autosize": true,
+            "showVolume": false,
+            "showMA": false
+          }
+          </script>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-head">
+        <h2>{{ t("bo.history") }}</h2>
+        <span>{{ orders|length }}</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>{{ t("table.ref") }}</th>
+              <th>{{ t("table.asset") }}</th>
+              <th>{{ t("table.side") }}</th>
+              <th>{{ t("table.amount") }}</th>
+              <th>{{ t("table.result") }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in orders %}
+              <tr>
+                <td>{{ item.reference_code }}</td>
+                <td>{{ item.asset }}</td>
+                <td>{{ item.side.value|upper }}</td>
+                <td>{{ format_price(item.stake_amount) }}</td>
+                <td><span class="badge {{ 'ok' if item.status.value == 'won' else 'warn' }}">{{ status_label(item.status) }}</span></td>
+              </tr>
+            {% else %}
+              <tr><td colspan="5" class="empty">{{ t("member.utility_empty") }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</section>
+
+<script>
+(() => {
+  const canvas = document.getElementById("boChart");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const priceNode = document.getElementById("boPrice");
+  const titleNode = document.getElementById("boAssetTitle");
+  const assetInput = document.getElementById("boAssetInput");
+  const tvLink = document.getElementById("boTvLink");
+  let active = "BTC";
+  let basePrice = 65000;
+  let points = Array.from({ length: 80 }, (_, index) => basePrice + Math.sin(index / 4) * 14);
+
+  function draw() {
+    const width = canvas.width;
+    const height = canvas.height;
+    ctx.clearRect(0, 0, width, height);
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, "#071914");
+    gradient.addColorStop(1, "#081225");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = "rgba(255,255,255,.08)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x < width; x += width / 10) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+    }
+    for (let y = 0; y < height; y += height / 6) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+    }
+    const min = Math.min(...points);
+    const max = Math.max(...points);
+    const span = Math.max(max - min, 1);
+    ctx.beginPath();
+    points.forEach((value, index) => {
+      const x = (index / (points.length - 1)) * width;
+      const y = height - ((value - min) / span) * (height - 48) - 24;
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    const up = points[points.length - 1] >= points[points.length - 2];
+    ctx.strokeStyle = up ? "#2ff0bc" : "#ff4d77";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.fillStyle = up ? "#2ff0bc" : "#ff4d77";
+    ctx.font = "700 18px Inter, system-ui, sans-serif";
+    ctx.fillText(`${active} ${points[points.length - 1].toFixed(active === "BTC" || active === "ETH" ? 2 : 3)}`, 22, 34);
+    priceNode.textContent = points[points.length - 1].toLocaleString(undefined, { maximumFractionDigits: 4 });
+  }
+
+  function tick() {
+    const drift = (Math.random() - 0.48) * Math.max(basePrice * 0.0008, 0.04);
+    const next = Math.max(0.0001, points[points.length - 1] + drift);
+    points.push(next);
+    points = points.slice(-80);
+    draw();
+  }
+
+  document.querySelectorAll(".asset-pill").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll(".asset-pill").forEach((item) => item.classList.remove("active"));
+      button.classList.add("active");
+      active = button.dataset.asset;
+      basePrice = Number(button.dataset.price || 100);
+      points = Array.from({ length: 80 }, (_, index) => basePrice + Math.sin(index / 4) * Math.max(basePrice * 0.001, 0.08));
+      titleNode.textContent = `${active} / USD`;
+      if (assetInput) assetInput.value = active;
+      if (tvLink) tvLink.href = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(button.dataset.tv || "BINANCE:BTCUSDT")}`;
+      draw();
+    });
+  });
+
+  setInterval(tick, 1000);
+  setInterval(async () => {
+    try {
+      const response = await fetch("/api/slbo/market", { cache: "no-store" });
+      const payload = await response.json();
+      const fresh = payload.assets.find((item) => item.code === active);
+      if (fresh && fresh.price) basePrice = Number(fresh.price);
+    } catch (_) {}
+  }, 15000);
+  document.querySelectorAll("[data-countdown]").forEach((node) => {
+    let remain = Number(node.dataset.countdown || 0);
+    setInterval(() => {
+      remain = Math.max(0, remain - 1);
+      node.textContent = `${remain}s`;
+    }, 1000);
+  });
+  draw();
+})();
+</script>
+{% endblock %}

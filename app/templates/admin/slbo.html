@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block content %}
+<section class="dashboard admin-slbo-page">
+  <div class="welcome">
+    <div>
+      <p class="eyebrow">{{ t("admin.dashboard") }}</p>
+      <h1>{{ t("admin.slbo.title") }}</h1>
+      <p class="muted">{{ t("admin.slbo.subtitle") }}</p>
+    </div>
+    <span class="badge ok">APP_MODE={{ sandbox.app_mode }}</span>
+  </div>
+
+  <section class="admin-slbo-metrics">
+    <article class="panel metric-card">
+      <span>{{ t("admin.slbo.treasury") }}</span>
+      <strong>{{ format_price(treasury.available_balance) }}</strong>
+      <small>{{ treasury.currency }}</small>
+    </article>
+    <article class="panel metric-card">
+      <span>{{ t("admin.slbo.reserve") }}</span>
+      <strong>{{ format_price(treasury.reserve_floor) }}</strong>
+      <small>{{ treasury.status }}</small>
+    </article>
+    <article class="panel metric-card">
+      <span>{{ t("admin.slbo.bo_orders") }}</span>
+      <strong>{{ orders|length }}</strong>
+      <small>{{ t("bo.session") }} {{ bo_clock.session_code }}</small>
+    </article>
+    <article class="panel metric-card">
+      <span>{{ t("admin.slbo.rapid_entries") }}</span>
+      <strong>{{ entries|length }}</strong>
+      <small>{{ t("rapid.session") }} {{ rapid_clock.session_code }}</small>
+    </article>
+  </section>
+
+  <section class="layout">
+    <div class="panel">
+      <div class="section-head">
+        <h2>{{ t("admin.slbo.deposit_member") }}</h2>
+        <span>{{ t("wallet.currency") }}</span>
+      </div>
+      <form class="form admin-inline-form" method="post" action="/admin/slbo/deposits">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label>{{ t("admin.slbo.member") }}
+          <select name="user_id" required>
+            {% for member in members %}
+              <option value="{{ member.id }}">{{ member.uid or member.id }} · {{ member.email }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>{{ t("admin.slbo.amount") }}
+          <input type="number" name="amount" min="1" step="1" value="1000" required>
+        </label>
+        <label>{{ t("admin.slbo.note") }}
+          <input name="note" placeholder="sandbox top-up">
+        </label>
+        <button class="button primary" type="submit">{{ t("admin.slbo.credit") }}</button>
+      </form>
+    </div>
+
+    <aside class="panel">
+      <span class="icon">{{ icons.icon("shield") }}</span>
+      <h2>{{ t("home.notice.title") }}</h2>
+      <p class="muted">{{ t("home.notice.body") }}</p>
+      <div class="sandbox-flags">
+        <span>REAL_MONEY_ENABLED={{ sandbox.real_money_enabled|string|lower }}</span>
+        <span>REAL_CRYPTO_WITHDRAW_ENABLED={{ sandbox.real_crypto_withdraw_enabled|string|lower }}</span>
+        <span>LIVE_SETTLEMENT_ENABLED={{ sandbox.live_settlement_enabled|string|lower }}</span>
+      </div>
+    </aside>
+  </section>
+
+  <section class="panel">
+    <div class="section-head">
+      <h2>{{ t("admin.slbo.wallets") }}</h2>
+      <span>{{ members|length }}</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>UID</th>
+            <th>Email</th>
+            <th>{{ t("wallet.balance") }}</th>
+            <th>{{ t("wallet.deposit") }}</th>
+            <th>{{ t("wallet.loss") }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for member in members %}
+            {% set wallet = wallet_by_user.get(member.id) %}
+            <tr>
+              <td>{{ member.uid }}</td>
+              <td>{{ member.email }}</td>
+              <td>{{ format_price(wallet.available_balance if wallet else 0) }}</td>
+              <td>{{ format_price(wallet.total_deposit if wallet else 0) }}</td>
+              <td>{{ format_price(wallet.total_loss if wallet else 0) }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" class="empty">{{ t("member.utility_empty") }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="layout">
+    <section class="panel">
+      <div class="section-head">
+        <h2>{{ t("admin.slbo.bo_orders") }}</h2>
+        <span>{{ orders|length }}</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>{{ t("table.ref") }}</th><th>{{ t("table.member") }}</th><th>{{ t("table.asset") }}</th><th>{{ t("table.amount") }}</th><th>{{ t("table.result") }}</th></tr></thead>
+          <tbody>
+            {% for item in orders %}
+              <tr>
+                <td>{{ item.reference_code }}</td>
+                <td>{{ item.user.email if item.user else item.user_id }}</td>
+                <td>{{ item.asset }} {{ item.side.value|upper }}</td>
+                <td>{{ format_price(item.stake_amount) }}</td>
+                <td>{{ status_label(item.status) }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="5" class="empty">{{ t("member.utility_empty") }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>{{ t("admin.slbo.rapid_entries") }}</h2>
+        <span>{{ entries|length }}</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>{{ t("table.ref") }}</th><th>{{ t("table.member") }}</th><th>{{ t("table.type") }}</th><th>{{ t("table.amount") }}</th><th>{{ t("table.result") }}</th></tr></thead>
+          <tbody>
+            {% for item in entries %}
+              <tr>
+                <td>{{ item.reference_code }}</td>
+                <td>{{ item.user.email if item.user else item.user_id }}</td>
+                <td>{{ t("rapid.type." ~ item.play_type.value) }}</td>
+                <td>{{ format_price(item.stake_amount) }}</td>
+                <td>{{ status_label(item.status) }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="5" class="empty">{{ t("member.utility_empty") }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</section>
+{% endblock %}

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 from enum import StrEnum
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, Numeric, String, Text
@@ -43,6 +44,53 @@ class ReferralCommissionStatus(StrEnum):
     APPROVED = "approved"
     PAID = "paid"
     VOID = "void"
+
+
+class WalletLedgerType(StrEnum):
+    DEPOSIT_APPROVED = "deposit_approved"
+    WITHDRAW_APPROVED = "withdraw_approved"
+    BO_STAKE = "bo_stake"
+    BO_PAYOUT = "bo_payout"
+    RAPID_STAKE = "rapid_stake"
+    RAPID_PAYOUT = "rapid_payout"
+    ADJUSTMENT = "adjustment"
+
+
+class SandboxRequestType(StrEnum):
+    DEPOSIT = "deposit"
+    WITHDRAW = "withdraw"
+
+
+class SandboxRequestStatus(StrEnum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    CANCELLED = "cancelled"
+
+
+class GameRequestStatus(StrEnum):
+    PENDING_CONFIRMATION = "pending_confirmation"
+    ACCEPTED = "accepted"
+    REJECTED_BY_SESSION_CONDITION = "rejected_by_session_condition"
+    REFUNDED = "refunded"
+    WON = "won"
+    LOST = "lost"
+    CANCELLED_BY_SYSTEM = "cancelled_by_system"
+
+
+class BoSide(StrEnum):
+    BUY = "buy"
+    SELL = "sell"
+
+
+class RapidPlayType(StrEnum):
+    BAO_LO_2 = "bao_lo_2"
+    BAO_LO_3 = "bao_lo_3"
+    XIEN_2 = "xien_2"
+    XIEN_3 = "xien_3"
+    HEAD = "head"
+    TAIL = "tail"
+    EVEN_ODD = "even_odd"
 
 
 class ContentPostStatus(StrEnum):
@@ -90,6 +138,17 @@ class User(Base):
         back_populates="beneficiary",
         foreign_keys="ReferralCommission.beneficiary_user_id",
     )
+    internal_wallets: Mapped[list["InternalWallet"]] = relationship(back_populates="user")
+    point_ledger_entries: Mapped[list["PointLedgerEntry"]] = relationship(
+        back_populates="user",
+        foreign_keys="PointLedgerEntry.user_id",
+    )
+    sandbox_transactions: Mapped[list["SandboxTransaction"]] = relationship(
+        back_populates="user",
+        foreign_keys="SandboxTransaction.user_id",
+    )
+    bo_orders: Mapped[list["BoOrder"]] = relationship(back_populates="user")
+    rapid_entries: Mapped[list["RapidEntry"]] = relationship(back_populates="user")
 
 
 class ExchangeRate(Base):
@@ -171,6 +230,157 @@ class ReferralCommission(Base):
         Index("ix_referral_commissions_source_created", "source_user_id", "created_at"),
         Index("ix_referral_commissions_level_type", "level", "commission_type"),
     )
+
+
+class InternalWallet(Base):
+    __tablename__ = "internal_wallets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    currency: Mapped[str] = mapped_column(String(16), default="SLB_POINT", index=True)
+    available_balance: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0"))
+    locked_balance: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0"))
+    total_deposit: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0"))
+    total_withdraw: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0"))
+    total_profit: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0"))
+    total_loss: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0"))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    user: Mapped[User] = relationship(back_populates="internal_wallets")
+
+    __table_args__ = (Index("ix_internal_wallets_user_currency", "user_id", "currency", unique=True),)
+
+
+class PointLedgerEntry(Base):
+    __tablename__ = "point_ledger_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    wallet_id: Mapped[int] = mapped_column(ForeignKey("internal_wallets.id"), index=True)
+    entry_type: Mapped[WalletLedgerType] = mapped_column(Enum(WalletLedgerType), index=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    balance_before: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    balance_after: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    reference_type: Mapped[str] = mapped_column(String(64), default="", index=True)
+    reference_id: Mapped[str] = mapped_column(String(64), default="", index=True)
+    reason: Mapped[str] = mapped_column(Text, default="")
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+    user: Mapped[User] = relationship(back_populates="point_ledger_entries", foreign_keys=[user_id])
+    wallet: Mapped[InternalWallet] = relationship()
+    created_by: Mapped[User | None] = relationship(foreign_keys=[created_by_user_id])
+
+    __table_args__ = (Index("ix_point_ledger_user_created", "user_id", "created_at"),)
+
+
+class PlatformTreasuryAccount(Base):
+    __tablename__ = "platform_treasury_accounts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    currency: Mapped[str] = mapped_column(String(16), default="SLB_POINT", unique=True, index=True)
+    available_balance: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0"))
+    reserve_floor: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0"))
+    total_platform_profit: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0"))
+    total_platform_loss: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0"))
+    status: Mapped[str] = mapped_column(String(32), default="active", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class PlatformLedgerEntry(Base):
+    __tablename__ = "platform_ledger_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    treasury_id: Mapped[int] = mapped_column(ForeignKey("platform_treasury_accounts.id"), index=True)
+    entry_type: Mapped[str] = mapped_column(String(64), index=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    balance_before: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    balance_after: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    reference_type: Mapped[str] = mapped_column(String(64), default="", index=True)
+    reference_id: Mapped[str] = mapped_column(String(64), default="", index=True)
+    reason: Mapped[str] = mapped_column(Text, default="")
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+    treasury: Mapped[PlatformTreasuryAccount] = relationship()
+    created_by: Mapped[User | None] = relationship(foreign_keys=[created_by_user_id])
+
+
+class SandboxTransaction(Base):
+    __tablename__ = "sandbox_transactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    reference_code: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    request_type: Mapped[SandboxRequestType] = mapped_column(Enum(SandboxRequestType), index=True)
+    status: Mapped[SandboxRequestStatus] = mapped_column(
+        Enum(SandboxRequestStatus), default=SandboxRequestStatus.PENDING, index=True
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    currency: Mapped[str] = mapped_column(String(16), default="SLB_POINT", index=True)
+    member_note: Mapped[str] = mapped_column(Text, default="")
+    admin_note: Mapped[str] = mapped_column(Text, default="")
+    reviewed_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    user: Mapped[User] = relationship(back_populates="sandbox_transactions", foreign_keys=[user_id])
+    reviewed_by: Mapped[User | None] = relationship(foreign_keys=[reviewed_by_user_id])
+
+
+class BoOrder(Base):
+    __tablename__ = "bo_orders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    reference_code: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    session_code: Mapped[str] = mapped_column(String(32), index=True)
+    asset: Mapped[str] = mapped_column(String(16), index=True)
+    side: Mapped[BoSide] = mapped_column(Enum(BoSide), index=True)
+    stake_amount: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    payout_ratio: Mapped[Decimal] = mapped_column(Numeric(10, 4), default=Decimal("1.95"))
+    entry_price: Mapped[Decimal] = mapped_column(Numeric(18, 8), default=Decimal("0"))
+    result_price: Mapped[Decimal] = mapped_column(Numeric(18, 8), default=Decimal("0"))
+    status: Mapped[GameRequestStatus] = mapped_column(
+        Enum(GameRequestStatus), default=GameRequestStatus.ACCEPTED, index=True
+    )
+    profit_amount: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0"))
+    result_note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+
+    user: Mapped[User] = relationship(back_populates="bo_orders")
+
+    __table_args__ = (Index("ix_bo_orders_user_created", "user_id", "created_at"),)
+
+
+class RapidEntry(Base):
+    __tablename__ = "rapid_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    reference_code: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    session_code: Mapped[str] = mapped_column(String(32), index=True)
+    play_type: Mapped[RapidPlayType] = mapped_column(Enum(RapidPlayType), index=True)
+    selection: Mapped[str] = mapped_column(String(80), index=True)
+    stake_amount: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    payout_ratio: Mapped[Decimal] = mapped_column(Numeric(10, 4))
+    hit_count: Mapped[int] = mapped_column(Integer, default=0)
+    result_code: Mapped[str] = mapped_column(String(120), default="")
+    status: Mapped[GameRequestStatus] = mapped_column(
+        Enum(GameRequestStatus), default=GameRequestStatus.ACCEPTED, index=True
+    )
+    result_amount: Mapped[Decimal] = mapped_column(Numeric(18, 4), default=Decimal("0"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+
+    user: Mapped[User] = relationship(back_populates="rapid_entries")
+
+    __table_args__ = (Index("ix_rapid_entries_user_created", "user_id", "created_at"),)
 
 
 class EmailNotification(Base):

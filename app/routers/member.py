@@ -10,10 +10,11 @@ from app.core.config import get_settings
 from app.core.security import require_user, verify_csrf
 from app.core.templates import context, templates
 from app.db.session import get_db
-from app.models import MemberUtilityUsage, ServiceRequest, TransactionRequest, TransactionType, UtilityItem
+from app.models import BoOrder, MemberUtilityUsage, RapidEntry, ServiceRequest, TransactionRequest, TransactionType, UtilityItem
 from app.services.member_services import create_ip_service_request
 from app.services.rates import latest_rates
 from app.services.referrals import build_referral_link, member_commission_summary, referral_level_counts, referral_tree
+from app.services.slbo import ensure_wallet
 from app.services.transactions import create_transaction
 
 
@@ -74,12 +75,22 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         .limit(20)
         .all()
     )
+    wallet = ensure_wallet(db, user)
+    bo_orders = (
+        db.query(BoOrder).filter(BoOrder.user_id == user.id).order_by(BoOrder.created_at.desc()).limit(10).all()
+    )
+    rapid_entries = (
+        db.query(RapidEntry).filter(RapidEntry.user_id == user.id).order_by(RapidEntry.created_at.desc()).limit(10).all()
+    )
     return templates.TemplateResponse(
         request=request,
         name="member/dashboard.html",
         context=context(
             request,
             user=user,
+            wallet=wallet,
+            bo_orders=bo_orders,
+            rapid_entries=rapid_entries,
             requests=requests,
             service_requests=service_requests,
             utilities=utilities,

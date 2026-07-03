@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     password_reset_token_max_age_seconds: int = 60 * 60
 
     default_locale: str = "vi"
-    supported_locales: Annotated[list[str], NoDecode] = ["vi", "zh-TW"]
+    supported_locales: Annotated[list[str], NoDecode] = ["vi", "zh-TW", "en"]
 
     smtp_host: str | None = None
     smtp_port: int = 587
@@ -38,10 +38,24 @@ class Settings(BaseSettings):
     admin_notification_email: str | None = "dautuquy888@gmail.com"
     admin_line_id: str = "@827sxbki"
     admin_phone: str = "0906938893"
-    admin_seed_email: str = "dautuquy888@gmail.com"
+    admin_seed_email: str = "admin@guilua.local"
     admin_seed_password: str | None = None
     member_registration_enabled: bool = True
     member_portal_enabled: bool = True
+
+    app_mode: str = "sandbox"
+    real_money_enabled: bool = False
+    real_crypto_withdraw_enabled: bool = False
+    live_settlement_enabled: bool = False
+    slbo_point_currency: str = "SLB_POINT"
+    bo_trade_open_seconds: int = 30
+    bo_result_wait_seconds: int = 15
+    bo_payout_ratio: float = 1.95
+    rapid_session_seconds: int = 120
+    rapid_entry_open_seconds: int = 105
+    rapid_result_wait_seconds: int = 15
+    platform_treasury_initial_balance: float = 1000000
+    platform_treasury_reserve_floor: float = 0
 
     crypto_market_live_enabled: bool = True
     crypto_market_cache_seconds: int = 180

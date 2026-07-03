@@ -100,7 +100,7 @@ def register(
         email=normalized_email,
         password_hash=hash_password(password),
         full_name=full_name.strip(),
-        locale=locale if locale in {"vi", "zh-TW"} else "vi",
+        locale=locale if locale in {"vi", "zh-TW", "en"} else "vi",
         referred_by_user_id=sponsor.id if sponsor else None,
     )
     ensure_user_referral_identity(db, user)
