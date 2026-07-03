@@ -11,13 +11,13 @@
         </div>
         <div class="bo-wallet-chip">
           <span>{{ t("wallet.title") }}</span>
-          <strong>{% if wallet %}{{ format_price(wallet.available_balance) }}{% else %}0{% endif %}</strong>
+          <strong data-wallet-balance>{% if wallet %}{{ format_price(wallet.available_balance) }}{% else %}0{% endif %}</strong>
           <small>{{ t("wallet.currency") }}</small>
         </div>
-        <div class="session-chip">
-          <small>{{ t("bo.session") }} {{ bo_clock.session_code }}</small>
-          <strong data-countdown="{{ bo_clock.remaining }}">{{ bo_clock.remaining }}s</strong>
-          <span>{{ t("bo.state." ~ bo_clock.state) }}</span>
+        <div class="session-chip" data-bo-top-session>
+          <small>{{ t("bo.session") }} <b data-bo-session-code>{{ bo_clock.session_code }}</b></small>
+          <strong data-bo-countdown data-countdown="{{ bo_clock.remaining }}">{{ bo_clock.remaining }}s</strong>
+          <span data-bo-session-state>{{ t("bo.state." ~ bo_clock.state) }}</span>
         </div>
       </header>
 
@@ -58,6 +58,23 @@
             <span>{{ t("bo.ticket_title") }}</span>
             <strong>{{ t("bo.max_stake") }}</strong>
           </div>
+          <div class="trade-session-panel">
+            <div>
+              <span>{{ t("bo.live_session") }}</span>
+              <strong data-bo-ticket-session>{{ bo_clock.session_code }}</strong>
+              <small data-bo-ticket-state>{{ t("bo.state." ~ bo_clock.state) }}</small>
+            </div>
+            <div>
+              <span>{{ t("bo.countdown") }}</span>
+              <strong data-bo-ticket-countdown>{{ bo_clock.remaining }}s</strong>
+              <small>{{ t("bo.max_stake") }}</small>
+            </div>
+          </div>
+          <div class="bo-latest-result {{ bo_result.result_side }}" data-bo-last-result>
+            <span>{{ t("bo.latest_result") }} · {{ bo_result.session_code }}</span>
+            <strong>{{ t("bo." ~ bo_result.result_side)|upper }}</strong>
+            <small>{{ format_price(bo_result.entry_price) }} -> {{ format_price(bo_result.result_price) }} · {{ format_price(bo_result.change_percent) }}%</small>
+          </div>
           {% if user %}
             <form class="form" method="post" action="/bo/orders?lang={{ locale }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -80,6 +97,18 @@
           {% if request.query_params.get("error") %}
             <div class="notice-panel warn">{{ error_label(request.query_params.get("error")) }}</div>
           {% endif %}
+          <div class="bo-session-history">
+            <h3>{{ t("bo.session_history") }}</h3>
+            <div data-bo-session-history>
+              {% for result in bo_recent_results %}
+                <article class="{{ result.result_side }}">
+                  <span>{{ result.session_code }}</span>
+                  <strong>{{ t("bo." ~ result.result_side)|upper }}</strong>
+                  <small>{{ format_price(result.change_percent) }}%</small>
+                </article>
+              {% endfor %}
+            </div>
+          </div>
         </aside>
       </section>
     </main>
@@ -101,7 +130,7 @@
             <th>{{ t("table.result") }}</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody data-bo-order-history>
           {% for item in orders %}
             <tr>
               <td>{{ item.reference_code }}</td>
@@ -125,9 +154,43 @@
   const assetInput = document.getElementById("boAssetInput");
   const titleNode = document.getElementById("boAssetTitle");
   const tvLink = document.getElementById("boTvLink");
+  const sessionCodeNodes = document.querySelectorAll("[data-bo-session-code], [data-bo-ticket-session]");
+  const sessionStateNode = document.querySelector("[data-bo-session-state]");
+  const ticketStateNode = document.querySelector("[data-bo-ticket-state]");
+  const countdownNode = document.querySelector("[data-bo-countdown]");
+  const ticketCountdownNode = document.querySelector("[data-bo-ticket-countdown]");
+  const lastResultNode = document.querySelector("[data-bo-last-result]");
+  const sessionHistoryNode = document.querySelector("[data-bo-session-history]");
+  const orderHistoryNode = document.querySelector("[data-bo-order-history]");
+  const walletBalanceNode = document.querySelector("[data-wallet-balance]");
+  const sideButtons = document.querySelectorAll(".bo-side-grid button");
+  const labels = {
+    buy: "{{ t('bo.buy') }}",
+    sell: "{{ t('bo.sell') }}",
+    latestResult: "{{ t('bo.latest_result') }}",
+    open: "{{ t('bo.state.open') }}",
+    processing: "{{ t('bo.state.processing') }}",
+    won: "{{ t('status.won') }}",
+    lost: "{{ t('status.lost') }}",
+    empty: "{{ t('member.utility_empty') }}"
+  };
   let activeSymbol = "BINANCE:BTCUSDT";
   let activeAsset = "BTC";
   let activeInterval = "1S";
+  let boState = "{{ bo_clock.state }}";
+  let boRemaining = Number(countdownNode?.dataset.countdown || 0);
+  let boResultsByAsset = { BTC: {{ bo_recent_results_json|tojson }} };
+  let refreshPending = false;
+
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    })[char]);
+  }
 
   function renderTradingView() {
     if (!widgetRoot) return;
@@ -166,6 +229,7 @@
       activeAsset = button.dataset.asset || "BTC";
       if (assetInput) assetInput.value = activeAsset;
       renderTradingView();
+      renderBoResultPanels();
     });
   });
 
@@ -178,15 +242,93 @@
     });
   });
 
-  document.querySelectorAll("[data-countdown]").forEach((node) => {
-    let remain = Number(node.dataset.countdown || 0);
-    setInterval(() => {
-      remain = Math.max(0, remain - 1);
-      node.textContent = `${remain}s`;
-    }, 1000);
-  });
+  function renderBoResultPanels() {
+    const rows = boResultsByAsset[activeAsset] || boResultsByAsset.BTC || [];
+    const latest = rows[0];
+    if (lastResultNode && latest) {
+      lastResultNode.className = `bo-latest-result ${latest.result_side}`;
+      lastResultNode.innerHTML = `
+        <span>${escapeHtml(labels.latestResult)} · ${escapeHtml(latest.session_code)}</span>
+        <strong>${escapeHtml(labels[latest.result_side] || latest.result_side).toUpperCase()}</strong>
+        <small>${escapeHtml(latest.entry_price)} -> ${escapeHtml(latest.result_price)} · ${escapeHtml(latest.change_percent)}%</small>
+      `;
+    }
+    if (sessionHistoryNode) {
+      sessionHistoryNode.innerHTML = rows.map((row) => `
+        <article class="${escapeHtml(row.result_side)}">
+          <span>${escapeHtml(row.session_code)}</span>
+          <strong>${escapeHtml(labels[row.result_side] || row.result_side).toUpperCase()}</strong>
+          <small>${escapeHtml(row.change_percent)}%</small>
+        </article>
+      `).join("");
+    }
+  }
+
+  function renderOrders(orders) {
+    if (!orderHistoryNode || !Array.isArray(orders)) return;
+    if (!orders.length) {
+      orderHistoryNode.innerHTML = `<tr><td colspan="5" class="empty">${escapeHtml(labels.empty)}</td></tr>`;
+      return;
+    }
+    orderHistoryNode.innerHTML = orders.map((item) => `
+      <tr>
+        <td>${escapeHtml(item.reference_code)}</td>
+        <td>${escapeHtml(item.asset)}</td>
+        <td>${escapeHtml(item.side).toUpperCase()}</td>
+        <td>${escapeHtml(item.stake_amount)}</td>
+        <td><span class="badge ${item.status === "won" ? "ok" : "warn"}">${escapeHtml(labels[item.status] || item.status)}</span></td>
+      </tr>
+    `).join("");
+  }
+
+  function updateClock(clock) {
+    if (!clock) return;
+    boState = clock.state || boState;
+    boRemaining = Number(clock.remaining || 0);
+    sessionCodeNodes.forEach((node) => { node.textContent = clock.session_code || ""; });
+    if (sessionStateNode) sessionStateNode.textContent = labels[boState] || boState || "";
+    if (ticketStateNode) ticketStateNode.textContent = labels[boState] || boState || "";
+    if (countdownNode) countdownNode.textContent = `${boRemaining}s`;
+    if (ticketCountdownNode) ticketCountdownNode.textContent = `${boRemaining}s`;
+    sideButtons.forEach((button) => {
+      button.disabled = boState !== "open";
+      button.classList.toggle("is-disabled", boState !== "open");
+    });
+  }
+
+  async function refreshRoomState() {
+    if (refreshPending) return;
+    refreshPending = true;
+    try {
+      const response = await fetch(`/api/slbo/room-state?lang={{ locale }}`, { headers: { Accept: "application/json" } });
+      if (!response.ok) return;
+      const payload = await response.json();
+      updateClock(payload.bo_clock);
+      boResultsByAsset = payload.bo_results_by_asset || boResultsByAsset;
+      renderBoResultPanels();
+      renderOrders(payload.orders);
+      if (payload.wallet && walletBalanceNode) walletBalanceNode.textContent = payload.wallet.available_balance;
+    } catch (error) {
+      console.warn("room-state refresh failed", error);
+    } finally {
+      refreshPending = false;
+    }
+  }
+
+  setInterval(() => {
+    boRemaining = Math.max(0, boRemaining - 1);
+    if (countdownNode) countdownNode.textContent = `${boRemaining}s`;
+    if (ticketCountdownNode) ticketCountdownNode.textContent = `${boRemaining}s`;
+    if (boRemaining <= 0) {
+      sideButtons.forEach((button) => { button.disabled = true; });
+      refreshRoomState();
+    }
+  }, 1000);
+  setInterval(refreshRoomState, 15000);
 
   renderTradingView();
+  renderBoResultPanels();
+  updateClock({ state: boState, remaining: boRemaining, session_code: sessionCodeNodes[0]?.textContent?.trim() || "" });
 })();
 </script>
 {% endblock %}

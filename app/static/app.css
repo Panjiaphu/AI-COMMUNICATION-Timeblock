@@ -1103,6 +1103,14 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
 .session-chip strong { font-size: 26px; color: #fff; }
 .bo-order-panel { position: sticky; top: 110px; }
 .bo-side-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bo-side-grid button:disabled,
+.rapid-confirm:disabled,
+.rapid-number-grid button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  filter: grayscale(0.35);
+  box-shadow: none;
+}
 .bo-buy { background: linear-gradient(135deg, #22e6a8, #05a9e8); }
 .bo-sell { border-color: rgba(255,77,119,.55); color: #fff; background: rgba(255,77,119,.12); }
 .tradingview-card { min-width: 0; }
@@ -1231,6 +1239,79 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
   font-weight: 800;
 }
 .ticket-head strong { color: #fff; }
+.trade-session-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.trade-session-panel > div,
+.bo-latest-result,
+.bo-session-history {
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 18px;
+  background: rgba(255,255,255,.055);
+  padding: 13px;
+}
+.trade-session-panel span,
+.trade-session-panel small,
+.bo-latest-result span,
+.bo-latest-result small {
+  color: var(--muted);
+  display: block;
+  font-size: 12px;
+  font-weight: 760;
+}
+.trade-session-panel strong {
+  color: #fff;
+  display: block;
+  font-size: 24px;
+  line-height: 1.05;
+  margin: 4px 0;
+}
+.bo-latest-result {
+  border-color: rgba(47,240,188,.22);
+  display: grid;
+  gap: 5px;
+}
+.bo-latest-result strong {
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+}
+.bo-latest-result.buy {
+  background: linear-gradient(145deg, rgba(23,199,132,.18), rgba(255,255,255,.045));
+}
+.bo-latest-result.sell {
+  border-color: rgba(234,57,67,.25);
+  background: linear-gradient(145deg, rgba(234,57,67,.18), rgba(255,255,255,.045));
+}
+.bo-session-history {
+  display: grid;
+  gap: 8px;
+}
+.bo-session-history h3 {
+  color: #fff;
+  font-size: 16px;
+  margin: 0;
+}
+.bo-session-history > div {
+  display: grid;
+  gap: 7px;
+}
+.bo-session-history article {
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: minmax(72px, .8fr) minmax(0, 1fr) minmax(58px, .6fr);
+  gap: 8px;
+  align-items: center;
+  padding: 9px 10px;
+}
+.bo-session-history article.buy { background: rgba(23,199,132,.08); }
+.bo-session-history article.sell { background: rgba(234,57,67,.08); }
+.bo-session-history span,
+.bo-session-history small { color: var(--muted); }
+.bo-session-history strong { color: #fff; }
 .bo-candle-legend {
   display: flex;
   align-items: center;
@@ -1579,6 +1660,33 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
   border-color: var(--border);
   background: rgba(255,255,255,.06);
 }
+.rapid-live-strip {
+  border: 1px solid rgba(47,240,188,.2);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(47,240,188,.1), rgba(22,167,255,.055));
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px;
+}
+.rapid-live-strip div {
+  border-radius: 14px;
+  background: rgba(0,0,0,.14);
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+.rapid-live-strip span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 780;
+}
+.rapid-live-strip strong {
+  color: #fff;
+  font-size: 22px;
+  line-height: 1.05;
+}
 .rapid-payout-line {
   border: 1px solid rgba(47,240,188,.2);
   border-radius: 16px;
@@ -1819,6 +1927,8 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
   .bo-chart-frame { min-height: 540px; }
   .bo-tradingview-widget { height: 470px; }
   .rapid-board-card .rapid-form-strip { grid-template-columns: 1fr; }
+  .trade-session-panel,
+  .rapid-live-strip { grid-template-columns: 1fr; }
   .rapid-board-card .rapid-number-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); max-height: 500px; }
   .rapid-board-card .rapid-number-grid.three-digit { grid-template-columns: repeat(5, minmax(56px, 1fr)); }
   .bo-asset-row,

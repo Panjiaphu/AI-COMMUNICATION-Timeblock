@@ -131,6 +131,32 @@ def require_admin(request: Request, db: Session) -> User:
     return user
 
 
+def ensure_admin_bootstrap() -> None:
+    settings = get_settings()
+    if not settings.admin_bootstrap_enabled:
+        return
+    admin_email = settings.admin_bootstrap_email.strip().lower()
+    password = settings.admin_bootstrap_password or ""
+    if not admin_email or not password:
+        if settings.is_production:
+            raise RuntimeError("ADMIN_BOOTSTRAP_EMAIL and ADMIN_BOOTSTRAP_PASSWORD are required when bootstrap is enabled.")
+        return
+    if len(password) < MIN_ADMIN_SEED_PASSWORD_LENGTH:
+        raise RuntimeError("ADMIN_BOOTSTRAP_PASSWORD must be at least 14 characters.")
+    with SessionLocal() as db:
+        admin = db.query(User).filter(User.email == admin_email).first()
+        if not admin:
+            admin = User(email=admin_email)
+            db.add(admin)
+        admin.password_hash = hash_password(password)
+        admin.full_name = admin.full_name or "Guilua Admin"
+        admin.locale = admin.locale or "vi"
+        admin.is_admin = True
+        admin.is_email_verified = True
+        admin.is_active = True
+        db.commit()
+
+
 def ensure_admin_seed() -> None:
     settings = get_settings()
     admin_email = settings.admin_seed_email.strip().lower()

@@ -2044,6 +2044,10 @@ MESSAGES["en"].update(FINAL_EN)
 
 SLBO_FIX_VI = {
     "bo.tv_loading": "Đang tải biểu đồ nến TradingView...",
+    "bo.live_session": "Phiên hiện tại",
+    "bo.latest_result": "Kết quả phiên",
+    "bo.session_history": "Lịch sử phiên gần nhất",
+    "rapid.live_session": "Phiên Siêu tốc",
     "rapid.recent_results": "5 kết quả gần nhất",
     "admin.slbo.guard": "Bảo vệ quỹ",
     "admin.slbo.guard_active": "Đang hoạt động",
@@ -2065,6 +2069,10 @@ SLBO_FIX_VI = {
 
 SLBO_FIX_ZH = {
     "bo.tv_loading": "正在載入 TradingView K 線圖...",
+    "bo.live_session": "目前期別",
+    "bo.latest_result": "期別結果",
+    "bo.session_history": "最近期別紀錄",
+    "rapid.live_session": "速開期別",
     "rapid.recent_results": "最近 5 期結果",
     "admin.slbo.guard": "資金防護",
     "admin.slbo.guard_active": "已啟用",
@@ -2086,6 +2094,10 @@ SLBO_FIX_ZH = {
 
 SLBO_FIX_EN = {
     "bo.tv_loading": "Loading TradingView candlestick chart...",
+    "bo.live_session": "Current session",
+    "bo.latest_result": "Session result",
+    "bo.session_history": "Recent session history",
+    "rapid.live_session": "Rapid session",
     "rapid.recent_results": "Latest 5 results",
     "admin.slbo.guard": "Treasury guard",
     "admin.slbo.guard_active": "Active",

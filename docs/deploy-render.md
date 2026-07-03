@@ -37,6 +37,16 @@ ADMIN_LINE_ID=@827sxbki
 
 `ADMIN_NOTIFICATION_EMAIL` is used for admin notifications and email ops. It is not the admin login seed.
 
+Optional admin bootstrap from Render env:
+
+```text
+ADMIN_BOOTSTRAP_ENABLED=true
+ADMIN_BOOTSTRAP_EMAIL=dautuquy888@gmail.com
+ADMIN_BOOTSTRAP_PASSWORD=<strong admin password, at least 14 chars>
+```
+
+When enabled, the app creates or updates this admin on startup. Keep `ADMIN_BOOTSTRAP_PASSWORD` secret and rotate it after sharing access.
+
 Remove these deprecated variables from Render if they still exist:
 
 ```text

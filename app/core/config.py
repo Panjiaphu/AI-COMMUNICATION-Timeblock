@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     admin_phone: str = "0906938893"
     admin_seed_email: str = ""
     admin_seed_password: str | None = None
+    admin_bootstrap_enabled: bool = False
+    admin_bootstrap_email: str = ""
+    admin_bootstrap_password: str | None = None
     member_registration_enabled: bool = True
     member_portal_enabled: bool = True
 

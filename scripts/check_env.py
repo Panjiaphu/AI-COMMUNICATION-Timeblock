@@ -29,6 +29,16 @@ def main():
     if os.getenv("ADMIN_SEED_EMAIL") or os.getenv("ADMIN_SEED_PASSWORD"):
         warnings.append("ADMIN_SEED_EMAIL/ADMIN_SEED_PASSWORD are ignored. Create admins with scripts/create_admin.py.")
 
+    if is_true(os.getenv("ADMIN_BOOTSTRAP_ENABLED", "false")):
+        bootstrap_email = os.getenv("ADMIN_BOOTSTRAP_EMAIL", "").strip()
+        bootstrap_password = os.getenv("ADMIN_BOOTSTRAP_PASSWORD", "")
+        if not bootstrap_email:
+            errors.append("ADMIN_BOOTSTRAP_EMAIL is required when ADMIN_BOOTSTRAP_ENABLED=true.")
+        if not bootstrap_password:
+            errors.append("ADMIN_BOOTSTRAP_PASSWORD is required when ADMIN_BOOTSTRAP_ENABLED=true.")
+        elif len(bootstrap_password) < 14:
+            errors.append("ADMIN_BOOTSTRAP_PASSWORD must be at least 14 characters.")
+
     if not use_sqlite and not database_url:
         errors.append("DATABASE_URL is required when USE_SQLITE=false.")
 

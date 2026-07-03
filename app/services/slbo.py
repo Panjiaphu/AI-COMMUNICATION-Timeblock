@@ -10,6 +10,7 @@ import secrets
 import time
 
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -127,6 +128,57 @@ def rapid_session_clock() -> dict[str, int | str]:
     return session_clock(settings.rapid_session_seconds, settings.rapid_entry_open_seconds)
 
 
+def _session_index_from_code(session_code: str | int | None, total_seconds: int) -> int:
+    if session_code is None:
+        return int(time.time()) // total_seconds
+    raw = str(session_code).strip().upper().removeprefix("S")
+    return int(raw) if raw.isdigit() else int(time.time()) // total_seconds
+
+
+def get_bo_session_result(
+    session_code: str | int | None = None,
+    asset_code: str = "BTC",
+    market: dict | None = None,
+) -> dict:
+    settings = get_settings()
+    total_seconds = settings.bo_trade_open_seconds + settings.bo_result_wait_seconds
+    index = _session_index_from_code(session_code, total_seconds)
+    code = f"S{index}"
+    asset_code = asset_code.strip().upper()[:16] or "BTC"
+    market = market or get_bo_market_snapshot()
+    asset = next((item for item in market["assets"] if item["code"] == asset_code), None)
+    if not asset:
+        asset = market["assets"][0]
+        asset_code = str(asset["code"])
+    entry_price = _money(asset["price"], places=8)
+    seed = int(hashlib.sha256(f"bo-session-result:{code}:{asset_code}".encode("utf-8")).hexdigest(), 16)
+    result_side = "buy" if seed % 2 == 0 else "sell"
+    move = Decimal(8 + seed % 34) / Decimal("10000")
+    direction = Decimal("1") if result_side == "buy" else Decimal("-1")
+    result_price = _money(entry_price * (Decimal("1") + direction * move), places=8)
+    change_percent = _money((result_price - entry_price) / entry_price * Decimal("100"), places=4) if entry_price else Decimal("0")
+    return {
+        "session_code": code,
+        "asset": asset_code,
+        "result_side": result_side,
+        "entry_price": entry_price,
+        "result_price": result_price,
+        "change_percent": change_percent,
+    }
+
+
+def get_recent_bo_session_results(asset_code: str = "BTC", limit: int = 5, market: dict | None = None) -> list[dict]:
+    settings = get_settings()
+    total_seconds = settings.bo_trade_open_seconds + settings.bo_result_wait_seconds
+    clock = bo_session_clock()
+    current_index = _session_index_from_code(str(clock["session_code"]), total_seconds)
+    start_index = current_index if clock["state"] != "open" else current_index - 1
+    if start_index < 0:
+        start_index = current_index
+    market = market or get_bo_market_snapshot()
+    return [get_bo_session_result(f"S{index}", asset_code, market) for index in range(start_index, max(-1, start_index - max(1, limit)), -1)]
+
+
 def get_rapid_result_board(session_code: str | int | None = None) -> dict:
     code = str(session_code or rapid_session_clock()["session_code"])
     seed = int(hashlib.sha256(f"rapid-result:{code}".encode("utf-8")).hexdigest(), 16)
@@ -181,8 +233,15 @@ def get_or_create_rapid_result_board(db: Session, session_code: str | int | None
         result_payload=json.dumps(board, ensure_ascii=False),
         settled_at=datetime.now(timezone.utc),
     )
-    db.add(record)
-    db.flush()
+    try:
+        with db.begin_nested():
+            db.add(record)
+            db.flush()
+    except IntegrityError:
+        record = db.query(RapidResultBoard).filter(RapidResultBoard.session_code == code).first()
+        if record:
+            return _rapid_result_record_to_board(record)
+        raise
     return _rapid_result_record_to_board(record)
 
 
@@ -239,7 +298,7 @@ def ensure_wallet(db: Session, user: User, currency: str | None = None) -> Inter
 def grant_initial_member_points_if_needed(db: Session, *, wallet: InternalWallet, user: User) -> None:
     settings = get_settings()
     amount = _money(settings.member_initial_point_balance)
-    if user.is_admin or amount <= 0:
+    if amount <= 0:
         return
     if (
         _money(wallet.available_balance) > 0
@@ -256,7 +315,7 @@ def grant_initial_member_points_if_needed(db: Session, *, wallet: InternalWallet
         entry_type=WalletLedgerType.ADJUSTMENT,
         reference_type="initial_internal_points",
         reference_id=f"user:{user.id}",
-        reason="Initial internal point balance for member demo use",
+        reason="Initial internal point balance for sandbox room use",
     )
 
 
@@ -534,7 +593,8 @@ def place_bo_order(
     if stake > Decimal("1000"):
         raise ValueError("stake_above_limit")
     asset_code = asset_code.strip().upper()
-    asset = next((item for item in get_bo_market_snapshot()["assets"] if item["code"] == asset_code), None)
+    market = get_bo_market_snapshot()
+    asset = next((item for item in market["assets"] if item["code"] == asset_code), None)
     if not asset:
         raise ValueError("invalid_asset")
     wallet = ensure_wallet(db, user)
@@ -548,11 +608,10 @@ def place_bo_order(
         raise ValueError("session_not_open")
 
     reference_code = _unique_code(db, BoOrder, "BO")
-    entry_price = _money(asset["price"], places=8)
-    won = _deterministic_win(reference_code, user.id, threshold=48)
-    if side == BoSide.SELL:
-        won = not won
-    result_price = _result_price(entry_price, won if side == BoSide.BUY else not won, reference_code)
+    session_result = get_bo_session_result(str(clock["session_code"]), asset_code, market)
+    entry_price = _money(session_result["entry_price"], places=8)
+    result_price = _money(session_result["result_price"], places=8)
+    won = session_result["result_side"] == side.value
     payout_ratio = _money(get_settings().bo_payout_ratio)
     payout = (stake * payout_ratio).quantize(Decimal("0.0001"))
     treasury_after_win = _money(treasury.available_balance) + stake - payout

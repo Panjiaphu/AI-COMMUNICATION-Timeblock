@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
 from io import BytesIO
 import os
@@ -253,6 +254,8 @@ class FastApiSmokeTest(unittest.TestCase):
         self.assertIn("tradingview-widget-container", bo.text)
         self.assertNotIn("bo-side-rail", bo.text)
         self.assertNotIn("bo-right-rail", bo.text)
+        self.assertIn("data-bo-last-result", bo.text)
+        self.assertIn("data-bo-session-history", bo.text)
 
         rapid = self.client.get("/rapid?lang=vi")
         self.assertEqual(rapid.status_code, 200)
@@ -260,12 +263,21 @@ class FastApiSmokeTest(unittest.TestCase):
         self.assertIn('data-play-tab="bao_lo_3"', rapid.text)
         self.assertIn("rapidNumberGrid", rapid.text)
         self.assertIn("rapid-recent-results", rapid.text)
+        self.assertIn("data-rapid-ticket-session", rapid.text)
         self.assertIn("27", rapid.text)
 
         market = self.client.get("/api/slbo/market")
         self.assertEqual(market.status_code, 200)
         payload = market.json()
         self.assertTrue(any(item["code"] == "BTC" for item in payload["assets"]))
+
+        state = self.client.get("/api/slbo/room-state?lang=vi")
+        self.assertEqual(state.status_code, 200)
+        state_payload = state.json()
+        self.assertIn("bo_clock", state_payload)
+        self.assertIn("rapid_clock", state_payload)
+        self.assertIn("BTC", state_payload["bo_results_by_asset"])
+        self.assertGreaterEqual(len(state_payload["rapid_results"]), 5)
 
     def test_rapid_recent_result_boards_persist(self):
         with SessionLocal() as db:
@@ -275,6 +287,18 @@ class FastApiSmokeTest(unittest.TestCase):
             stored_count = db.query(RapidResultBoard).count()
         self.assertEqual(len(boards), 5)
         self.assertGreaterEqual(stored_count, 5)
+
+    def test_slbo_room_state_handles_concurrent_polling(self):
+        def hit_room_state(_index):
+            with TestClient(app) as client:
+                response = client.get("/api/slbo/room-state?lang=vi")
+                return response.status_code, response.json()["rapid_clock"]["session_code"], len(response.json()["rapid_results"])
+
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            results = list(pool.map(hit_room_state, range(6)))
+
+        self.assertTrue(all(status == 200 for status, _session_code, _count in results))
+        self.assertTrue(all(count >= 5 for _status, _session_code, count in results))
 
     def test_member_point_transfer_and_wallet_request_flow(self):
         suffix = os.getpid()
@@ -923,6 +947,27 @@ class FastApiSmokeTest(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("ADMIN_SEED_EMAIL/ADMIN_SEED_PASSWORD are ignored", result.stdout)
+
+    def test_runtime_env_check_validates_admin_bootstrap(self):
+        env = {
+            **os.environ,
+            "APP_ENV": "production",
+            "DEBUG": "false",
+            "SECRET_KEY": "x" * 40,
+            "USE_SQLITE": "true",
+            "ADMIN_BOOTSTRAP_ENABLED": "true",
+            "ADMIN_BOOTSTRAP_EMAIL": "dautuquy888@gmail.com",
+            "ADMIN_BOOTSTRAP_PASSWORD": "short",
+        }
+        result = subprocess.run(
+            [sys.executable, "scripts/check_env.py", "--phase", "runtime"],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("ADMIN_BOOTSTRAP_PASSWORD must be at least 14 characters", result.stderr)
 
 
 if __name__ == "__main__":

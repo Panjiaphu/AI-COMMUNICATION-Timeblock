@@ -35,6 +35,7 @@ from app.services.slbo import (
     ensure_wallet,
     get_bo_market_snapshot,
     get_or_create_rapid_result_board,
+    get_recent_bo_session_results,
     get_recent_rapid_result_boards,
     grant_initial_member_points_if_needed,
     place_bo_order,
@@ -47,6 +48,69 @@ from app.services.slbo import (
 
 
 router = APIRouter()
+
+
+def _format_decimal(value) -> str:
+    return f"{Decimal(str(value or 0)):.4f}"
+
+
+def _session_payload(clock: dict) -> dict:
+    return {
+        "session_code": str(clock["session_code"]),
+        "state": str(clock["state"]),
+        "remaining": int(clock["remaining"]),
+        "elapsed": int(clock["elapsed"]),
+        "total_seconds": int(clock["total_seconds"]),
+        "open_seconds": int(clock["open_seconds"]),
+    }
+
+
+def _bo_result_payload(result: dict) -> dict:
+    return {
+        "session_code": result["session_code"],
+        "asset": result["asset"],
+        "result_side": result["result_side"],
+        "entry_price": _format_decimal(result["entry_price"]),
+        "result_price": _format_decimal(result["result_price"]),
+        "change_percent": _format_decimal(result["change_percent"]),
+    }
+
+
+def _bo_order_payload(order: BoOrder) -> dict:
+    return {
+        "reference_code": order.reference_code,
+        "session_code": order.session_code,
+        "asset": order.asset,
+        "side": order.side.value,
+        "stake_amount": _format_decimal(order.stake_amount),
+        "status": order.status.value,
+        "result_price": _format_decimal(order.result_price),
+        "created_at": order.created_at.isoformat(),
+    }
+
+
+def _rapid_entry_payload(entry: RapidEntry) -> dict:
+    return {
+        "reference_code": entry.reference_code,
+        "session_code": entry.session_code,
+        "play_type": entry.play_type.value,
+        "selection": entry.selection,
+        "stake_amount": _format_decimal(entry.stake_amount),
+        "status": entry.status.value,
+        "result_code": entry.result_code,
+        "result_amount": _format_decimal(entry.result_amount),
+        "created_at": entry.created_at.isoformat(),
+    }
+
+
+def _rapid_board_payload(board: dict) -> dict:
+    return {
+        "session_code": board["session_code"],
+        "special": board["special"],
+        "prizes": board["prizes"],
+        "heads": board["heads"],
+        "special_tail": board["special_tail"],
+    }
 
 
 def _platform_risk_summary(orders: list[BoOrder], entries: list[RapidEntry], treasury: PlatformTreasuryAccount) -> dict:
@@ -97,6 +161,8 @@ def bo_room(request: Request, db: Session = Depends(get_db)):
         if user
         else []
     )
+    market = get_bo_market_snapshot()
+    bo_recent_results = get_recent_bo_session_results("BTC", 5, market)
     return templates.TemplateResponse(
         request=request,
         name="bo.html",
@@ -105,9 +171,12 @@ def bo_room(request: Request, db: Session = Depends(get_db)):
             user=user,
             wallet=wallet,
             orders=orders,
-            market=get_bo_market_snapshot(),
+            market=market,
             bo_assets=BO_ASSETS,
             bo_clock=bo_session_clock(),
+            bo_result=bo_recent_results[0],
+            bo_recent_results=bo_recent_results,
+            bo_recent_results_json=[_bo_result_payload(item) for item in bo_recent_results],
             sandbox=sandbox_flags(),
         ),
     )
@@ -171,6 +240,60 @@ def rapid_room(request: Request, db: Session = Depends(get_db)):
             rapid_results=rapid_results,
             sandbox=sandbox_flags(),
         ),
+    )
+
+
+@router.get("/api/slbo/room-state")
+def slbo_room_state(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    wallet = None
+    if user:
+        wallet = ensure_wallet(db, user)
+        grant_initial_member_points_if_needed(db, wallet=wallet, user=user)
+    bo_clock = bo_session_clock()
+    rapid_clock = rapid_session_clock()
+    market = get_bo_market_snapshot()
+    bo_results_by_asset = {
+        item["code"]: [_bo_result_payload(result) for result in get_recent_bo_session_results(str(item["code"]), 5, market)]
+        for item in market["assets"]
+    }
+    rapid_result = get_or_create_rapid_result_board(db, str(rapid_clock["session_code"]))
+    rapid_results = get_recent_rapid_result_boards(db, 5)
+    orders = (
+        db.query(BoOrder)
+        .filter(BoOrder.user_id == user.id)
+        .order_by(BoOrder.created_at.desc())
+        .limit(10)
+        .all()
+        if user
+        else []
+    )
+    entries = (
+        db.query(RapidEntry)
+        .filter(RapidEntry.user_id == user.id)
+        .order_by(RapidEntry.created_at.desc())
+        .limit(10)
+        .all()
+        if user
+        else []
+    )
+    db.commit()
+    return JSONResponse(
+        {
+            "bo_clock": _session_payload(bo_clock),
+            "rapid_clock": _session_payload(rapid_clock),
+            "bo_results_by_asset": bo_results_by_asset,
+            "rapid_result": _rapid_board_payload(rapid_result),
+            "rapid_results": [_rapid_board_payload(item) for item in rapid_results],
+            "wallet": {
+                "available_balance": _format_decimal(wallet.available_balance),
+                "currency": wallet.currency,
+            }
+            if wallet
+            else None,
+            "orders": [_bo_order_payload(order) for order in orders],
+            "entries": [_rapid_entry_payload(entry) for entry in entries],
+        }
     )
 
 

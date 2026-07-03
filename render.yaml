@@ -27,6 +27,8 @@ services:
         value: dautuquy888@gmail.com
       - key: ADMIN_LINE_ID
         value: "@827sxbki"
+      - key: ADMIN_BOOTSTRAP_ENABLED
+        value: false
       - key: MEMBER_REGISTRATION_ENABLED
         value: true
       - key: MEMBER_PORTAL_ENABLED
@@ -150,6 +152,10 @@ services:
       - key: SMTP_USE_TLS
         value: true
       - key: EMAIL_WEBHOOK_API_KEY
+        sync: false
+      - key: ADMIN_BOOTSTRAP_EMAIL
+        sync: false
+      - key: ADMIN_BOOTSTRAP_PASSWORD
         sync: false
       - key: COINGECKO_API_KEY
         sync: false

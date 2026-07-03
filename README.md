@@ -96,6 +96,14 @@ This deployment does not require admin seed env variables. Create or update an a
 
 If Render still has old `ADMIN_SEED_EMAIL` or `ADMIN_SEED_PASSWORD` variables, delete them. The app ignores seed env and uses `scripts/create_admin.py` for admin accounts.
 
+If you want Render to create/update an admin on startup, set:
+
+```text
+ADMIN_BOOTSTRAP_ENABLED=true
+ADMIN_BOOTSTRAP_EMAIL=dautuquy888@gmail.com
+ADMIN_BOOTSTRAP_PASSWORD=<strong admin password, at least 14 chars>
+```
+
 ## API Keys
 
 - Binance public ticker endpoint does not need an API key.
