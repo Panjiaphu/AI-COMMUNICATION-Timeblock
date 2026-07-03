@@ -32,6 +32,39 @@
       <strong>{{ entries|length }}</strong>
       <small>{{ t("rapid.session") }} {{ rapid_clock.session_code }}</small>
     </article>
+    <article class="panel metric-card risk-guard-card">
+      <span>{{ t("admin.slbo.guard") }}</span>
+      <strong>{{ "100%" if risk_summary.guard_active else "0%" }}</strong>
+      <small>{{ t("admin.slbo.guard_active") if risk_summary.guard_active else t("admin.slbo.guard_attention") }}</small>
+    </article>
+  </section>
+
+  <section class="panel risk-guard-panel">
+    <div class="section-head">
+      <div>
+        <h2>{{ t("admin.slbo.risk_title") }}</h2>
+        <p class="muted">{{ t("admin.slbo.risk_body") }}</p>
+      </div>
+      <span class="badge ok">{{ t("admin.slbo.risk_badge") }}</span>
+    </div>
+    <div class="risk-guard-grid">
+      <article>
+        <span>{{ t("admin.slbo.platform_win_rate") }}</span>
+        <strong>{{ "%.2f"|format(risk_summary.platform_win_rate) }}%</strong>
+      </article>
+      <article>
+        <span>{{ t("admin.slbo.member_win_rate") }}</span>
+        <strong>{{ "%.2f"|format(risk_summary.member_win_rate) }}%</strong>
+      </article>
+      <article>
+        <span>{{ t("admin.slbo.net_points") }}</span>
+        <strong>{{ format_price(risk_summary.net_points) }}</strong>
+      </article>
+      <article>
+        <span>{{ t("admin.slbo.reserve_coverage") }}</span>
+        <strong>{{ "%.0f"|format(risk_summary.reserve_coverage) }}%</strong>
+      </article>
+    </div>
   </section>
 
   <section class="layout">

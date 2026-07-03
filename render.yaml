@@ -57,6 +57,8 @@ services:
         value: 1000000
       - key: PLATFORM_TREASURY_RESERVE_FLOOR
         value: 0
+      - key: MEMBER_INITIAL_POINT_BALANCE
+        value: 1000
       - key: AI_AGENT_API_ENABLED
         value: true
       - key: AI_AGENT_DEFAULT_POST_STATUS

@@ -37,6 +37,13 @@ ADMIN_LINE_ID=@827sxbki
 
 `ADMIN_NOTIFICATION_EMAIL` is used for admin notifications and email ops. It is not the admin login seed.
 
+Remove these deprecated variables from Render if they still exist:
+
+```text
+ADMIN_SEED_EMAIL
+ADMIN_SEED_PASSWORD
+```
+
 Gmail SMTP:
 
 ```text
@@ -69,6 +76,7 @@ RAPID_ENTRY_OPEN_SECONDS=105
 RAPID_RESULT_WAIT_SECONDS=15
 PLATFORM_TREASURY_INITIAL_BALANCE=1000000
 PLATFORM_TREASURY_RESERVE_FLOOR=0
+MEMBER_INITIAL_POINT_BALANCE=1000
 ```
 
 Keep all `REAL_*` flags false for this internal-point deployment. These are backend guardrails and are not shown in the public UI.

@@ -3,13 +3,6 @@
 {% block content %}
 <section class="bo-trading-page">
   <section class="bo-trading-shell">
-    <aside class="bo-side-rail" aria-label="BO navigation">
-      <span class="rail-logo">G</span>
-      <span>{{ icons.icon("chart") }}<small>{{ t("nav.bo") }}</small></span>
-      <span>{{ icons.icon("wallet") }}<small>{{ t("wallet.title") }}</small></span>
-      <span>{{ icons.icon("spark") }}<small>{{ t("bo.history") }}</small></span>
-    </aside>
-
     <main class="bo-trading-main">
       <header class="bo-trading-top">
         <div>
@@ -54,7 +47,10 @@
             </div>
             <a class="button small" id="boTvLink" target="_blank" rel="noopener" href="https://www.tradingview.com/chart/?symbol=BINANCE%3ABTCUSDT">TradingView</a>
           </div>
-          <div id="boTradingView" class="bo-tradingview-widget" data-locale="{{ 'zh_TW' if locale == 'zh-TW' else ('en' if locale == 'en' else 'vi_VN') }}"></div>
+          <div id="boTradingView" class="tradingview-widget-container bo-tradingview-widget" data-locale="{{ 'zh_TW' if locale == 'zh-TW' else ('en' if locale == 'en' else 'vi_VN') }}">
+            <div class="tradingview-widget-container__widget"></div>
+            <div class="tv-loading-note">{{ t("bo.tv_loading") }}</div>
+          </div>
         </div>
 
         <aside class="bo-order-ticket">
@@ -82,17 +78,11 @@
             </div>
           {% endif %}
           {% if request.query_params.get("error") %}
-            <div class="notice-panel warn">{{ request.query_params.get("error") }}</div>
+            <div class="notice-panel warn">{{ error_label(request.query_params.get("error")) }}</div>
           {% endif %}
         </aside>
       </section>
     </main>
-
-    <aside class="bo-right-rail" aria-label="BO tools">
-      <span>{{ icons.icon("chart") }}<small>1s</small></span>
-      <span>{{ icons.icon("wallet") }}<small>1000</small></span>
-      <span>{{ icons.icon("affiliate") }}<small>{{ t("nav.member") }}</small></span>
-    </aside>
   </section>
 
   <section class="panel">
@@ -141,7 +131,7 @@
 
   function renderTradingView() {
     if (!widgetRoot) return;
-    widgetRoot.innerHTML = '<div class="tradingview-widget-container__widget"></div>';
+    widgetRoot.innerHTML = '<div class="tradingview-widget-container__widget"></div><div class="tv-loading-note">{{ t("bo.tv_loading") }}</div>';
     const script = document.createElement("script");
     script.type = "text/javascript";
     script.async = true;

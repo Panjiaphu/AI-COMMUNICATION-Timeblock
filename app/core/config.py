@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     rapid_result_wait_seconds: int = 15
     platform_treasury_initial_balance: float = 1000000
     platform_treasury_reserve_floor: float = 0
+    member_initial_point_balance: float = 1000
 
     crypto_market_live_enabled: bool = True
     crypto_market_cache_seconds: int = 180

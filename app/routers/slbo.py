@@ -34,7 +34,9 @@ from app.services.slbo import (
     ensure_treasury,
     ensure_wallet,
     get_bo_market_snapshot,
-    get_rapid_result_board,
+    get_or_create_rapid_result_board,
+    get_recent_rapid_result_boards,
+    grant_initial_member_points_if_needed,
     place_bo_order,
     place_rapid_entry,
     rapid_session_clock,
@@ -47,10 +49,45 @@ from app.services.slbo import (
 router = APIRouter()
 
 
+def _platform_risk_summary(orders: list[BoOrder], entries: list[RapidEntry], treasury: PlatformTreasuryAccount) -> dict:
+    total_requests = len(orders) + len(entries)
+    platform_wins = 0
+    member_wins = 0
+    net_points = Decimal("0")
+    for order in orders:
+        if order.status.value == "lost":
+            platform_wins += 1
+        elif order.status.value == "won":
+            member_wins += 1
+        net_points += -Decimal(str(order.profit_amount or 0))
+    for entry in entries:
+        if entry.status.value == "lost":
+            platform_wins += 1
+        elif entry.status.value == "won":
+            member_wins += 1
+        net_points += Decimal(str(entry.stake_amount or 0)) - Decimal(str(entry.result_amount or 0))
+    platform_win_rate = (platform_wins / total_requests * 100) if total_requests else 0
+    member_win_rate = (member_wins / total_requests * 100) if total_requests else 0
+    reserve_floor = Decimal(str(treasury.reserve_floor or 0))
+    available = Decimal(str(treasury.available_balance or 0))
+    reserve_coverage = 100 if reserve_floor <= 0 else min(float(available / reserve_floor * 100), 999)
+    return {
+        "total_requests": total_requests,
+        "platform_win_rate": platform_win_rate,
+        "member_win_rate": member_win_rate,
+        "net_points": net_points,
+        "reserve_coverage": reserve_coverage,
+        "guard_active": available >= reserve_floor,
+    }
+
+
 @router.get("/bo")
 def bo_room(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     wallet = ensure_wallet(db, user) if user else None
+    if user and wallet:
+        grant_initial_member_points_if_needed(db, wallet=wallet, user=user)
+        db.commit()
     orders = (
         db.query(BoOrder)
         .filter(BoOrder.user_id == user.id)
@@ -105,6 +142,8 @@ def create_bo_order(
 def rapid_room(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     wallet = ensure_wallet(db, user) if user else None
+    if user and wallet:
+        grant_initial_member_points_if_needed(db, wallet=wallet, user=user)
     rapid_clock = rapid_session_clock()
     entries = (
         db.query(RapidEntry)
@@ -115,6 +154,9 @@ def rapid_room(request: Request, db: Session = Depends(get_db)):
         if user
         else []
     )
+    rapid_result = get_or_create_rapid_result_board(db, str(rapid_clock["session_code"]))
+    rapid_results = get_recent_rapid_result_boards(db, 5)
+    db.commit()
     return templates.TemplateResponse(
         request=request,
         name="rapid.html",
@@ -125,7 +167,8 @@ def rapid_room(request: Request, db: Session = Depends(get_db)):
             entries=entries,
             rapid_configs=RAPID_PLAY_CONFIGS,
             rapid_clock=rapid_clock,
-            rapid_result=get_rapid_result_board(str(rapid_clock["session_code"])),
+            rapid_result=rapid_result,
+            rapid_results=rapid_results,
             sandbox=sandbox_flags(),
         ),
     )
@@ -311,6 +354,7 @@ def admin_slbo(request: Request, db: Session = Depends(get_db)):
             pending_requests=pending_requests,
             wallet_requests=wallet_requests,
             transfers=transfers,
+            risk_summary=_platform_risk_summary(orders, entries, treasury),
             bo_clock=bo_session_clock(),
             rapid_clock=rapid_session_clock(),
             sandbox=sandbox_flags(),

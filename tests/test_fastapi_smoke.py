@@ -23,6 +23,7 @@ from app.models import (
     InternalWallet,
     PointLedgerEntry,
     PointTransfer,
+    RapidResultBoard,
     ReferralCommission,
     ReferralCommissionStatus,
     ReferralCommissionType,
@@ -46,6 +47,7 @@ from app.services.slbo import (
     approve_deposit,
     approve_wallet_request,
     create_wallet_request,
+    get_recent_rapid_result_boards,
     record_member_loss,
     transfer_points,
 )
@@ -248,18 +250,31 @@ class FastApiSmokeTest(unittest.TestCase):
         self.assertIn("Max 1000 points", bo.text)
         self.assertIn('data-interval="1S"', bo.text)
         self.assertIn("boTradingView", bo.text)
+        self.assertIn("tradingview-widget-container", bo.text)
+        self.assertNotIn("bo-side-rail", bo.text)
+        self.assertNotIn("bo-right-rail", bo.text)
 
         rapid = self.client.get("/rapid?lang=vi")
         self.assertEqual(rapid.status_code, 200)
         self.assertIn("rapid-prize-row", rapid.text)
         self.assertIn('data-play-tab="bao_lo_3"', rapid.text)
         self.assertIn("rapidNumberGrid", rapid.text)
+        self.assertIn("rapid-recent-results", rapid.text)
         self.assertIn("27", rapid.text)
 
         market = self.client.get("/api/slbo/market")
         self.assertEqual(market.status_code, 200)
         payload = market.json()
         self.assertTrue(any(item["code"] == "BTC" for item in payload["assets"]))
+
+    def test_rapid_recent_result_boards_persist(self):
+        with SessionLocal() as db:
+            db.query(RapidResultBoard).delete(synchronize_session=False)
+            boards = get_recent_rapid_result_boards(db, 5)
+            db.commit()
+            stored_count = db.query(RapidResultBoard).count()
+        self.assertEqual(len(boards), 5)
+        self.assertGreaterEqual(stored_count, 5)
 
     def test_member_point_transfer_and_wallet_request_flow(self):
         suffix = os.getpid()
@@ -890,7 +905,7 @@ class FastApiSmokeTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Environment check passed.", result.stdout)
 
-    def test_runtime_env_check_rejects_weak_admin_seed_password_when_provided(self):
+    def test_runtime_env_check_ignores_deprecated_admin_seed_password(self):
         env = {
             **os.environ,
             "APP_ENV": "production",
@@ -906,8 +921,8 @@ class FastApiSmokeTest(unittest.TestCase):
             text=True,
             check=False,
         )
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("ADMIN_SEED_PASSWORD must be at least 14 characters", result.stderr)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("ADMIN_SEED_EMAIL/ADMIN_SEED_PASSWORD are ignored", result.stdout)
 
 
 if __name__ == "__main__":

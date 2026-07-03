@@ -19,7 +19,6 @@ def main():
     use_sqlite = is_true(os.getenv("USE_SQLITE", "true"))
     database_url = os.getenv("DATABASE_URL", "")
     secret_key = os.getenv("SECRET_KEY", "")
-    admin_seed_password = os.getenv("ADMIN_SEED_PASSWORD", "")
 
     warnings = []
     errors = []
@@ -27,8 +26,8 @@ def main():
     if not debug and not secret_key:
         errors.append("SECRET_KEY must be set when DEBUG=false.")
 
-    if is_production and admin_seed_password and len(admin_seed_password) < 14:
-        errors.append("ADMIN_SEED_PASSWORD must be at least 14 characters in production when provided.")
+    if os.getenv("ADMIN_SEED_EMAIL") or os.getenv("ADMIN_SEED_PASSWORD"):
+        warnings.append("ADMIN_SEED_EMAIL/ADMIN_SEED_PASSWORD are ignored. Create admins with scripts/create_admin.py.")
 
     if not use_sqlite and not database_url:
         errors.append("DATABASE_URL is required when USE_SQLITE=false.")

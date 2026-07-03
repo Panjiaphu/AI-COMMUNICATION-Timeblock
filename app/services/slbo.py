@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_DOWN
 import hashlib
+import json
 import random
 import secrets
 import time
@@ -24,6 +25,7 @@ from app.models import (
     PointTransfer,
     RapidEntry,
     RapidPlayType,
+    RapidResultBoard,
     ReferralCommission,
     ReferralCommissionStatus,
     ReferralCommissionType,
@@ -155,6 +157,45 @@ def get_rapid_result_board(session_code: str | int | None = None) -> dict:
     }
 
 
+def _rapid_result_record_to_board(record: RapidResultBoard) -> dict:
+    try:
+        board = json.loads(record.result_payload or "{}")
+    except json.JSONDecodeError:
+        board = get_rapid_result_board(record.session_code)
+    board["id"] = record.id
+    board["session_code"] = record.session_code
+    board["created_at"] = record.created_at
+    board["settled_at"] = record.settled_at
+    return board
+
+
+def get_or_create_rapid_result_board(db: Session, session_code: str | int | None = None) -> dict:
+    code = str(session_code or rapid_session_clock()["session_code"])
+    record = db.query(RapidResultBoard).filter(RapidResultBoard.session_code == code).first()
+    if record:
+        return _rapid_result_record_to_board(record)
+    board = get_rapid_result_board(code)
+    record = RapidResultBoard(
+        session_code=code,
+        special_number=board["special"],
+        result_payload=json.dumps(board, ensure_ascii=False),
+        settled_at=datetime.now(timezone.utc),
+    )
+    db.add(record)
+    db.flush()
+    return _rapid_result_record_to_board(record)
+
+
+def get_recent_rapid_result_boards(db: Session, limit: int = 5) -> list[dict]:
+    clock = rapid_session_clock()
+    raw_code = str(clock["session_code"]).lstrip("S")
+    current_index = int(raw_code) if raw_code.isdigit() else int(time.time() // get_settings().rapid_session_seconds)
+    boards: list[dict] = []
+    for index in range(current_index, max(-1, current_index - max(1, limit)), -1):
+        boards.append(get_or_create_rapid_result_board(db, f"S{index}"))
+    return boards
+
+
 def get_bo_market_snapshot() -> dict:
     crypto = get_crypto_market_snapshot()
     coin_map = crypto.get("coin_map", {})
@@ -193,6 +234,30 @@ def ensure_wallet(db: Session, user: User, currency: str | None = None) -> Inter
     db.add(wallet)
     db.flush()
     return wallet
+
+
+def grant_initial_member_points_if_needed(db: Session, *, wallet: InternalWallet, user: User) -> None:
+    settings = get_settings()
+    amount = _money(settings.member_initial_point_balance)
+    if user.is_admin or amount <= 0:
+        return
+    if (
+        _money(wallet.available_balance) > 0
+        or _money(wallet.total_deposit) > 0
+        or _money(wallet.total_loss) > 0
+        or _money(wallet.total_withdraw) > 0
+        or _money(wallet.total_profit) > 0
+    ):
+        return
+    _credit_wallet(
+        db,
+        wallet=wallet,
+        amount=amount,
+        entry_type=WalletLedgerType.ADJUSTMENT,
+        reference_type="initial_internal_points",
+        reference_id=f"user:{user.id}",
+        reason="Initial internal point balance for member demo use",
+    )
 
 
 def ensure_treasury(db: Session, currency: str | None = None) -> PlatformTreasuryAccount:
@@ -473,6 +538,7 @@ def place_bo_order(
     if not asset:
         raise ValueError("invalid_asset")
     wallet = ensure_wallet(db, user)
+    grant_initial_member_points_if_needed(db, wallet=wallet, user=user)
     treasury = ensure_treasury(db)
     if _money(wallet.available_balance) < stake:
         raise ValueError("insufficient_balance")
@@ -558,6 +624,7 @@ def place_rapid_entry(
     config = RAPID_PLAY_CONFIGS[play_type]
     normalized_selection = normalize_rapid_selection(play_type, selection)
     wallet = ensure_wallet(db, user)
+    grant_initial_member_points_if_needed(db, wallet=wallet, user=user)
     treasury = ensure_treasury(db)
     if _money(wallet.available_balance) < stake:
         raise ValueError("insufficient_balance")
@@ -566,7 +633,7 @@ def place_rapid_entry(
         raise ValueError("session_not_open")
 
     reference_code = _unique_code(db, RapidEntry, "NR")
-    board = get_rapid_result_board(str(clock["session_code"]))
+    board = get_or_create_rapid_result_board(db, str(clock["session_code"]))
     hit_count, result_code = _rapid_result(play_type, normalized_selection, board)
     payout = (stake * config.payout_ratio * Decimal(hit_count)).quantize(Decimal("0.0001"))
     won = hit_count > 0

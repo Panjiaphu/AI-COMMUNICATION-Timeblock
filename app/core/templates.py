@@ -53,6 +53,14 @@ def _parse_tags(raw: str | None) -> list[str]:
     return [str(item).strip() for item in data if str(item).strip()] if isinstance(data, list) else []
 
 
+def _error_label(locale: str, code: str | None) -> str:
+    if not code:
+        return ""
+    key = f"error.{code}"
+    value = t(locale, key)
+    return value if value != key else str(code)
+
+
 def context(request: Request, **extra):
     locale = resolve_locale(request)
     settings = get_settings()
@@ -71,6 +79,7 @@ def context(request: Request, **extra):
         "service_protocol_label": lambda protocol: t(locale, f"service.protocol.{protocol}"),
         "event_label": lambda event_type: t(locale, f"event.{event_type}"),
         "email_status_label": lambda status: t(locale, f"email.status.{status.value if hasattr(status, 'value') else status}"),
+        "error_label": lambda code: _error_label(locale, code),
         "source_label": lambda source: t(locale, f"rates.source.{source}") if source == "manual" else source,
         "pair_label": lambda pair: pair.replace("_", " -> "),
         "format_price": _format_price,

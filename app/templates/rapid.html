@@ -57,7 +57,7 @@
           </div>
         {% endif %}
         {% if request.query_params.get("error") %}
-          <div class="notice-panel warn">{{ request.query_params.get("error") }}</div>
+          <div class="notice-panel warn">{{ error_label(request.query_params.get("error")) }}</div>
         {% endif %}
       </main>
 
@@ -88,6 +88,16 @@
               <span>{{ digit }}</span>
               <strong>{{ tails|join(", ") if tails else "-" }}</strong>
             </div>
+          {% endfor %}
+        </div>
+        <div class="rapid-recent-results">
+          <h3>{{ t("rapid.recent_results") }}</h3>
+          {% for result in rapid_results %}
+            <article class="{% if loop.first %}active{% endif %}">
+              <span>{{ result.session_code }}</span>
+              <strong>{{ result.special }}</strong>
+              <small>{{ result.prizes[1].numbers[0] if result.prizes|length > 1 else "-" }}</small>
+            </article>
           {% endfor %}
         </div>
       </aside>

@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import BASE_DIR, get_settings
 from app.core.i18n import resolve_locale
-from app.core.security import SessionMiddleware, ensure_admin_seed
+from app.core.security import SessionMiddleware
 from app.db.session import Base, engine
 from app.routers import admin, agent, auth, member, public, slbo, webhooks
 from app.services.commercial import ensure_default_utilities
@@ -31,7 +31,6 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     def startup() -> None:
         Base.metadata.create_all(bind=engine)
-        ensure_admin_seed()
         with SessionLocal() as db:
             ensure_default_rates(db)
             ensure_default_utilities(db)

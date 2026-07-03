@@ -74,6 +74,7 @@ RAPID_ENTRY_OPEN_SECONDS=105
 RAPID_RESULT_WAIT_SECONDS=15
 PLATFORM_TREASURY_INITIAL_BALANCE=1000000
 PLATFORM_TREASURY_RESERVE_FLOOR=0
+MEMBER_INITIAL_POINT_BALANCE=1000
 
 CRYPTO_MARKET_LIVE_ENABLED=true
 CRYPTO_MARKET_CACHE_SECONDS=180
@@ -92,6 +93,8 @@ EMAIL_WEBHOOK_API_KEY=<secret for inbound email webhook>
 ```
 
 This deployment does not require admin seed env variables. Create or update an admin account with `python scripts/create_admin.py --email <admin-email> --password "<strong-password>"`. `ADMIN_NOTIFICATION_EMAIL` is only the system/admin operations mailbox.
+
+If Render still has old `ADMIN_SEED_EMAIL` or `ADMIN_SEED_PASSWORD` variables, delete them. The app ignores seed env and uses `scripts/create_admin.py` for admin accounts.
 
 ## API Keys
 

@@ -424,6 +424,19 @@ class RapidEntry(Base):
     __table_args__ = (Index("ix_rapid_entries_user_created", "user_id", "created_at"),)
 
 
+class RapidResultBoard(Base):
+    __tablename__ = "rapid_result_boards"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_code: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    special_number: Mapped[str] = mapped_column(String(8), default="", index=True)
+    result_payload: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    settled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+    __table_args__ = (Index("ix_rapid_result_boards_created", "created_at"),)
+
+
 class EmailNotification(Base):
     __tablename__ = "email_notifications"
 

@@ -2042,6 +2042,73 @@ MESSAGES["vi"].update(FINAL_VI)
 MESSAGES["zh-TW"].update(FINAL_ZH)
 MESSAGES["en"].update(FINAL_EN)
 
+SLBO_FIX_VI = {
+    "bo.tv_loading": "Đang tải biểu đồ nến TradingView...",
+    "rapid.recent_results": "5 kết quả gần nhất",
+    "admin.slbo.guard": "Bảo vệ quỹ",
+    "admin.slbo.guard_active": "Đang hoạt động",
+    "admin.slbo.guard_attention": "Cần kiểm tra",
+    "admin.slbo.risk_title": "Risk & Profit Guard",
+    "admin.slbo.risk_body": "Bảng này theo dõi tỷ lệ kết quả, net points, reserve floor và giới hạn cược để quản trị rủi ro vận hành. Logic nội bộ không hiển thị cho member.",
+    "admin.slbo.risk_badge": "Giám sát 100%",
+    "admin.slbo.platform_win_rate": "Tỷ lệ lợi thế hệ thống",
+    "admin.slbo.member_win_rate": "Tỷ lệ member thắng",
+    "admin.slbo.net_points": "Net points hệ thống",
+    "admin.slbo.reserve_coverage": "Phủ reserve floor",
+    "error.insufficient_balance": "Số điểm hiện có chưa đủ. Vui lòng nạp điểm nội bộ hoặc liên hệ admin.",
+    "error.session_not_open": "Phiên hiện tại đang xử lý kết quả. Vui lòng thử lại ở phiên tiếp theo.",
+    "error.invalid_selection": "Dãy số đã nhập chưa đúng định dạng.",
+    "error.stake_above_limit": "Mỗi lệnh BO tối đa 1000 điểm.",
+    "error.treasury_guard": "Phiên hiện tại tạm dừng nhận yêu cầu theo giới hạn quản trị rủi ro.",
+    "error.invalid_amount": "Số điểm không hợp lệ.",
+}
+
+SLBO_FIX_ZH = {
+    "bo.tv_loading": "正在載入 TradingView K 線圖...",
+    "rapid.recent_results": "最近 5 期結果",
+    "admin.slbo.guard": "資金防護",
+    "admin.slbo.guard_active": "已啟用",
+    "admin.slbo.guard_attention": "需要檢查",
+    "admin.slbo.risk_title": "風控與收益監控",
+    "admin.slbo.risk_body": "此區追蹤結果比例、系統淨點數、保留底線與限額，用於營運風險管理。內部邏輯不會顯示給會員。",
+    "admin.slbo.risk_badge": "100% 監控",
+    "admin.slbo.platform_win_rate": "系統優勢比例",
+    "admin.slbo.member_win_rate": "會員勝率",
+    "admin.slbo.net_points": "系統淨點數",
+    "admin.slbo.reserve_coverage": "保留底線覆蓋",
+    "error.insufficient_balance": "目前點數不足，請申請內部點數或聯絡管理員。",
+    "error.session_not_open": "本期正在處理結果，請於下一期再試。",
+    "error.invalid_selection": "輸入號碼格式不正確。",
+    "error.stake_above_limit": "每筆 BO 最高 1000 點。",
+    "error.treasury_guard": "本期因風控限制暫停接收要求。",
+    "error.invalid_amount": "點數金額不正確。",
+}
+
+SLBO_FIX_EN = {
+    "bo.tv_loading": "Loading TradingView candlestick chart...",
+    "rapid.recent_results": "Latest 5 results",
+    "admin.slbo.guard": "Treasury guard",
+    "admin.slbo.guard_active": "Active",
+    "admin.slbo.guard_attention": "Needs review",
+    "admin.slbo.risk_title": "Risk & Profit Guard",
+    "admin.slbo.risk_body": "This panel tracks result ratios, net points, reserve floor coverage and stake limits for operational risk management. Internal logic is not shown to members.",
+    "admin.slbo.risk_badge": "100% monitoring",
+    "admin.slbo.platform_win_rate": "Platform edge rate",
+    "admin.slbo.member_win_rate": "Member win rate",
+    "admin.slbo.net_points": "Platform net points",
+    "admin.slbo.reserve_coverage": "Reserve coverage",
+    "error.insufficient_balance": "Available points are not enough. Please request internal points or contact admin.",
+    "error.session_not_open": "This session is processing results. Please try the next session.",
+    "error.invalid_selection": "The selected numbers are not in a valid format.",
+    "error.stake_above_limit": "Each BO order is capped at 1000 points.",
+    "error.treasury_guard": "This session is temporarily limited by risk controls.",
+    "error.invalid_amount": "Point amount is invalid.",
+}
+
+MESSAGES["vi"].update(SLBO_FIX_VI)
+MESSAGES["zh-TW"].update(SLBO_FIX_ZH)
+MESSAGES["en"].update(SLBO_FIX_EN)
+
 
 def resolve_locale(request: Request) -> str:
     settings = get_settings()
