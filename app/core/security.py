@@ -134,6 +134,8 @@ def require_admin(request: Request, db: Session) -> User:
 def ensure_admin_seed() -> None:
     settings = get_settings()
     admin_email = settings.admin_seed_email.strip().lower()
+    if not admin_email:
+        return
     with SessionLocal() as db:
         existing = db.query(User).filter(User.is_admin.is_(True)).first()
         if existing:
@@ -141,7 +143,7 @@ def ensure_admin_seed() -> None:
         password = settings.admin_seed_password
         if settings.is_production:
             if not password:
-                raise RuntimeError("ADMIN_SEED_PASSWORD is required before seeding the first production admin.")
+                return
             if len(password) < MIN_ADMIN_SEED_PASSWORD_LENGTH:
                 raise RuntimeError(
                     "ADMIN_SEED_PASSWORD must be at least 14 characters before seeding the first production admin."

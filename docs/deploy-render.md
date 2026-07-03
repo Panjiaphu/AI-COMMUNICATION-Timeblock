@@ -17,21 +17,25 @@ SECRET_KEY=<random secret, at least 32 characters>
 USE_SQLITE=true
 SESSION_COOKIE_SECURE=true
 RUN_MIGRATIONS_DURING_BUILD=false
-PUBLIC_BASE_URL=https://fumap-line-webhook.onrender.com
+PUBLIC_BASE_URL=https://guilua.onrender.com
 ```
 
 ## Admin and Email
 
-Use separate values for login seed and system mailbox:
+This deployment does not use admin seed env variables. Create or update an admin login from Render Shell or a connected local database with:
+
+```bash
+python scripts/create_admin.py --email <admin-email> --password "<strong-password>"
+```
+
+System mailbox:
 
 ```text
 ADMIN_NOTIFICATION_EMAIL=dautuquy888@gmail.com
 ADMIN_LINE_ID=@827sxbki
-ADMIN_SEED_EMAIL=admin@guilua.local
-ADMIN_SEED_PASSWORD=<strong admin password, at least 14 characters>
 ```
 
-`ADMIN_SEED_EMAIL` creates the first admin login only. `ADMIN_NOTIFICATION_EMAIL` is used for admin notifications and email ops.
+`ADMIN_NOTIFICATION_EMAIL` is used for admin notifications and email ops. It is not the admin login seed.
 
 Gmail SMTP:
 

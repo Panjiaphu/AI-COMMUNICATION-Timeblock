@@ -27,8 +27,6 @@ services:
         value: dautuquy888@gmail.com
       - key: ADMIN_LINE_ID
         value: "@827sxbki"
-      - key: ADMIN_SEED_EMAIL
-        value: admin@guilua.local
       - key: MEMBER_REGISTRATION_ENABLED
         value: true
       - key: MEMBER_PORTAL_ENABLED
@@ -74,7 +72,7 @@ services:
       - key: UPLOAD_IMAGE_QUALITY
         value: 82
       - key: PUBLIC_BASE_URL
-        value: https://fumap-line-webhook.onrender.com
+        value: https://guilua.onrender.com
       - key: SHOPEE_AFFILIATE_DISCLOSURE_ENABLED
         value: true
       - key: CRYPTO_MARKET_LIVE_ENABLED
@@ -134,8 +132,6 @@ services:
       - key: SECURITY_ADMIN_IP_RESTRICTION_ENABLED
         value: false
       - key: SECRET_KEY
-        sync: false
-      - key: ADMIN_SEED_PASSWORD
         sync: false
       - key: DATABASE_URL
         sync: false

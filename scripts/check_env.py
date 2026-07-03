@@ -27,10 +27,8 @@ def main():
     if not debug and not secret_key:
         errors.append("SECRET_KEY must be set when DEBUG=false.")
 
-    if is_production and not admin_seed_password:
-        errors.append("ADMIN_SEED_PASSWORD is required in production before seeding the first admin.")
-    elif is_production and len(admin_seed_password) < 14:
-        errors.append("ADMIN_SEED_PASSWORD must be at least 14 characters in production.")
+    if is_production and admin_seed_password and len(admin_seed_password) < 14:
+        errors.append("ADMIN_SEED_PASSWORD must be at least 14 characters in production when provided.")
 
     if not use_sqlite and not database_url:
         errors.append("DATABASE_URL is required when USE_SQLITE=false.")

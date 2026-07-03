@@ -17,8 +17,8 @@ from app.services.referrals import ensure_user_referral_identity
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Create or update a Guilua admin account.")
-    parser.add_argument("--email", default=os.getenv("ADMIN_SEED_EMAIL", "dautuquy888@gmail.com"))
-    parser.add_argument("--password", default=os.getenv("ADMIN_SEED_PASSWORD"))
+    parser.add_argument("--email", default=os.getenv("ADMIN_EMAIL", "dautuquy888@gmail.com"))
+    parser.add_argument("--password", default=os.getenv("ADMIN_PASSWORD"))
     parser.add_argument("--full-name", default="Guilua Admin")
     args = parser.parse_args()
 

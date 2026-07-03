@@ -54,12 +54,10 @@ SECRET_KEY=<random secret, at least 32 characters>
 USE_SQLITE=true
 SESSION_COOKIE_SECURE=true
 RUN_MIGRATIONS_DURING_BUILD=false
-PUBLIC_BASE_URL=https://fumap-line-webhook.onrender.com
+PUBLIC_BASE_URL=https://guilua.onrender.com
 
 ADMIN_NOTIFICATION_EMAIL=dautuquy888@gmail.com
 ADMIN_LINE_ID=@827sxbki
-ADMIN_SEED_EMAIL=admin@guilua.local
-ADMIN_SEED_PASSWORD=<strong password, at least 14 characters>
 
 MEMBER_REGISTRATION_ENABLED=true
 MEMBER_PORTAL_ENABLED=true
@@ -93,7 +91,7 @@ SMTP_USE_TLS=true
 EMAIL_WEBHOOK_API_KEY=<secret for inbound email webhook>
 ```
 
-`ADMIN_SEED_EMAIL` is only the first admin login seed. `ADMIN_NOTIFICATION_EMAIL` is the system/admin operations mailbox. They can and should be separate.
+This deployment does not require admin seed env variables. Create or update an admin account with `python scripts/create_admin.py --email <admin-email> --password "<strong-password>"`. `ADMIN_NOTIFICATION_EMAIL` is only the system/admin operations mailbox.
 
 ## API Keys
 

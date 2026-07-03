@@ -34,6 +34,7 @@ from app.services.slbo import (
     ensure_treasury,
     ensure_wallet,
     get_bo_market_snapshot,
+    get_rapid_result_board,
     place_bo_order,
     place_rapid_entry,
     rapid_session_clock,
@@ -104,6 +105,7 @@ def create_bo_order(
 def rapid_room(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     wallet = ensure_wallet(db, user) if user else None
+    rapid_clock = rapid_session_clock()
     entries = (
         db.query(RapidEntry)
         .filter(RapidEntry.user_id == user.id)
@@ -122,7 +124,8 @@ def rapid_room(request: Request, db: Session = Depends(get_db)):
             wallet=wallet,
             entries=entries,
             rapid_configs=RAPID_PLAY_CONFIGS,
-            rapid_clock=rapid_session_clock(),
+            rapid_clock=rapid_clock,
+            rapid_result=get_rapid_result_board(str(rapid_clock["session_code"])),
             sandbox=sandbox_flags(),
         ),
     )

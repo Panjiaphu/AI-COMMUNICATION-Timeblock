@@ -23,19 +23,47 @@
       <strong>{{ t("home.hero_status") }}</strong>
     </div>
     <div class="console-balance">
-      <small>{{ t("home.hero_rate") }}</small>
-      <strong>SLB_POINT</strong>
-      <small>{{ t("wallet.approved_flow") }}</small>
+      <small>TWD / VND</small>
+      <strong>{{ rates["TWD_VND"].buy_rate }}</strong>
+      <small>{{ t("rates.buy") }} / {{ t("rates.sell") }} {{ rates["TWD_VND"].sell_rate }}</small>
     </div>
     <div class="console-grid">
-      <div><small>BO</small><strong>{{ settings.bo_trade_open_seconds }}s + {{ settings.bo_result_wait_seconds }}s</strong></div>
-      <div><small>{{ t("nav.rapid") }}</small><strong>{{ settings.rapid_session_seconds }}s</strong></div>
+      <div><small>USDT / TWD {{ t("rates.buy") }}</small><strong>{{ rates["USDT_TWD"].buy_rate }}</strong></div>
+      <div><small>USDT / TWD {{ t("rates.sell") }}</small><strong>{{ rates["USDT_TWD"].sell_rate }}</strong></div>
     </div>
     <div class="console-flow">
       <span>{{ t("home.ops.one") }}</span>
       <span>{{ t("home.ops.two") }}</span>
       <span>{{ t("home.ops.three") }}</span>
     </div>
+  </div>
+</section>
+
+<section class="panel home-rate-board">
+  <div class="section-head">
+    <div>
+      <h2>{{ t("rates.manual") }}</h2>
+      <span>{{ t("admin.rate_help") }}</span>
+    </div>
+    <a class="button small" href="/login?lang={{ locale }}">{{ t("nav.login") }}</a>
+  </div>
+  <div class="rate-grid">
+    {% for pair, rate in rates.items() %}
+      <article class="rate-card">
+        <span>{{ pair_label(pair) }}</span>
+        <div class="rate-buy-sell">
+          <div>
+            <small>{{ t("rates.buy") }}</small>
+            <strong>{{ rate.buy_rate }}</strong>
+          </div>
+          <div>
+            <small>{{ t("rates.sell") }}</small>
+            <strong>{{ rate.sell_rate }}</strong>
+          </div>
+        </div>
+        <small>{{ source_label(rate.source) }}</small>
+      </article>
+    {% endfor %}
   </div>
 </section>
 

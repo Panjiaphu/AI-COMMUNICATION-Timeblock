@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_DOWN
 import hashlib
+import random
 import secrets
 import time
 
@@ -66,14 +67,26 @@ BO_ASSETS: tuple[BoAsset, ...] = (
 
 
 RAPID_PLAY_CONFIGS: dict[RapidPlayType, RapidPlayConfig] = {
-    RapidPlayType.BAO_LO_2: RapidPlayConfig(RapidPlayType.BAO_LO_2, Decimal("90"), 5, exact_digits=2),
-    RapidPlayType.BAO_LO_3: RapidPlayConfig(RapidPlayType.BAO_LO_3, Decimal("850"), 3, exact_digits=3),
+    RapidPlayType.BAO_LO_2: RapidPlayConfig(RapidPlayType.BAO_LO_2, Decimal("27"), 27, exact_digits=2),
+    RapidPlayType.BAO_LO_3: RapidPlayConfig(RapidPlayType.BAO_LO_3, Decimal("23"), 23, exact_digits=3),
     RapidPlayType.XIEN_2: RapidPlayConfig(RapidPlayType.XIEN_2, Decimal("15"), 1, requires_unique_count=2, exact_digits=2),
     RapidPlayType.XIEN_3: RapidPlayConfig(RapidPlayType.XIEN_3, Decimal("55"), 1, requires_unique_count=3, exact_digits=2),
-    RapidPlayType.HEAD: RapidPlayConfig(RapidPlayType.HEAD, Decimal("90"), 5, exact_digits=2),
-    RapidPlayType.TAIL: RapidPlayConfig(RapidPlayType.TAIL, Decimal("90"), 1, exact_digits=2),
-    RapidPlayType.EVEN_ODD: RapidPlayConfig(RapidPlayType.EVEN_ODD, Decimal("1.95"), 1),
+    RapidPlayType.HEAD: RapidPlayConfig(RapidPlayType.HEAD, Decimal("4"), 1, exact_digits=1),
+    RapidPlayType.TAIL: RapidPlayConfig(RapidPlayType.TAIL, Decimal("1"), 1, exact_digits=1),
+    RapidPlayType.EVEN_ODD: RapidPlayConfig(RapidPlayType.EVEN_ODD, Decimal("1"), 1),
 }
+
+
+NORTHERN_RESULT_PRIZES: tuple[tuple[str, int, int], ...] = (
+    ("special", 5, 1),
+    ("g1", 5, 1),
+    ("g2", 5, 2),
+    ("g3", 5, 6),
+    ("g4", 4, 4),
+    ("g5", 4, 6),
+    ("g6", 3, 3),
+    ("g7", 2, 4),
+)
 
 
 def sandbox_flags() -> dict[str, bool | str]:
@@ -110,6 +123,36 @@ def bo_session_clock() -> dict[str, int | str]:
 def rapid_session_clock() -> dict[str, int | str]:
     settings = get_settings()
     return session_clock(settings.rapid_session_seconds, settings.rapid_entry_open_seconds)
+
+
+def get_rapid_result_board(session_code: str | int | None = None) -> dict:
+    code = str(session_code or rapid_session_clock()["session_code"])
+    seed = int(hashlib.sha256(f"rapid-result:{code}".encode("utf-8")).hexdigest(), 16)
+    rng = random.Random(seed)
+    prizes: list[dict] = []
+    all_numbers: list[str] = []
+    three_digit_positions: list[str] = []
+    for key, digits, count in NORTHERN_RESULT_PRIZES:
+        numbers = [f"{rng.randrange(10 ** digits):0{digits}d}" for _ in range(count)]
+        all_numbers.extend(numbers)
+        if digits >= 3:
+            three_digit_positions.extend(number[-3:] for number in numbers)
+        prizes.append({"key": key, "digits": digits, "numbers": numbers})
+
+    two_digit_positions = [number[-2:] for number in all_numbers]
+    heads = {str(index): [] for index in range(10)}
+    for value in two_digit_positions:
+        heads[value[0]].append(value[1])
+    special = prizes[0]["numbers"][0]
+    return {
+        "session_code": code,
+        "special": special,
+        "prizes": prizes,
+        "two_digit_positions": two_digit_positions,
+        "three_digit_positions": three_digit_positions,
+        "heads": heads,
+        "special_tail": special[-1],
+    }
 
 
 def get_bo_market_snapshot() -> dict:
@@ -423,6 +466,8 @@ def place_bo_order(
 ) -> BoOrder:
     _assert_sandbox()
     stake = _positive_amount(stake_amount)
+    if stake > Decimal("1000"):
+        raise ValueError("stake_above_limit")
     asset_code = asset_code.strip().upper()
     asset = next((item for item in get_bo_market_snapshot()["assets"] if item["code"] == asset_code), None)
     if not asset:
@@ -521,7 +566,8 @@ def place_rapid_entry(
         raise ValueError("session_not_open")
 
     reference_code = _unique_code(db, RapidEntry, "NR")
-    hit_count, result_code = _rapid_result(play_type, normalized_selection, reference_code, user.id)
+    board = get_rapid_result_board(str(clock["session_code"]))
+    hit_count, result_code = _rapid_result(play_type, normalized_selection, board)
     payout = (stake * config.payout_ratio * Decimal(hit_count)).quantize(Decimal("0.0001"))
     won = hit_count > 0
     treasury_after_win = _money(treasury.available_balance) + stake - payout
@@ -582,11 +628,12 @@ def normalize_rapid_selection(play_type: RapidPlayType, selection: str) -> str:
     raw = selection.strip().lower().replace(" ", "")
     config = RAPID_PLAY_CONFIGS[play_type]
     if play_type == RapidPlayType.EVEN_ODD:
-        if raw in {"even", "chan", "chẵn", "0"}:
+        if raw in {"even", "chan", "ch?n", "0"}:
             return "even"
-        if raw in {"odd", "le", "lẻ", "1"}:
+        if raw in {"odd", "le", "l?", "1"}:
             return "odd"
         raise ValueError("invalid_selection")
+
     parts = [part for part in raw.replace("-", ",").replace(";", ",").split(",") if part]
     if config.requires_unique_count:
         if len(parts) != config.requires_unique_count or len(set(parts)) != len(parts):
@@ -597,7 +644,6 @@ def normalize_rapid_selection(play_type: RapidPlayType, selection: str) -> str:
         if not part.isdigit() or (config.exact_digits and len(part) != config.exact_digits):
             raise ValueError("invalid_selection")
     return ",".join(parts)
-
 
 def maybe_create_loss_deposit_commissions(db: Session, source_user: User) -> list[ReferralCommission]:
     wallet = ensure_wallet(db, source_user)
@@ -795,29 +841,27 @@ def _debit_treasury(
     )
 
 
-def _rapid_result(play_type: RapidPlayType, selection: str, reference_code: str, user_id: int) -> tuple[int, str]:
-    seed = int(hashlib.sha256(f"{reference_code}:{user_id}:{selection}".encode("utf-8")).hexdigest(), 16)
-    two_digit_positions = [f"{(seed >> shift) % 100:02d}" for shift in (0, 8, 16, 24, 32)]
-    three_digit_positions = [f"{(seed >> shift) % 1000:03d}" for shift in (0, 12, 24)]
-    tail = two_digit_positions[-1]
-    result_code = "-".join(two_digit_positions)
+def _rapid_result(play_type: RapidPlayType, selection: str, board: dict) -> tuple[int, str]:
+    two_digit_positions = board["two_digit_positions"]
+    three_digit_positions = board["three_digit_positions"]
+    special_tail = board["special_tail"]
+    result_code = str(board["special"])
     if play_type == RapidPlayType.BAO_LO_2:
         return two_digit_positions.count(selection), result_code
     if play_type == RapidPlayType.BAO_LO_3:
-        return three_digit_positions.count(selection), ",".join(three_digit_positions)
+        return three_digit_positions.count(selection), result_code
     if play_type in {RapidPlayType.XIEN_2, RapidPlayType.XIEN_3}:
         picks = selection.split(",")
         return (1 if all(pick in two_digit_positions for pick in picks) else 0), result_code
     if play_type == RapidPlayType.HEAD:
-        return two_digit_positions[:-1].count(selection), result_code
+        return (1 if board["heads"].get(selection) else 0), result_code
     if play_type == RapidPlayType.TAIL:
-        return (1 if tail == selection else 0), result_code
+        return (1 if special_tail == selection else 0), result_code
     if play_type == RapidPlayType.EVEN_ODD:
-        final_number = int(tail)
+        final_number = int(special_tail)
         side = "even" if final_number % 2 == 0 else "odd"
         return (1 if side == selection else 0), result_code
     return 0, result_code
-
 
 def _result_price(entry_price: Decimal, buy_wins: bool, reference_code: str) -> Decimal:
     seed = int(hashlib.sha256(reference_code.encode("utf-8")).hexdigest(), 16)

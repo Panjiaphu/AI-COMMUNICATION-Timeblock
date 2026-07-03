@@ -66,6 +66,8 @@ foreach ($key in $envItems.Keys) {
 if ($RemoveDeprecated) {
     $deprecatedKeys = @(
         "ADMIN_PHONE",
+        "ADMIN_SEED_EMAIL",
+        "ADMIN_SEED_PASSWORD",
         "GOOGLE_ADSENSE_CLIENT",
         "GOOGLE_ADSENSE_SLOT",
         "GOOGLE_ADSENSE_PUBLISHER_ID",

@@ -76,8 +76,9 @@ class FastApiSmokeTest(unittest.TestCase):
     def test_home_renders_bilingual_shell(self):
         response = self.client.get("/?lang=zh-TW")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Guilua 點數平台", response.text)
-        self.assertIn("北部極速", response.text)
+        self.assertIn("TWD / VND", response.text)
+        self.assertIn("USDT / TWD", response.text)
+        self.assertIn("zh-TW", response.text)
         self.assertIn("/bo?lang=zh-TW", response.text)
         self.assertIn("/rapid?lang=zh-TW", response.text)
         self.assertNotIn("/member/transactions", response.text)
@@ -88,15 +89,55 @@ class FastApiSmokeTest(unittest.TestCase):
     def test_home_renders_rate_reference_mode(self):
         response = self.client.get("/?lang=vi")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Guilua Point Platform", response.text)
-        self.assertIn("Siêu tốc miền Bắc", response.text)
-        self.assertIn("Hoa hồng lỗ chỉ ghi nhận", response.text)
+        self.assertIn("TWD / VND", response.text)
+        self.assertIn("USDT / TWD", response.text)
+        self.assertIn("rate-buy-sell", response.text)
         self.assertNotIn("APP_MODE", response.text)
         self.assertNotIn("REAL_MONEY_ENABLED", response.text)
         self.assertNotIn("/member/transactions", response.text)
         self.assertNotIn("/jobs?lang=vi", response.text)
         self.assertNotIn("/shop?lang=vi", response.text)
         self.assertNotIn("/utilities?lang=vi", response.text)
+
+    def test_admin_dashboard_keeps_manual_rate_form(self):
+        email = f"rate-admin-{os.getpid()}@example.com"
+        password = "RateAdmin!2026"
+        with SessionLocal() as db:
+            old_user = db.query(User).filter(User.email == email).first()
+            if old_user:
+                db.delete(old_user)
+                db.commit()
+            admin = User(
+                email=email,
+                password_hash=hash_password(password),
+                full_name="Rate Admin",
+                locale="vi",
+                is_admin=True,
+                is_email_verified=True,
+            )
+            ensure_user_referral_identity(db, admin)
+            db.add(admin)
+            db.commit()
+            admin_id = admin.id
+
+        login_page = self.client.get("/login?lang=vi")
+        token = login_page.text.split('name="csrf_token" value="', 1)[1].split('"', 1)[0]
+        login = self.client.post(
+            "/login?lang=vi",
+            data={"csrf_token": token, "email": email, "password": password, "next_url": "/admin"},
+        )
+        self.assertEqual(login.status_code, 200)
+
+        page = self.client.get("/admin?lang=vi")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn('action="/admin/rates"', page.text)
+        self.assertIn('name="buy_rate"', page.text)
+        self.assertIn('name="sell_rate"', page.text)
+
+        with SessionLocal() as db:
+            db.query(SecurityEvent).filter(SecurityEvent.user_id == admin_id).delete()
+            db.delete(db.get(User, admin_id))
+            db.commit()
 
     def test_register_is_open(self):
         response = self.client.get("/register?lang=vi")
@@ -201,15 +242,19 @@ class FastApiSmokeTest(unittest.TestCase):
     def test_slbo_public_rooms_render(self):
         bo = self.client.get("/bo?lang=en")
         self.assertEqual(bo.status_code, 200)
-        self.assertIn("1-second BO chart", bo.text)
+        self.assertIn("1-second BO candlestick chart", bo.text)
         self.assertIn("TradingView", bo.text)
         self.assertIn("BUY", bo.text)
+        self.assertIn("Max 1000 points", bo.text)
+        self.assertIn('data-interval="1S"', bo.text)
+        self.assertIn("boTradingView", bo.text)
 
         rapid = self.client.get("/rapid?lang=vi")
         self.assertEqual(rapid.status_code, 200)
-        self.assertIn("Siêu tốc miền Bắc", rapid.text)
-        self.assertIn("Bảng số miền Bắc", rapid.text)
-        self.assertIn("Bao lô 2 số", rapid.text)
+        self.assertIn("rapid-prize-row", rapid.text)
+        self.assertIn('data-play-tab="bao_lo_3"', rapid.text)
+        self.assertIn("rapidNumberGrid", rapid.text)
+        self.assertIn("27", rapid.text)
 
         market = self.client.get("/api/slbo/market")
         self.assertEqual(market.status_code, 200)
@@ -824,7 +869,28 @@ class FastApiSmokeTest(unittest.TestCase):
                 os.environ["IP_SERVICE_PROVIDER_API_KEY"] = old_key
             get_settings.cache_clear()
 
-    def test_runtime_env_check_rejects_weak_admin_seed_password(self):
+    def test_runtime_env_check_allows_missing_admin_seed_password(self):
+        env = {
+            **os.environ,
+            "APP_ENV": "production",
+            "DEBUG": "false",
+            "SECRET_KEY": "x" * 40,
+            "USE_SQLITE": "true",
+            "RUN_MIGRATIONS_DURING_BUILD": "false",
+        }
+        env.pop("ADMIN_SEED_EMAIL", None)
+        env.pop("ADMIN_SEED_PASSWORD", None)
+        result = subprocess.run(
+            [sys.executable, "scripts/check_env.py", "--phase", "build"],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Environment check passed.", result.stdout)
+
+    def test_runtime_env_check_rejects_weak_admin_seed_password_when_provided(self):
         env = {
             **os.environ,
             "APP_ENV": "production",

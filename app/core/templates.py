@@ -79,7 +79,7 @@ def context(request: Request, **extra):
         "trend_class": lambda value: "up" if float(value or 0) >= 0 else "down",
         "parse_tags": _parse_tags,
         "admin_contact": {
-            "email": settings.admin_notification_email or settings.admin_seed_email,
+            "email": settings.admin_notification_email or "",
             "line": settings.admin_line_id,
             "phone": settings.admin_phone,
         },
