@@ -20,6 +20,9 @@ from app.models import (
     ContentPostType,
     EmailNotification,
     EmailReply,
+    ReferralCommission,
+    ReferralCommissionStatus,
+    ReferralCommissionType,
     SecurityEvent,
     ServiceRequest,
     TransactionRequest,
@@ -33,6 +36,7 @@ from app.services.crypto_market import clear_crypto_market_cache
 from app.services.ip_provider import provision_ip_service
 from app.services.member_services import create_ip_service_request
 from app.services.rates import ensure_default_rates
+from app.services.referrals import create_referral_commissions, ensure_user_referral_identity
 from app.services.transactions import create_transaction
 
 
@@ -72,6 +76,59 @@ class FastApiSmokeTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Đăng ký", response.text)
         self.assertIn('action="/register"', response.text)
+
+    def test_register_with_referral_code_assigns_sponsor_and_uid(self):
+        suffix = os.getpid()
+        sponsor_email = f"ref-sponsor-{suffix}@example.com"
+        member_email = f"ref-member-{suffix}@example.com"
+        password = "MemberReferral!2026"
+        with SessionLocal() as db:
+            for existing in db.query(User).filter(User.email.in_([sponsor_email, member_email])).all():
+                db.query(EmailNotification).filter(EmailNotification.user_id == existing.id).delete()
+                db.delete(existing)
+            sponsor = User(
+                email=sponsor_email,
+                password_hash=hash_password(password),
+                full_name="Referral Sponsor",
+                locale="vi",
+                is_active=True,
+                is_email_verified=True,
+            )
+            ensure_user_referral_identity(db, sponsor)
+            db.add(sponsor)
+            db.commit()
+            db.refresh(sponsor)
+            sponsor_id = sponsor.id
+            sponsor_code = sponsor.referral_code
+
+        page = self.client.get(f"/register?lang=vi&ref={sponsor_code}")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(sponsor_code, page.text)
+        token = page.text.split('name="csrf_token" value="', 1)[1].split('"', 1)[0]
+        response = self.client.post(
+            "/register?lang=vi",
+            data={
+                "csrf_token": token,
+                "email": member_email,
+                "password": password,
+                "full_name": "Referral Member",
+                "locale": "vi",
+                "referral_code": sponsor_code,
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+
+        with SessionLocal() as db:
+            member = db.query(User).filter(User.email == member_email).first()
+            self.assertIsNotNone(member)
+            self.assertEqual(member.referred_by_user_id, sponsor_id)
+            self.assertTrue(member.uid.startswith("GL"))
+            self.assertTrue(member.referral_code.startswith("RF"))
+            db.query(EmailNotification).filter(EmailNotification.user_id == member.id).delete()
+            db.delete(member)
+            db.delete(db.get(User, sponsor_id))
+            db.commit()
 
     def test_forgot_password_form_and_generic_response(self):
         response = self.client.get("/forgot-password?lang=vi")
@@ -293,6 +350,7 @@ class FastApiSmokeTest(unittest.TestCase):
                 is_admin=True,
                 is_email_verified=True,
             )
+            ensure_user_referral_identity(db, admin)
             db.add(admin)
             db.commit()
             admin_id = admin.id
@@ -476,6 +534,75 @@ class FastApiSmokeTest(unittest.TestCase):
             self.assertEqual(item.wallet_address, "TXYZ123")
             self.assertEqual(item.contact_phone, "0900000000")
             self.assertEqual(db.query(TransactionRequest).count(), 1)
+
+    def test_referral_commission_ledger_allocates_three_levels(self):
+        engine = create_engine("sqlite+pysqlite:///:memory:", connect_args={"check_same_thread": False})
+        Base.metadata.create_all(engine)
+        TestingSession = sessionmaker(bind=engine)
+
+        with TestingSession() as db:
+            level3 = User(
+                email="level3@example.com",
+                password_hash="hash",
+                uid="GLLEVEL3",
+                referral_code="RFLEVEL3",
+                is_active=True,
+            )
+            level2 = User(
+                email="level2@example.com",
+                password_hash="hash",
+                uid="GLLEVEL2",
+                referral_code="RFLEVEL2",
+                is_active=True,
+                sponsor=level3,
+            )
+            level1 = User(
+                email="level1@example.com",
+                password_hash="hash",
+                uid="GLLEVEL1",
+                referral_code="RFLEVEL1",
+                is_active=True,
+                sponsor=level2,
+            )
+            source = User(
+                email="source@example.com",
+                password_hash="hash",
+                uid="GLSOURCE",
+                referral_code="RFSOURCE",
+                is_active=True,
+                sponsor=level1,
+            )
+            admin = User(
+                email="admin@example.com",
+                password_hash="hash",
+                uid="GLADMIN",
+                referral_code="RFADMIN",
+                is_active=True,
+                is_admin=True,
+            )
+            db.add_all([level3, level2, level1, source, admin])
+            db.commit()
+            db.refresh(source)
+            db.refresh(admin)
+
+            created = create_referral_commissions(
+                db,
+                source_user=source,
+                commission_type=ReferralCommissionType.ACTIVITY,
+                base_amount=Decimal("1000"),
+                currency="POINT",
+                reference_type="smoke",
+                reference_id="T001",
+                created_by=admin,
+                status=ReferralCommissionStatus.APPROVED,
+            )
+            self.assertEqual(len(created), 3)
+            rows = db.query(ReferralCommission).order_by(ReferralCommission.level.asc()).all()
+            self.assertEqual([row.level for row in rows], [1, 2, 3])
+            self.assertEqual([Decimal(row.amount) for row in rows], [Decimal("10.0000"), Decimal("20.0000"), Decimal("30.0000")])
+            self.assertEqual(rows[0].beneficiary.email, "level1@example.com")
+            self.assertEqual(rows[1].beneficiary.email, "level2@example.com")
+            self.assertEqual(rows[2].beneficiary.email, "level3@example.com")
 
     def test_ip_provider_returns_not_configured_without_env(self):
         old_url = os.environ.pop("IP_SERVICE_PROVIDER_URL", None)

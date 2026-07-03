@@ -10,6 +10,38 @@
     {% if user.is_email_verified %}<span class="badge ok">{{ t("auth.verify_badge") }}</span>{% else %}<span class="badge warn">{{ t("auth.email_pending") }}</span>{% endif %}
   </div>
 
+  <section class="panel referral-hero">
+    <div>
+      <p class="eyebrow">{{ t("referral.member_kicker") }}</p>
+      <h2>{{ t("referral.member_title") }}</h2>
+      <p class="muted">{{ t("referral.member_desc") }}</p>
+      <div class="referral-code-grid">
+        <div><span>{{ t("referral.uid") }}</span><strong>{{ user.uid }}</strong></div>
+        <div><span>{{ t("referral.code") }}</span><strong>{{ user.referral_code }}</strong></div>
+      </div>
+    </div>
+    <div class="referral-link-card">
+      <span>{{ t("referral.invite_link") }}</span>
+      <code>{{ referral_link }}</code>
+      <a class="button small" href="{{ referral_link }}">{{ t("referral.open_link") }}</a>
+    </div>
+  </section>
+
+  <section class="referral-grid">
+    {% for item in referral_levels %}
+      <article class="panel referral-stat-card">
+        <span>{{ t("referral.level") }} {{ item.level }}</span>
+        <strong>{{ item.count }}</strong>
+        <small>{{ item.rate_percent }}% {{ t("referral.rate_note") }}</small>
+      </article>
+    {% endfor %}
+    <article class="panel referral-stat-card">
+      <span>{{ t("referral.total_commission") }}</span>
+      <strong>{{ format_price(commission_summary.total_amount) }}</strong>
+      <small>POINT</small>
+    </article>
+  </section>
+
   <div class="layout">
     <section class="panel">
       <div class="section-head">
@@ -72,6 +104,60 @@
             </tr>
           {% else %}
             <tr><td colspan="3" class="empty">{{ t("member.utility_empty") }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="section-head">
+      <h2>{{ t("referral.downline") }}</h2>
+      <span>{{ referral_tree|length }}</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>{{ t("referral.level") }}</th><th>UID</th><th>Email</th><th>{{ t("table.created") }}</th></tr>
+        </thead>
+        <tbody>
+          {% for item in referral_tree[:20] %}
+            <tr>
+              <td>{{ item.level }}</td>
+              <td>{{ item.user.uid }}</td>
+              <td>{{ item.user.email }}</td>
+              <td>{{ item.user.created_at.strftime("%Y-%m-%d") }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="empty">{{ t("referral.empty_downline") }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="section-head">
+      <h2>{{ t("referral.commission_history") }}</h2>
+      <span>{{ commission_summary.recent|length }}</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>{{ t("referral.ref") }}</th><th>{{ t("referral.type") }}</th><th>{{ t("referral.level") }}</th><th>{{ t("referral.base") }}</th><th>{{ t("referral.amount") }}</th><th>{{ t("referral.status") }}</th></tr>
+        </thead>
+        <tbody>
+          {% for item in commission_summary.recent %}
+            <tr>
+              <td>{{ item.reference_code }}</td>
+              <td>{{ t("referral.type_" ~ item.commission_type.value) }}</td>
+              <td>{{ item.level }}</td>
+              <td>{{ format_price(item.base_amount) }} {{ item.currency }}</td>
+              <td>{{ format_price(item.amount) }} {{ item.currency }}</td>
+              <td>{{ t("referral.status_" ~ item.status.value) }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" class="empty">{{ t("referral.empty_commission") }}</td></tr>
           {% endfor %}
         </tbody>
       </table>

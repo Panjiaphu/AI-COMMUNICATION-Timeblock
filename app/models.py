@@ -33,6 +33,18 @@ class EmailStatus(StrEnum):
     FAILED = "failed"
 
 
+class ReferralCommissionType(StrEnum):
+    ACTIVITY = "activity"
+    LOSS_DEPOSIT = "loss_deposit"
+
+
+class ReferralCommissionStatus(StrEnum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    PAID = "paid"
+    VOID = "void"
+
+
 class ContentPostStatus(StrEnum):
     DRAFT = "draft"
     PUBLISHED = "published"
@@ -56,6 +68,9 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
+    uid: Mapped[str] = mapped_column(String(24), unique=True, index=True, default="")
+    referral_code: Mapped[str] = mapped_column(String(24), unique=True, index=True, default="")
+    referred_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     full_name: Mapped[str] = mapped_column(String(120), default="")
     locale: Mapped[str] = mapped_column(String(12), default="vi")
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -69,6 +84,12 @@ class User(Base):
     service_requests: Mapped[list["ServiceRequest"]] = relationship(back_populates="user")
     content_posts: Mapped[list["ContentPost"]] = relationship(back_populates="created_by")
     utility_usage: Mapped[list["MemberUtilityUsage"]] = relationship(back_populates="user")
+    sponsor: Mapped["User | None"] = relationship(remote_side=[id], back_populates="referrals")
+    referrals: Mapped[list["User"]] = relationship(back_populates="sponsor")
+    referral_commissions: Mapped[list["ReferralCommission"]] = relationship(
+        back_populates="beneficiary",
+        foreign_keys="ReferralCommission.beneficiary_user_id",
+    )
 
 
 class ExchangeRate(Base):
@@ -116,6 +137,40 @@ class TransactionRequest(Base):
 
     user: Mapped[User] = relationship(back_populates="transactions")
     email_replies: Mapped[list["EmailReply"]] = relationship(back_populates="transaction")
+
+
+class ReferralCommission(Base):
+    __tablename__ = "referral_commissions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    reference_code: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    beneficiary_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    source_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    level: Mapped[int] = mapped_column(Integer, index=True)
+    commission_type: Mapped[ReferralCommissionType] = mapped_column(Enum(ReferralCommissionType), index=True)
+    rate_percent: Mapped[float] = mapped_column(Numeric(8, 4))
+    base_amount: Mapped[float] = mapped_column(Numeric(18, 4))
+    amount: Mapped[float] = mapped_column(Numeric(18, 4))
+    currency: Mapped[str] = mapped_column(String(16), default="POINT", index=True)
+    status: Mapped[ReferralCommissionStatus] = mapped_column(
+        Enum(ReferralCommissionStatus), default=ReferralCommissionStatus.PENDING, index=True
+    )
+    reference_type: Mapped[str] = mapped_column(String(64), default="")
+    reference_id: Mapped[str] = mapped_column(String(64), default="")
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    beneficiary: Mapped[User] = relationship(foreign_keys=[beneficiary_user_id], back_populates="referral_commissions")
+    source_user: Mapped[User] = relationship(foreign_keys=[source_user_id])
+    created_by: Mapped[User | None] = relationship(foreign_keys=[created_by_user_id])
+
+    __table_args__ = (
+        Index("ix_referral_commissions_beneficiary_created", "beneficiary_user_id", "created_at"),
+        Index("ix_referral_commissions_source_created", "source_user_id", "created_at"),
+        Index("ix_referral_commissions_level_type", "level", "commission_type"),
+    )
 
 
 class EmailNotification(Base):

@@ -20,10 +20,11 @@ Trạng thái hiện tại:
 - AdSense hook qua env, kèm `/ads.txt`, ad slot trên các trang public chính.
 - Jobs/shop content posts: `draft`, `published`, `archived`; source `admin` hoặc `ai_agent`.
 - Utilities MVP: QR generator, shortlink tự động hoặc custom alias, ping website, free VPN/download page.
+- Member UID và link giới thiệu 3 cấp; admin có ledger hoa hồng đại lý để ghi nhận, duyệt và đối soát.
 - Admin login bằng signed session cookie và CSRF token.
 - Password hashing bằng PBKDF2.
 - Admin rate settings cho `TWD_VND` và `USDT_TWD`.
-- Admin contact: `panjiaphu@gmail.com`, LINE `@827sxbki`, phone `0906938893`.
+- Admin contact: `dautuquy888@gmail.com`, LINE `@827sxbki`, phone `0906938893`.
 - Alembic migrations cho SQLite/PostgreSQL.
 
 ## Env chức năng chính
@@ -78,7 +79,7 @@ uvicorn app.main:app --reload
 Tạo hoặc cập nhật tài khoản admin local:
 
 ```bash
-python scripts/create_admin.py --email panjiaphu@gmail.com --password "<mat-khau-admin-manh>"
+python scripts/create_admin.py --email dautuquy888@gmail.com --password "<mat-khau-admin-manh>"
 ```
 
 ## Deploy Render
@@ -98,10 +99,10 @@ SECRET_KEY=<secret rieng dai hon 32 ky tu>
 USE_SQLITE=true
 SESSION_COOKIE_SECURE=true
 RUN_MIGRATIONS_DURING_BUILD=false
-ADMIN_NOTIFICATION_EMAIL=panjiaphu@gmail.com
+ADMIN_NOTIFICATION_EMAIL=dautuquy888@gmail.com
 ADMIN_LINE_ID=@827sxbki
 ADMIN_PHONE=0906938893
-ADMIN_SEED_EMAIL=panjiaphu@gmail.com
+ADMIN_SEED_EMAIL=dautuquy888@gmail.com
 ADMIN_SEED_PASSWORD=<mat khau admin manh toi thieu 14 ky tu>
 MEMBER_REGISTRATION_ENABLED=true
 MEMBER_PORTAL_ENABLED=true
@@ -114,6 +115,12 @@ UPLOAD_IMAGE_MAX_WIDTH=1600
 UPLOAD_IMAGE_QUALITY=82
 PUBLIC_BASE_URL=https://fumap-line-webhook.onrender.com
 SHOPEE_AFFILIATE_DISCLOSURE_ENABLED=true
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=dautuquy888@gmail.com
+SMTP_PASSWORD=<gmail app password>
+SMTP_FROM_EMAIL=dautuquy888@gmail.com
+SMTP_USE_TLS=true
 ```
 
 Xem thêm trong `docs/deploy-render.md`.
@@ -124,6 +131,8 @@ Xem thêm trong `docs/deploy-render.md`.
 - Binance: app đang dùng public Spot market endpoint, không cần API key cho giá public.
 - Google AdSense: tạo site trong AdSense, lấy `ca-pub-...` cho `GOOGLE_ADSENSE_CLIENT`, tạo ad unit lấy `GOOGLE_ADSENSE_SLOT`, lấy publisher id `pub-...` cho `GOOGLE_ADSENSE_PUBLISHER_ID`, và nếu Google yêu cầu meta verification thì set `GOOGLE_SITE_VERIFICATION`.
 - AI Agent: tạo key trong `/admin/ai-agents`. Raw key chỉ hiển thị một lần, không lưu raw key trong database.
+- Gmail SMTP: bật 2-Step Verification trong Google Account, tạo App Password tại Google Account > Security > App passwords, rồi dán app password vào `SMTP_PASSWORD`. Không dùng mật khẩu đăng nhập Gmail và không commit mật khẩu vào GitHub.
+- Đại lý/referral: member mới có UID và link `/register?ref=...`; admin tạo hoa hồng trong `/admin/referrals`. Mức hiện tại là cấp 1 = 1%, cấp 2 = 2%, cấp 3 = 3% cho `activity` hoặc `loss_deposit`.
 - Upload ảnh bài viết: admin và AI Agent upload ảnh sẽ được nén thành WebP và tạo URL dưới `/static/uploads/...`. `local` chỉ phù hợp MVP trên Render; sản phẩm thật nên dùng Render Disk hoặc storage ngoài như S3/Cloudinary/R2.
 - VPN download: set `VPN_DOWNLOAD_URL` và `VPN_SETUP_GUIDE_URL` khi có phần mềm/hướng dẫn thật.
 

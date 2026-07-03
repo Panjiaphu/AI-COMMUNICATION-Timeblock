@@ -12,11 +12,12 @@ if str(ROOT_DIR) not in sys.path:
 from app.core.security import hash_password
 from app.db.session import Base, SessionLocal, engine
 from app.models import User
+from app.services.referrals import ensure_user_referral_identity
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Create or update a Guilua admin account.")
-    parser.add_argument("--email", default=os.getenv("ADMIN_SEED_EMAIL", "panjiaphu@gmail.com"))
+    parser.add_argument("--email", default=os.getenv("ADMIN_SEED_EMAIL", "dautuquy888@gmail.com"))
     parser.add_argument("--password", default=os.getenv("ADMIN_SEED_PASSWORD"))
     parser.add_argument("--full-name", default="Guilua Admin")
     args = parser.parse_args()
@@ -39,6 +40,7 @@ def main() -> int:
         user.is_admin = True
         user.is_email_verified = True
         user.is_active = True
+        ensure_user_referral_identity(db, user)
         db.commit()
 
     print(f"Admin account ready: {email}")

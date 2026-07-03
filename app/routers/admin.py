@@ -17,6 +17,9 @@ from app.models import (
     EmailNotification,
     EmailReply,
     MemberUtilityUsage,
+    ReferralCommission,
+    ReferralCommissionStatus,
+    ReferralCommissionType,
     SecurityEvent,
     SecurityIncident,
     SecurityPlaybook,
@@ -39,6 +42,7 @@ from app.services.email import flush_email_queue, mark_reply_processed, queue_em
 from app.services.ip_provider import provision_ip_service
 from app.services.media import save_uploaded_image
 from app.services.rates import latest_rates, update_manual_rate
+from app.services.referrals import admin_referral_summary, create_referral_commissions, referral_level_counts
 from app.services.security_firewall import dashboard_summary
 
 
@@ -53,6 +57,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     emails = db.query(EmailNotification).order_by(EmailNotification.created_at.desc()).limit(20).all()
     replies = db.query(EmailReply).order_by(EmailReply.created_at.desc()).limit(20).all()
     member_count = db.query(User).filter(User.is_admin.is_(False)).count()
+    referral_summary = admin_referral_summary(db)
     content_counts = {
         "jobs": db.query(ContentPost).filter(ContentPost.post_type == ContentPostType.JOB).count(),
         "shop": db.query(ContentPost).filter(ContentPost.post_type == ContentPostType.SHOP).count(),
@@ -71,10 +76,101 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
             replies=replies,
             statuses=list(TransactionStatus),
             member_count=member_count,
+            referral_summary=referral_summary,
             content_counts=content_counts,
             security_summary=dashboard_summary(db),
         ),
     )
+
+
+@router.get("/referrals")
+def admin_referrals(request: Request, db: Session = Depends(get_db)):
+    admin = require_admin(request, db)
+    members = db.query(User).filter(User.is_admin.is_(False)).order_by(User.created_at.desc()).limit(500).all()
+    commissions = db.query(ReferralCommission).order_by(ReferralCommission.created_at.desc()).limit(100).all()
+    member_referral_counts = {member.id: referral_level_counts(db, member) for member in members}
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/referrals.html",
+        context=context(
+            request,
+            admin=admin,
+            members=members,
+            commissions=commissions,
+            summary=admin_referral_summary(db),
+            commission_types=list(ReferralCommissionType),
+            commission_statuses=list(ReferralCommissionStatus),
+            member_referral_counts=member_referral_counts,
+        ),
+    )
+
+
+@router.post("/referrals/commissions")
+def create_admin_referral_commission(
+    request: Request,
+    db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+    source_user_id: int = Form(...),
+    commission_type: str = Form(...),
+    base_amount: str = Form(...),
+    currency: str = Form("POINT"),
+    reference_type: str = Form("manual"),
+    reference_id: str = Form(""),
+    note: str = Form(""),
+    status: str = Form("pending"),
+):
+    verify_csrf(request, csrf_token)
+    admin = require_admin(request, db)
+    source_user = db.get(User, source_user_id)
+    if not source_user or source_user.is_admin:
+        return RedirectResponse("/admin/referrals?error=invalid_source", status_code=303)
+    try:
+        parsed_type = ReferralCommissionType(commission_type)
+        parsed_status = ReferralCommissionStatus(status)
+        parsed_base = Decimal(base_amount)
+    except (ValueError, InvalidOperation):
+        return RedirectResponse("/admin/referrals?error=invalid_input", status_code=303)
+    if parsed_base <= 0:
+        return RedirectResponse("/admin/referrals?error=invalid_amount", status_code=303)
+    try:
+        created = create_referral_commissions(
+            db,
+            source_user=source_user,
+            commission_type=parsed_type,
+            base_amount=parsed_base,
+            currency=currency,
+            reference_type=reference_type,
+            reference_id=reference_id,
+            note=note,
+            created_by=admin,
+            status=parsed_status,
+        )
+    except ValueError:
+        return RedirectResponse("/admin/referrals?error=invalid_amount", status_code=303)
+    if not created:
+        return RedirectResponse("/admin/referrals?error=no_upline", status_code=303)
+    return RedirectResponse(f"/admin/referrals?created={len(created)}", status_code=303)
+
+
+@router.post("/referrals/commissions/{commission_id}/status")
+def update_referral_commission_status(
+    commission_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+    status: str = Form(...),
+):
+    verify_csrf(request, csrf_token)
+    require_admin(request, db)
+    item = db.get(ReferralCommission, commission_id)
+    if not item:
+        return RedirectResponse("/admin/referrals?error=not_found", status_code=303)
+    try:
+        item.status = ReferralCommissionStatus(status)
+    except ValueError:
+        return RedirectResponse("/admin/referrals?error=invalid_status", status_code=303)
+    db.commit()
+    return RedirectResponse("/admin/referrals?updated=1", status_code=303)
 
 
 @router.post("/requests/{request_id}")

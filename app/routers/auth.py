@@ -20,6 +20,7 @@ from app.core.templates import context, templates
 from app.db.session import get_db
 from app.models import User
 from app.services.email import queue_email
+from app.services.referrals import ensure_user_referral_identity, find_referrer, normalize_referral_code
 from app.services.security_firewall import log_security_event
 
 
@@ -45,7 +46,12 @@ def register_form(request: Request):
             context=context(request, error=""),
             status_code=200,
         )
-    return templates.TemplateResponse(request=request, name="auth/register.html", context=context(request, error=""))
+    referral_code = normalize_referral_code(request.query_params.get("ref"))
+    return templates.TemplateResponse(
+        request=request,
+        name="auth/register.html",
+        context=context(request, error="", referral_code=referral_code),
+    )
 
 
 @router.post("/register")
@@ -57,6 +63,7 @@ def register(
     password: str = Form(...),
     full_name: str = Form(""),
     locale: str = Form("vi"),
+    referral_code: str = Form(""),
 ):
     if not get_settings().member_registration_enabled:
         return templates.TemplateResponse(
@@ -78,12 +85,25 @@ def register(
         return templates.TemplateResponse(
             request=request, name="auth/register.html", context=context(request, error=_message(request, "error.email_exists"))
         )
+    sponsor = find_referrer(db, referral_code)
+    if referral_code and not sponsor:
+        return templates.TemplateResponse(
+            request=request,
+            name="auth/register.html",
+            context=context(
+                request,
+                error=_message(request, "error.invalid_referral_code"),
+                referral_code=normalize_referral_code(referral_code),
+            ),
+        )
     user = User(
         email=normalized_email,
         password_hash=hash_password(password),
         full_name=full_name.strip(),
         locale=locale if locale in {"vi", "zh-TW"} else "vi",
+        referred_by_user_id=sponsor.id if sponsor else None,
     )
+    ensure_user_referral_identity(db, user)
     db.add(user)
     db.commit()
     db.refresh(user)

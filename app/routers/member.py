@@ -13,6 +13,7 @@ from app.db.session import get_db
 from app.models import MemberUtilityUsage, ServiceRequest, TransactionRequest, TransactionType, UtilityItem
 from app.services.member_services import create_ip_service_request
 from app.services.rates import latest_rates
+from app.services.referrals import build_referral_link, member_commission_summary, referral_level_counts, referral_tree
 from app.services.transactions import create_transaction
 
 
@@ -84,6 +85,10 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
             utilities=utilities,
             utility_usage=utility_usage,
             rates=latest_rates(db),
+            referral_link=build_referral_link(user, get_settings().public_base_url, user.locale or "vi"),
+            referral_levels=referral_level_counts(db, user),
+            referral_tree=referral_tree(db, user),
+            commission_summary=member_commission_summary(db, user),
             error="",
         ),
     )

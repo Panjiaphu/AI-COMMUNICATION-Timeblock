@@ -19,10 +19,10 @@ SECRET_KEY=<secret riêng dài hơn 32 ký tự>
 USE_SQLITE=true
 SESSION_COOKIE_SECURE=true
 RUN_MIGRATIONS_DURING_BUILD=false
-ADMIN_NOTIFICATION_EMAIL=panjiaphu@gmail.com
+ADMIN_NOTIFICATION_EMAIL=dautuquy888@gmail.com
 ADMIN_LINE_ID=@827sxbki
 ADMIN_PHONE=0906938893
-ADMIN_SEED_EMAIL=panjiaphu@gmail.com
+ADMIN_SEED_EMAIL=dautuquy888@gmail.com
 ADMIN_SEED_PASSWORD=<mật khẩu admin mạnh tối thiểu 14 ký tự>
 MEMBER_REGISTRATION_ENABLED=true
 MEMBER_PORTAL_ENABLED=true
@@ -40,6 +40,12 @@ UPLOAD_IMAGE_MAX_WIDTH=1600
 UPLOAD_IMAGE_QUALITY=82
 PUBLIC_BASE_URL=https://fumap-line-webhook.onrender.com
 SHOPEE_AFFILIATE_DISCLOSURE_ENABLED=true
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=dautuquy888@gmail.com
+SMTP_PASSWORD=<gmail app password>
+SMTP_FROM_EMAIL=dautuquy888@gmail.com
+SMTP_USE_TLS=true
 ```
 
 Nếu Render báo lỗi `ADMIN_SEED_PASSWORD must be at least 14 characters in production`,
@@ -147,14 +153,25 @@ RUN_MIGRATIONS_DURING_BUILD=true
 Các biến này chỉ cần khi bật email thật:
 
 ```text
-SMTP_HOST=<smtp host>
+SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USERNAME=<smtp username>
-SMTP_PASSWORD=<smtp password>
-SMTP_FROM_EMAIL=<email gửi đi>
+SMTP_USERNAME=dautuquy888@gmail.com
+SMTP_PASSWORD=<gmail app password>
+SMTP_FROM_EMAIL=dautuquy888@gmail.com
 SMTP_USE_TLS=true
 EMAIL_WEBHOOK_API_KEY=<secret riêng cho inbound email webhook>
 ```
+
+Với Gmail, không dùng mật khẩu đăng nhập tài khoản. Hãy bật 2-Step Verification, vào Google Account > Security > App passwords, tạo app password cho Mail, rồi dán giá trị đó vào `SMTP_PASSWORD` trên Render.
+
+## Đại lý / referral
+
+Không cần env riêng cho referral. Sau deploy:
+
+- Mỗi member được cấp `UID` và `referral_code`.
+- Link giới thiệu có dạng `PUBLIC_BASE_URL/register?ref=<referral_code>&lang=vi`.
+- Admin quản lý tuyến dưới và hoa hồng tại `/admin/referrals`.
+- Mức mặc định trong code: cấp 1 = 1%, cấp 2 = 2%, cấp 3 = 3% cho `activity` hoặc `loss_deposit`.
 
 ## Provider IP
 

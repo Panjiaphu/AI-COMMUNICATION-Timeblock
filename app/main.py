@@ -9,6 +9,7 @@ from app.db.session import Base, engine
 from app.routers import admin, agent, auth, member, public, webhooks
 from app.services.commercial import ensure_default_utilities
 from app.services.rates import ensure_default_rates
+from app.services.referrals import ensure_all_user_referral_identities
 from app.services.security_firewall import SecurityFirewallMiddleware, ensure_default_playbooks
 from app.db.session import SessionLocal
 
@@ -34,6 +35,7 @@ def create_app() -> FastAPI:
             ensure_default_rates(db)
             ensure_default_utilities(db)
             ensure_default_playbooks(db)
+            ensure_all_user_referral_identities(db)
 
     @app.middleware("http")
     async def locale_cookie(request: Request, call_next):

@@ -32,6 +32,11 @@
       <strong>{{ t("admin.hub.members") }}</strong>
       <small>{{ member_count }} {{ t("admin.hub.accounts") }}</small>
     </a>
+    <a class="hub-card panel" href="/admin/referrals?lang={{ locale }}">
+      <span class="icon">{{ icons.icon("affiliate") }}</span>
+      <strong>{{ t("admin.hub.referrals") }}</strong>
+      <small>{{ referral_summary.referred_members }} {{ t("referral.referred_members") }}</small>
+    </a>
     <a class="hub-card panel" href="/admin/utilities?lang={{ locale }}">
       <span class="icon">{{ icons.icon("spark") }}</span>
       <strong>{{ t("admin.hub.utilities") }}</strong>

@@ -797,6 +797,94 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
 .admin-card-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .admin-edit-card { padding: 18px; display: grid; gap: 10px; }
 .button.disabled { opacity: .55; pointer-events: none; }
+.referral-hero, .referral-admin-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+  gap: 22px;
+  align-items: stretch;
+  margin-bottom: 22px;
+  background:
+    linear-gradient(145deg, rgba(0,208,156,.12), rgba(0,163,255,.08)),
+    var(--panel);
+}
+.referral-admin-hero { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.referral-code-grid, .referral-grid, .admin-referral-form {
+  display: grid;
+  gap: 14px;
+}
+.referral-code-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 18px;
+}
+.referral-code-grid div, .referral-link-card, .referral-stat-card {
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 20px;
+  background: rgba(255,255,255,.045);
+}
+.referral-code-grid div {
+  display: grid;
+  gap: 7px;
+  padding: 15px;
+}
+.referral-code-grid span, .referral-link-card span, .referral-stat-card span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.referral-code-grid strong {
+  color: #fff;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+.referral-link-card {
+  min-width: 0;
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+  align-content: center;
+}
+.referral-link-card code {
+  display: block;
+  padding: 13px;
+  border: 1px solid rgba(125,247,212,.22);
+  border-radius: 14px;
+  color: #c7ffe9;
+  background: rgba(0,208,156,.08);
+  overflow-wrap: anywhere;
+}
+.referral-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 22px;
+}
+.referral-stat-card {
+  min-height: 138px;
+  display: grid;
+  gap: 10px;
+  align-content: center;
+  transition: transform .22s ease, border-color .22s ease, background .22s ease;
+}
+.referral-stat-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(0,208,156,.34);
+  background: rgba(255,255,255,.065);
+}
+.referral-stat-card strong {
+  color: #fff;
+  font-size: clamp(28px, 3vw, 40px);
+  line-height: 1;
+}
+.referral-stat-card small { color: var(--muted); line-height: 1.45; }
+.referral-admin-page { display: grid; gap: 22px; }
+.admin-referral-form {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+}
+.admin-referral-form button { align-self: end; }
+.mini-form {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
 .footer {
   position: relative;
   z-index: 1;
@@ -830,7 +918,7 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
   .topbar { min-height: auto; flex-wrap: wrap; padding: 14px 16px; gap: 12px; }
   .brand { font-size: 24px; }
   .nav { order: 3; width: 100%; overflow-x: auto; margin-left: 0; padding-bottom: 4px; }
-  .hero, .layout, .grid.three, .rate-grid, .form.split, .transaction-actions, .ip-tools, .crypto-hero, .macro-grid, .group-grid, .ad-panel, .commerce-grid, .utility-grid, .commerce-link-grid, .form-grid, .form-grid.two, .post-editor-grid, .contact-grid, .admin-card-list, .admin-inline-form, .analysis-grid, .analysis-grid.wide-grid, .analysis-meta-grid, .admin-hub-grid, .security-metric-grid, .playbook-grid { grid-template-columns: 1fr; }
+  .hero, .layout, .grid.three, .rate-grid, .form.split, .transaction-actions, .ip-tools, .crypto-hero, .macro-grid, .group-grid, .ad-panel, .commerce-grid, .utility-grid, .commerce-link-grid, .form-grid, .form-grid.two, .post-editor-grid, .contact-grid, .admin-card-list, .admin-inline-form, .analysis-grid, .analysis-grid.wide-grid, .analysis-meta-grid, .admin-hub-grid, .security-metric-grid, .playbook-grid, .referral-hero, .referral-admin-hero, .referral-code-grid, .referral-grid, .admin-referral-form { grid-template-columns: 1fr; }
   .service-hero { grid-template-columns: 1fr; }
   .transaction-hero { grid-template-columns: 1fr; }
   .ip-orbit { width: 190px; height: 190px; }
@@ -850,6 +938,7 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
   .form-section-title { align-items: flex-start; flex-direction: column; }
   .form-section-title small { text-align: left; }
   .article-editor { min-height: 260px; }
+  .mini-form { grid-template-columns: 1fr; }
   .tradingview-widget-wrap { height: 460px; }
   .crypto-hero-stats { grid-template-columns: 1fr; }
 }
