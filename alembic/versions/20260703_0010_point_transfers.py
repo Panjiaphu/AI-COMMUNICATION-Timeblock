@@ -18,11 +18,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
-    if bind.dialect.name == "postgresql":
-        op.execute("ALTER TYPE walletledgertype ADD VALUE IF NOT EXISTS 'TRANSFER_IN'")
-        op.execute("ALTER TYPE walletledgertype ADD VALUE IF NOT EXISTS 'TRANSFER_OUT'")
-
+    # walletledgertype is string-backed in the Render-safe sandbox migration
+    # 20260703_0009, so there is no native Postgres enum type to alter here.
     op.add_column(
         "sandbox_transactions",
         sa.Column("transfer_channel", sa.String(length=80), nullable=False, server_default=""),
