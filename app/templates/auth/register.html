@@ -8,12 +8,12 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     {% set current_ref = referral_code or request.query_params.get('ref', '') %}
     {% if current_ref %}
-      <div class="notice-panel">{{ t("referral.register_with_code") }}: <strong>{{ current_ref }}</strong></div>
+      <div class="notice-panel">Ma gioi thieu: <strong>{{ current_ref }}</strong></div>
     {% endif %}
     <label>{{ t("auth.full_name") }}<input type="text" name="full_name" required autocomplete="name"></label>
     <label>{{ t("auth.email") }}<input type="email" name="email" required autocomplete="email"></label>
     <label>{{ t("auth.password") }}<input type="password" name="password" minlength="10" required autocomplete="new-password"></label>
-    <label>{{ t("referral.code") }}<input type="text" name="referral_code" value="{{ current_ref }}" autocomplete="off" placeholder="{{ t('referral.code_placeholder') }}"></label>
+    <label>Ma gioi thieu<input type="text" name="referral_code" value="{{ current_ref }}" autocomplete="off" placeholder="Nhap ma gioi thieu neu co"></label>
     <label>{{ t("auth.language") }}
       <select name="locale">
         <option value="vi">Tieng Viet</option>
