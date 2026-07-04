@@ -8,7 +8,7 @@ from app.core.i18n import resolve_locale
 from app.core.security import SessionMiddleware, ensure_admin_bootstrap
 from app.db.session import Base, SessionLocal, engine
 from app.services import slbo_settlement_guard  # noqa: F401
-from app.routers import admin, agent, auth, member, public, slbo, webhooks
+from app.routers import admin, agent, auth, member, public, slbo, slbo_admin_settings, webhooks
 from app.services.commercial import ensure_default_utilities
 from app.services.rates import ensure_default_rates
 from app.services.referrals import ensure_all_user_referral_identities
@@ -121,6 +121,7 @@ def create_app() -> FastAPI:
     app.include_router(public.router)
     app.include_router(auth.router)
     app.include_router(member.router)
+    app.include_router(slbo_admin_settings.router)
     app.include_router(slbo.router)
     app.include_router(admin.router)
     app.include_router(agent.router)
