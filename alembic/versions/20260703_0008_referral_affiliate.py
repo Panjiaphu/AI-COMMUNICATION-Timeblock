@@ -47,12 +47,9 @@ def upgrade() -> None:
             ["id"],
         )
 
-    commission_type = sa.Enum("ACTIVITY", "LOSS_DEPOSIT", name="referralcommissiontype")
-    commission_status = sa.Enum("PENDING", "APPROVED", "PAID", "VOID", name="referralcommissionstatus")
-    if dialect == "postgresql":
-        commission_type.create(bind, checkfirst=True)
-        commission_status.create(bind, checkfirst=True)
-
+    # Store enum-like values as strings in this sandbox migration. This avoids
+    # Render/Postgres deploy failures from duplicate CREATE TYPE statements after
+    # a partial/failed previous deploy.
     op.create_table(
         "referral_commissions",
         sa.Column("id", sa.Integer(), primary_key=True),
@@ -60,12 +57,12 @@ def upgrade() -> None:
         sa.Column("beneficiary_user_id", sa.Integer(), nullable=False),
         sa.Column("source_user_id", sa.Integer(), nullable=False),
         sa.Column("level", sa.Integer(), nullable=False),
-        sa.Column("commission_type", commission_type, nullable=False),
+        sa.Column("commission_type", sa.String(length=32), nullable=False),
         sa.Column("rate_percent", sa.Numeric(8, 4), nullable=False),
         sa.Column("base_amount", sa.Numeric(18, 4), nullable=False),
         sa.Column("amount", sa.Numeric(18, 4), nullable=False),
         sa.Column("currency", sa.String(length=16), nullable=False, server_default="POINT"),
-        sa.Column("status", commission_status, nullable=False),
+        sa.Column("status", sa.String(length=32), nullable=False),
         sa.Column("reference_type", sa.String(length=64), nullable=False, server_default=""),
         sa.Column("reference_id", sa.String(length=64), nullable=False, server_default=""),
         sa.Column("note", sa.Text(), nullable=False, server_default=""),
