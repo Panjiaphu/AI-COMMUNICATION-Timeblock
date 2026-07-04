@@ -19,7 +19,7 @@ from app.core.i18n import resolve_locale, t
 from app.core.templates import context, templates
 from app.db.session import get_db
 from app.models import User
-from app.services.email import queue_email
+from app.services.email import flush_email_queue, queue_email
 from app.services.referrals import ensure_user_referral_identity, find_referrer, normalize_referral_code
 from app.services.security_firewall import log_security_event
 
@@ -35,6 +35,18 @@ def _safe_next(value: str | None) -> str:
     if not value or not value.startswith("/") or value.startswith("//"):
         return "/member"
     return value
+
+
+def _flush_auth_email_queue(db: Session) -> None:
+    """Send auth-related queued emails during the same request.
+
+    The app stores outgoing messages in EmailNotification first. Without a
+    running background worker, verification emails stay queued and members do
+    not receive them. This keeps registration and password reset usable on
+    Render web services that do not run a separate email worker.
+    """
+
+    flush_email_queue(db, limit=20)
 
 
 @router.get("/register")
@@ -135,6 +147,7 @@ def register(
             "member_registered",
             user=user,
         )
+    _flush_auth_email_queue(db)
     return RedirectResponse(f"/login?lang={resolve_locale(request)}&verify_email=1", status_code=303)
 
 
@@ -283,6 +296,7 @@ def forgot_password(
             "password_reset",
             user=user,
         )
+        _flush_auth_email_queue(db)
     return templates.TemplateResponse(
         request=request,
         name="auth/forgot_password.html",
