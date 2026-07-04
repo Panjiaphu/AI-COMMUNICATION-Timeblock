@@ -65,7 +65,8 @@ def register(
     locale: str = Form("vi"),
     referral_code: str = Form(""),
 ):
-    if not get_settings().member_registration_enabled:
+    settings = get_settings()
+    if not settings.member_registration_enabled:
         return templates.TemplateResponse(
             request=request,
             name="auth/register_closed.html",
@@ -112,11 +113,28 @@ def register(
     queue_email(
         db,
         user.email,
-        "Guilua - xác minh email",
-        f"Mở liên kết này để xác minh email Guilua: {verify_url}",
+        "Guilua - verify email",
+        f"Open this link to verify your Guilua email: {verify_url}",
         "email_verification",
         user=user,
     )
+    if settings.admin_notification_email:
+        queue_email(
+            db,
+            settings.admin_notification_email,
+            f"Guilua - new member registered: {user.email}",
+            (
+                "A new member registered.\n\n"
+                f"Email: {user.email}\n"
+                f"Full name: {user.full_name or '-'}\n"
+                f"UID: {user.uid or '-'}\n"
+                f"Member referral code: {user.referral_code or '-'}\n"
+                f"Referrer user ID: {user.referred_by_user_id or '-'}\n"
+                "Email status: pending verification"
+            ),
+            "member_registered",
+            user=user,
+        )
     return RedirectResponse(f"/login?lang={resolve_locale(request)}&verify_email=1", status_code=303)
 
 
@@ -260,8 +278,8 @@ def forgot_password(
         queue_email(
             db,
             user.email,
-            "Guilua - đặt lại mật khẩu",
-            f"Mở liên kết này để đặt lại mật khẩu Guilua trong thời hạn cho phép: {reset_url}",
+            "Guilua - password reset",
+            f"Open this link to reset your Guilua password before it expires: {reset_url}",
             "password_reset",
             user=user,
         )
