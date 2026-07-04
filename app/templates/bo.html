@@ -31,7 +31,7 @@
             </button>
           {% endfor %}
         </div>
-        <div class="bo-interval-tabs" aria-label="Chart interval">
+        <div class="bo-interval-tabs" aria-label="{{ t('bo.interval') }}">
           {% for item in [("1S","1s"),("5S","5s"),("15S","15s"),("1","1m"),("5","5m"),("15","15m"),("60","1h"),("240","4h"),("D","1D")] %}
             <button type="button" data-interval="{{ item[0] }}" class="{% if loop.first %}active{% endif %}">{{ item[1] }}</button>
           {% endfor %}
@@ -45,9 +45,31 @@
               <span id="boAssetTitle">BINANCE:BTCUSDT</span>
               <strong>{{ t("bo.candle_note") }}</strong>
             </div>
-            <a class="button small" id="boTvLink" target="_blank" rel="noopener" href="https://www.tradingview.com/chart/?symbol=BINANCE%3ABTCUSDT">TradingView</a>
+            <div class="bo-chart-actions">
+              <div class="bo-chart-mode-tabs">
+                <button type="button" class="active" data-chart-mode="system">{{ t("bo.system_chart") }}</button>
+                <button type="button" data-chart-mode="tradingview">{{ t("bo.tradingview") }}</button>
+              </div>
+              <a class="button small" id="boTvLink" target="_blank" rel="noopener" href="https://www.tradingview.com/chart/?symbol=BINANCE%3ABTCUSDT">TradingView</a>
+            </div>
           </div>
-          <div id="boTradingView" class="tradingview-widget-container bo-tradingview-widget" data-locale="{{ 'zh_TW' if locale == 'zh-TW' else ('en' if locale == 'en' else 'vi_VN') }}">
+
+          <div id="boSystemChartPanel" class="bo-system-chart-panel">
+            <div class="bo-system-canvas-wrap">
+              <canvas id="boSystemChart" width="1280" height="720" aria-label="{{ t('bo.system_chart') }}"></canvas>
+              <div class="bo-chart-overlay">
+                <span>{{ t("bo.system_chart") }}</span>
+                <strong data-bo-system-latest>--</strong>
+              </div>
+            </div>
+            <div class="bo-system-chart-meta">
+              <span><i class="green-dot"></i>{{ t("bo.green_buy") }}</span>
+              <span><i class="red-dot"></i>{{ t("bo.red_sell") }}</span>
+              <span>{{ t("bo.synced_note") }}</span>
+            </div>
+          </div>
+
+          <div id="boTradingView" class="tradingview-widget-container bo-tradingview-widget hidden" data-locale="{{ 'zh_TW' if locale == 'zh-TW' else ('en' if locale == 'en' else 'vi_VN') }}">
             <div class="tradingview-widget-container__widget"></div>
             <div class="tv-loading-note">{{ t("bo.tv_loading") }}</div>
           </div>
@@ -71,9 +93,9 @@
             </div>
           </div>
           <div class="bo-latest-result {{ bo_result.result_side }}" data-bo-last-result>
-            <span>{{ t("bo.latest_result") }} · {{ bo_result.session_code }}</span>
+            <span>{{ t("bo.latest_result") }} - {{ bo_result.session_code }}</span>
             <strong>{{ t("bo." ~ bo_result.result_side)|upper }}</strong>
-            <small>{{ format_price(bo_result.entry_price) }} -> {{ format_price(bo_result.result_price) }} · {{ format_price(bo_result.change_percent) }}%</small>
+            <small>{{ format_price(bo_result.entry_price) }} -> {{ format_price(bo_result.result_price) }} - {{ format_price(bo_result.change_percent) }}%</small>
           </div>
           {% if user %}
             <form class="form" method="post" action="/bo/orders?lang={{ locale }}">
@@ -151,6 +173,9 @@
 <script>
 (() => {
   const widgetRoot = document.getElementById("boTradingView");
+  const systemPanel = document.getElementById("boSystemChartPanel");
+  const systemCanvas = document.getElementById("boSystemChart");
+  const systemLatestNode = document.querySelector("[data-bo-system-latest]");
   const assetInput = document.getElementById("boAssetInput");
   const titleNode = document.getElementById("boAssetTitle");
   const tvLink = document.getElementById("boTvLink");
@@ -172,15 +197,20 @@
     processing: "{{ t('bo.state.processing') }}",
     won: "{{ t('status.won') }}",
     lost: "{{ t('status.lost') }}",
-    empty: "{{ t('member.utility_empty') }}"
+    empty: "{{ t('member.utility_empty') }}",
+    noChart: "{{ t('bo.no_chart_data') }}"
   };
   let activeSymbol = "BINANCE:BTCUSDT";
   let activeAsset = "BTC";
   let activeInterval = "1S";
+  let activeChartMode = "system";
+  let tvLoaded = false;
   let boState = "{{ bo_clock.state }}";
   let boRemaining = Number(countdownNode?.dataset.countdown || 0);
   let boResultsByAsset = { BTC: {{ bo_recent_results_json|tojson }} };
   let refreshPending = false;
+  let chartPending = false;
+  let latestChartPayload = null;
 
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -194,6 +224,7 @@
 
   function renderTradingView() {
     if (!widgetRoot) return;
+    tvLoaded = true;
     widgetRoot.innerHTML = '<div class="tradingview-widget-container__widget"></div><div class="tv-loading-note">{{ t("bo.tv_loading") }}</div>';
     const script = document.createElement("script");
     script.type = "text/javascript";
@@ -202,7 +233,7 @@
     script.text = JSON.stringify({
       autosize: true,
       symbol: activeSymbol,
-      interval: activeInterval,
+      interval: activeInterval === "D" ? "D" : "1",
       timezone: "Asia/Taipei",
       theme: "dark",
       style: "1",
@@ -217,8 +248,158 @@
       support_host: "https://www.tradingview.com"
     });
     widgetRoot.appendChild(script);
+  }
+
+  function updateSymbolMeta(symbol) {
+    if (symbol) activeSymbol = symbol;
     if (titleNode) titleNode.textContent = activeSymbol;
     if (tvLink) tvLink.href = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(activeSymbol)}`;
+  }
+
+  function resizeCanvasForDisplay(canvas) {
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const scale = window.devicePixelRatio || 1;
+    const width = Math.max(360, Math.floor(rect.width * scale));
+    const height = Math.max(320, Math.floor(rect.height * scale));
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    return { width, height, scale };
+  }
+
+  function drawSystemChart(payload) {
+    if (!systemCanvas) return;
+    latestChartPayload = payload || latestChartPayload;
+    const chart = payload || latestChartPayload;
+    const size = resizeCanvasForDisplay(systemCanvas);
+    if (!size) return;
+    const ctx = systemCanvas.getContext("2d");
+    const { width, height } = size;
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = "#070c13";
+    ctx.fillRect(0, 0, width, height);
+    const candles = chart?.candles || [];
+    if (!candles.length) {
+      ctx.fillStyle = "rgba(255,255,255,.58)";
+      ctx.font = `${Math.max(18, width * 0.016)}px sans-serif`;
+      ctx.fillText(labels.noChart, 32, 64);
+      return;
+    }
+    const pad = {
+      left: Math.max(46, width * 0.055),
+      right: Math.max(76, width * 0.07),
+      top: Math.max(28, height * 0.055),
+      bottom: Math.max(44, height * 0.08)
+    };
+    const plotW = width - pad.left - pad.right;
+    const plotH = height - pad.top - pad.bottom;
+    let min = Math.min(...candles.map((item) => item.low));
+    let max = Math.max(...candles.map((item) => item.high));
+    if (min === max) {
+      min -= 1;
+      max += 1;
+    }
+    const range = max - min;
+    min -= range * 0.08;
+    max += range * 0.08;
+    const yFor = (price) => pad.top + (max - price) / (max - min) * plotH;
+    const xFor = (index) => pad.left + (candles.length <= 1 ? 0 : index / (candles.length - 1) * plotW);
+
+    ctx.strokeStyle = "rgba(255,255,255,.06)";
+    ctx.lineWidth = 1;
+    ctx.font = `${Math.max(12, width * 0.011)}px sans-serif`;
+    ctx.fillStyle = "rgba(255,255,255,.55)";
+    for (let i = 0; i <= 6; i += 1) {
+      const y = pad.top + (plotH / 6) * i;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(width - pad.right, y);
+      ctx.stroke();
+      const value = max - ((max - min) / 6) * i;
+      ctx.fillText(value.toLocaleString(undefined, { maximumFractionDigits: 4 }), width - pad.right + 12, y + 4);
+    }
+    for (let i = 0; i <= 8; i += 1) {
+      const x = pad.left + (plotW / 8) * i;
+      ctx.beginPath();
+      ctx.moveTo(x, pad.top);
+      ctx.lineTo(x, height - pad.bottom);
+      ctx.stroke();
+    }
+
+    const slot = plotW / Math.max(candles.length, 24);
+    const bodyW = Math.max(3, Math.min(slot * 0.64, 16 * (window.devicePixelRatio || 1)));
+    candles.forEach((item, index) => {
+      const x = xFor(index);
+      const openY = yFor(item.open);
+      const closeY = yFor(item.close);
+      const highY = yFor(item.high);
+      const lowY = yFor(item.low);
+      const isBuy = item.close >= item.open;
+      const color = isBuy ? "#17c784" : "#ea3943";
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = Math.max(1, window.devicePixelRatio || 1);
+      ctx.beginPath();
+      ctx.moveTo(x, highY);
+      ctx.lineTo(x, lowY);
+      ctx.stroke();
+      const top = Math.min(openY, closeY);
+      const bottom = Math.max(openY, closeY);
+      ctx.fillRect(x - bodyW / 2, top, bodyW, Math.max(bottom - top, 2));
+    });
+
+    const latest = candles[candles.length - 1];
+    const latestY = yFor(latest.close);
+    ctx.strokeStyle = latest.close >= latest.open ? "rgba(23,199,132,.82)" : "rgba(234,57,67,.82)";
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, latestY);
+    ctx.lineTo(width - pad.right, latestY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const priceText = latest.close.toLocaleString(undefined, { maximumFractionDigits: 4 });
+    ctx.fillStyle = latest.close >= latest.open ? "#17c784" : "#ea3943";
+    ctx.fillRect(width - pad.right + 8, latestY - 15, Math.max(72, priceText.length * 9), 30);
+    ctx.fillStyle = "#fff";
+    ctx.font = `700 ${Math.max(12, width * 0.011)}px sans-serif`;
+    ctx.fillText(priceText, width - pad.right + 15, latestY + 5);
+    if (systemLatestNode) systemLatestNode.textContent = priceText;
+  }
+
+  async function loadSystemChart() {
+    if (chartPending || activeChartMode !== "system") return;
+    chartPending = true;
+    try {
+      const response = await fetch(`/api/slbo/bo-chart?asset=${encodeURIComponent(activeAsset)}&interval=${encodeURIComponent(activeInterval)}&limit=150&lang={{ locale }}`, { headers: { Accept: "application/json" } });
+      if (!response.ok) return;
+      const payload = await response.json();
+      updateSymbolMeta(payload.symbol);
+      if (payload.recent_results) {
+        boResultsByAsset[activeAsset] = payload.recent_results;
+        renderBoResultPanels();
+      }
+      drawSystemChart(payload);
+    } catch (error) {
+      console.warn("BO chart refresh failed", error);
+    } finally {
+      chartPending = false;
+    }
+  }
+
+  function setChartMode(mode) {
+    activeChartMode = mode === "tradingview" ? "tradingview" : "system";
+    document.querySelectorAll("[data-chart-mode]").forEach((button) => {
+      button.classList.toggle("active", button.dataset.chartMode === activeChartMode);
+    });
+    systemPanel?.classList.toggle("hidden", activeChartMode !== "system");
+    widgetRoot?.classList.toggle("hidden", activeChartMode !== "tradingview");
+    if (activeChartMode === "tradingview") {
+      renderTradingView();
+    } else {
+      loadSystemChart();
+    }
   }
 
   document.querySelectorAll("[data-tv]").forEach((button) => {
@@ -228,7 +409,9 @@
       activeSymbol = button.dataset.tv || "BINANCE:BTCUSDT";
       activeAsset = button.dataset.asset || "BTC";
       if (assetInput) assetInput.value = activeAsset;
-      renderTradingView();
+      updateSymbolMeta(activeSymbol);
+      if (activeChartMode === "tradingview") renderTradingView();
+      loadSystemChart();
       renderBoResultPanels();
     });
   });
@@ -238,8 +421,13 @@
       document.querySelectorAll("[data-interval]").forEach((item) => item.classList.remove("active"));
       button.classList.add("active");
       activeInterval = button.dataset.interval || "1S";
-      renderTradingView();
+      if (activeChartMode === "tradingview") renderTradingView();
+      loadSystemChart();
     });
+  });
+
+  document.querySelectorAll("[data-chart-mode]").forEach((button) => {
+    button.addEventListener("click", () => setChartMode(button.dataset.chartMode || "system"));
   });
 
   function renderBoResultPanels() {
@@ -248,9 +436,9 @@
     if (lastResultNode && latest) {
       lastResultNode.className = `bo-latest-result ${latest.result_side}`;
       lastResultNode.innerHTML = `
-        <span>${escapeHtml(labels.latestResult)} · ${escapeHtml(latest.session_code)}</span>
+        <span>${escapeHtml(labels.latestResult)} - ${escapeHtml(latest.session_code)}</span>
         <strong>${escapeHtml(labels[latest.result_side] || latest.result_side).toUpperCase()}</strong>
-        <small>${escapeHtml(latest.entry_price)} -> ${escapeHtml(latest.result_price)} · ${escapeHtml(latest.change_percent)}%</small>
+        <small>${escapeHtml(latest.entry_price)} -> ${escapeHtml(latest.result_price)} - ${escapeHtml(latest.change_percent)}%</small>
       `;
     }
     if (sessionHistoryNode) {
@@ -308,6 +496,7 @@
       renderBoResultPanels();
       renderOrders(payload.orders);
       if (payload.wallet && walletBalanceNode) walletBalanceNode.textContent = payload.wallet.available_balance;
+      loadSystemChart();
     } catch (error) {
       console.warn("room-state refresh failed", error);
     } finally {
@@ -325,8 +514,11 @@
     }
   }, 1000);
   setInterval(refreshRoomState, 15000);
+  setInterval(loadSystemChart, 5000);
+  window.addEventListener("resize", () => drawSystemChart());
 
-  renderTradingView();
+  updateSymbolMeta(activeSymbol);
+  loadSystemChart();
   renderBoResultPanels();
   updateClock({ state: boState, remaining: boRemaining, session_code: sessionCodeNodes[0]?.textContent?.trim() || "" });
 })();

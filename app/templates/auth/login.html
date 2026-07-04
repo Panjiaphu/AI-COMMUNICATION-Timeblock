@@ -5,6 +5,8 @@
   <p class="muted">{{ t("auth.login_hint") }}</p>
   {% if error %}<p class="alert">{{ error }}</p>{% endif %}
   {% if reset_success %}<p class="success">{{ t("auth.reset_success") }}</p>{% endif %}
+  {% if verify_email %}<p class="success">{{ t("auth.verify_email_sent") }}</p>{% endif %}
+  {% if verified %}<p class="success">{{ t("auth.verified_success") }}</p>{% endif %}
   <form method="post" action="/login" class="form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="next_url" value="{{ next_url or '/member' }}">

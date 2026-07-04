@@ -62,6 +62,14 @@
           </div>
         </div>
         <small>{{ source_label(rate.source) }}</small>
+        <div class="rate-action-row">
+          {% if pair == "TWD_VND" %}
+            <a class="button small primary" href="/member/transactions/send-home?lang={{ locale }}">{{ t("home.rate_cta.twd_vnd") }}</a>
+          {% elif pair == "USDT_TWD" %}
+            <a class="button small primary" href="/member/transactions/buy-usdt?lang={{ locale }}">{{ t("home.rate_cta.buy_usdt") }}</a>
+            <a class="button small" href="/member/transactions/sell-usdt?lang={{ locale }}">{{ t("home.rate_cta.sell_usdt") }}</a>
+          {% endif %}
+        </div>
       </article>
     {% endfor %}
   </div>

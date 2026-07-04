@@ -240,6 +240,12 @@ main { width: min(1180px, calc(100% - 32px)); margin: 0 auto 64px; position: rel
 .rate-card:hover { transform: translateY(-4px); border-color: rgba(0,208,156,.42); }
 .rate-card span, .rate-card small { color: var(--muted); }
 .rate-card strong { font-size: 32px; }
+.rate-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
 .muted, .form-help { color: var(--muted); line-height: 1.65; }
 
 .auth-card { width: min(480px, 100%); margin: 60px auto; }
@@ -1328,6 +1334,82 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
 }
 .green-dot { background: #17c784; box-shadow: 0 0 16px rgba(23,199,132,.55); }
 .red-dot { background: #ea3943; box-shadow: 0 0 16px rgba(234,57,67,.55); }
+.hidden { display: none !important; }
+.bo-chart-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.bo-chart-mode-tabs {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,.04);
+  display: flex;
+  padding: 4px;
+  gap: 4px;
+}
+.bo-chart-mode-tabs button {
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 850;
+  padding: 9px 12px;
+}
+.bo-chart-mode-tabs button.active {
+  color: #07110f;
+  background: linear-gradient(135deg, #2ff0bc, #16a7ff);
+}
+.bo-system-chart-panel {
+  display: grid;
+  grid-template-rows: minmax(520px, 1fr) auto;
+  min-height: 590px;
+  background: #080d14;
+}
+.bo-system-canvas-wrap {
+  position: relative;
+  min-height: 520px;
+}
+#boSystemChart {
+  width: 100%;
+  height: 100%;
+  min-height: 520px;
+  display: block;
+  background: #070c13;
+}
+.bo-chart-overlay {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px;
+  background: rgba(10,14,22,.78);
+  backdrop-filter: blur(14px);
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  pointer-events: none;
+}
+.bo-chart-overlay span { color: var(--muted); font-size: 12px; font-weight: 800; }
+.bo-chart-overlay strong { color: #fff; font-size: 20px; }
+.bo-system-chart-meta {
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 12px 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.bo-system-chart-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
 
 .rapid-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
 .rapid-payout-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -1926,6 +2008,9 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
   .bo-interval-tabs { justify-content: flex-start; }
   .bo-chart-frame { min-height: 540px; }
   .bo-tradingview-widget { height: 470px; }
+  .bo-system-chart-panel { grid-template-rows: minmax(440px, 1fr) auto; min-height: 510px; }
+  .bo-system-canvas-wrap,
+  #boSystemChart { min-height: 440px; }
   .rapid-board-card .rapid-form-strip { grid-template-columns: 1fr; }
   .trade-session-panel,
   .rapid-live-strip { grid-template-columns: 1fr; }
@@ -1942,7 +2027,13 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
   .bo-canvas { height: 320px; min-height: 280px; }
   .bo-chart-frame { border-radius: 18px; min-height: 470px; }
   .bo-tradingview-widget { height: 390px; }
+  .bo-system-chart-panel { grid-template-rows: minmax(360px, 1fr) auto; min-height: 430px; }
+  .bo-system-canvas-wrap,
+  #boSystemChart { min-height: 360px; }
   .bo-chart-head { align-items: flex-start; flex-direction: column; }
+  .bo-chart-actions { justify-content: flex-start; width: 100%; }
+  .bo-chart-mode-tabs { width: 100%; }
+  .bo-chart-mode-tabs button { flex: 1; }
   .rapid-app-top,
   .rapid-layout { padding: 12px; }
   .rapid-board-card,

@@ -2121,6 +2121,90 @@ MESSAGES["vi"].update(SLBO_FIX_VI)
 MESSAGES["zh-TW"].update(SLBO_FIX_ZH)
 MESSAGES["en"].update(SLBO_FIX_EN)
 
+FINAL_SLBO_UX_VI = {
+    "bo.title": "Phòng BO với chart hệ thống đồng bộ phiên",
+    "bo.subtitle": "Chart BO nội bộ dùng cùng nguồn dữ liệu với kết quả phiên để member nhìn thấy nến, countdown, lệnh MUA/BÁN và lịch sử gần nhất trong một giao diện rõ ràng.",
+    "bo.interval": "Khung nến",
+    "bo.candle_note": "Chart BO hệ thống - TradingView để tham khảo",
+    "bo.system_chart": "Chart BO",
+    "bo.tradingview": "TradingView",
+    "bo.synced_note": "Nến hệ thống và kết quả phiên dùng cùng nguồn dữ liệu.",
+    "bo.no_chart_data": "Chưa có dữ liệu chart.",
+    "bo.buy": "Mua",
+    "bo.sell": "Bán",
+    "bo.green_buy": "Nến xanh: ưu tiên Mua",
+    "bo.red_sell": "Nến đỏ: ưu tiên Bán",
+    "home.rate_cta.twd_vnd": "Gửi thông tin TWD/VND",
+    "home.rate_cta.buy_usdt": "Gửi thông tin mua USDT",
+    "home.rate_cta.sell_usdt": "Gửi thông tin bán USDT",
+    "wallet.transfer_confirm": "Xác nhận",
+    "wallet.transfer_cancel": "Hủy",
+    "wallet.transfer_status.pending_receiver_confirmation": "Chờ bên nhận xác nhận",
+    "wallet.transfer_status.completed": "Đã hoàn tất",
+    "wallet.transfer_status.cancelled": "Đã hủy",
+    "error.transfer_not_pending": "Yêu cầu chuyển điểm không còn ở trạng thái chờ.",
+    "error.transfer_forbidden": "Bạn không có quyền xử lý yêu cầu này.",
+    "error.email_not_verified": "Email chưa được xác minh. Vui lòng mở liên kết xác minh trong email trước khi đăng nhập.",
+    "auth.verify_email_sent": "Tài khoản đã được tạo. Vui lòng kiểm tra email và bấm liên kết xác minh trước khi đăng nhập.",
+    "auth.verified_success": "Email đã được xác minh. Bạn có thể đăng nhập.",
+}
+
+FINAL_SLBO_UX_ZH = {
+    "bo.title": "與期別同步的 BO 系統圖表",
+    "bo.subtitle": "BO 內建圖表與期別結果使用同一份資料來源，會員可在同一介面查看 K 線、倒數、買入/賣出與近期結果。",
+    "bo.interval": "K 線週期",
+    "bo.candle_note": "BO 系統圖表 - TradingView 僅供參考",
+    "bo.system_chart": "BO 圖表",
+    "bo.tradingview": "TradingView",
+    "bo.synced_note": "系統 K 線與期別結果使用同一份資料。",
+    "bo.no_chart_data": "目前沒有圖表資料。",
+    "bo.buy": "買入",
+    "bo.sell": "賣出",
+    "bo.green_buy": "綠色 K 線：偏向買入",
+    "bo.red_sell": "紅色 K 線：偏向賣出",
+    "home.rate_cta.twd_vnd": "提交 TWD/VND 資訊",
+    "home.rate_cta.buy_usdt": "提交買入 USDT 資訊",
+    "home.rate_cta.sell_usdt": "提交賣出 USDT 資訊",
+    "wallet.transfer_confirm": "確認",
+    "wallet.transfer_cancel": "取消",
+    "wallet.transfer_status.pending_receiver_confirmation": "等待收方確認",
+    "wallet.transfer_status.completed": "已完成",
+    "wallet.transfer_status.cancelled": "已取消",
+    "error.transfer_not_pending": "此點數轉移已不在等待狀態。",
+    "error.transfer_forbidden": "你沒有權限處理此要求。",
+    "error.email_not_verified": "Email 尚未驗證，請先打開信件中的驗證連結。",
+    "auth.verify_email_sent": "帳號已建立。請先到 Email 點擊驗證連結，再登入。",
+    "auth.verified_success": "Email 已完成驗證，可以登入。",
+}
+
+FINAL_SLBO_UX_EN = {
+    "bo.title": "BO room with a synced system chart",
+    "bo.subtitle": "The internal BO chart and session results use the same source of truth, so members see candles, countdown, BUY/SELL actions and recent results in one clear interface.",
+    "bo.interval": "Candle interval",
+    "bo.candle_note": "System BO chart - TradingView is reference only",
+    "bo.system_chart": "BO Chart",
+    "bo.tradingview": "TradingView",
+    "bo.synced_note": "System candles and session results use the same data source.",
+    "bo.no_chart_data": "No chart data yet.",
+    "home.rate_cta.twd_vnd": "Submit TWD/VND info",
+    "home.rate_cta.buy_usdt": "Submit buy USDT info",
+    "home.rate_cta.sell_usdt": "Submit sell USDT info",
+    "wallet.transfer_confirm": "Confirm",
+    "wallet.transfer_cancel": "Cancel",
+    "wallet.transfer_status.pending_receiver_confirmation": "Waiting for receiver confirmation",
+    "wallet.transfer_status.completed": "Completed",
+    "wallet.transfer_status.cancelled": "Cancelled",
+    "error.transfer_not_pending": "This point transfer is no longer pending.",
+    "error.transfer_forbidden": "You do not have permission to process this request.",
+    "error.email_not_verified": "Email is not verified. Please open the verification link before logging in.",
+    "auth.verify_email_sent": "Your account was created. Check your email and open the verification link before logging in.",
+    "auth.verified_success": "Email verified. You can log in now.",
+}
+
+MESSAGES["vi"].update(FINAL_SLBO_UX_VI)
+MESSAGES["zh-TW"].update(FINAL_SLBO_UX_ZH)
+MESSAGES["en"].update(FINAL_SLBO_UX_EN)
+
 
 def resolve_locale(request: Request) -> str:
     settings = get_settings()

@@ -295,8 +295,14 @@ class PointTransfer(Base):
     receiver_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 4))
     currency: Mapped[str] = mapped_column(String(16), default="SLB_POINT", index=True)
-    status: Mapped[str] = mapped_column(String(32), default="completed", index=True)
+    status: Mapped[str] = mapped_column(String(32), default="pending_receiver_confirmation", index=True)
     memo: Mapped[str] = mapped_column(Text, default="")
+    admin_note: Mapped[str] = mapped_column(Text, default="")
+    sender_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    receiver_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
     sender: Mapped[User] = relationship(
@@ -307,10 +313,32 @@ class PointTransfer(Base):
         back_populates="point_transfers_received",
         foreign_keys=[receiver_user_id],
     )
+    reviewed_by: Mapped[User | None] = relationship(foreign_keys=[reviewed_by_user_id])
 
     __table_args__ = (
         Index("ix_point_transfers_sender_created", "sender_user_id", "created_at"),
         Index("ix_point_transfers_receiver_created", "receiver_user_id", "created_at"),
+    )
+
+
+class BoSessionResult(Base):
+    __tablename__ = "bo_session_results"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_code: Mapped[str] = mapped_column(String(32), index=True)
+    session_index: Mapped[int] = mapped_column(Integer, index=True)
+    asset: Mapped[str] = mapped_column(String(16), index=True)
+    entry_price: Mapped[Decimal] = mapped_column(Numeric(24, 8))
+    result_price: Mapped[Decimal] = mapped_column(Numeric(24, 8))
+    result_side: Mapped[str] = mapped_column(String(8), index=True)
+    change_percent: Mapped[Decimal] = mapped_column(Numeric(12, 4), default=Decimal("0"))
+    source: Mapped[str] = mapped_column(String(64), default="system")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    settled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+    __table_args__ = (
+        Index("ix_bo_session_results_session_asset", "session_code", "asset", unique=True),
+        Index("ix_bo_session_results_asset_index", "asset", "session_index"),
     )
 
 

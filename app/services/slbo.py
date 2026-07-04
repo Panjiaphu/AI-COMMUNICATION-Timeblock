@@ -17,6 +17,7 @@ from app.core.config import get_settings
 from app.models import (
     BoOrder,
     BoSide,
+    BoSessionResult,
     EmailNotification,
     GameRequestStatus,
     InternalWallet,
@@ -67,6 +68,19 @@ BO_ASSETS: tuple[BoAsset, ...] = (
     BoAsset("GOLD", "Gold", "OANDA:XAUUSD", Decimal("2350"), "TradingView reference"),
     BoAsset("OIL", "Oil", "TVC:USOIL", Decimal("78"), "TradingView reference"),
 )
+
+
+BO_CHART_INTERVALS: dict[str, int] = {
+    "1S": 1,
+    "5S": 5,
+    "15S": 15,
+    "1": 60,
+    "5": 300,
+    "15": 900,
+    "60": 3600,
+    "240": 14400,
+    "D": 86400,
+}
 
 
 RAPID_PLAY_CONFIGS: dict[RapidPlayType, RapidPlayConfig] = {
@@ -135,7 +149,69 @@ def _session_index_from_code(session_code: str | int | None, total_seconds: int)
     return int(raw) if raw.isdigit() else int(time.time()) // total_seconds
 
 
-def get_bo_session_result(
+def _bo_asset(asset_code: str) -> BoAsset:
+    normalized = asset_code.strip().upper()[:16] or "BTC"
+    return next((item for item in BO_ASSETS if item.code == normalized), BO_ASSETS[0])
+
+
+def normalize_bo_interval(value: str | None) -> tuple[str, int]:
+    key = (value or "1S").strip().upper()
+    if key in {"1SEC", "1SECOND", "1S"}:
+        key = "1S"
+    if key in {"1D", "D"}:
+        key = "D"
+    if key not in BO_CHART_INTERVALS:
+        key = "1S"
+    return key, BO_CHART_INTERVALS[key]
+
+
+def _market_price_for_asset(asset: BoAsset, market: dict | None) -> Decimal:
+    if market:
+        found = next((item for item in market.get("assets", []) if item.get("code") == asset.code), None)
+        if found:
+            return _money(found.get("price") or asset.fallback_price, places=8)
+    return _money(asset.fallback_price, places=8)
+
+
+def _build_bo_session_result_data(index: int, asset_code: str, market: dict | None = None) -> dict:
+    asset = _bo_asset(asset_code)
+    code = f"S{index}"
+    base_price = _market_price_for_asset(asset, market)
+    seed = int(hashlib.sha256(f"bo-session-result:{code}:{asset.code}".encode("utf-8")).hexdigest(), 16)
+    anchor_shift = Decimal((seed >> 8) % 180 - 90) / Decimal("10000")
+    entry_price = _money(base_price * (Decimal("1") + anchor_shift), places=8)
+    result_side = "buy" if seed % 2 == 0 else "sell"
+    move = Decimal(8 + seed % 34) / Decimal("10000")
+    direction = Decimal("1") if result_side == "buy" else Decimal("-1")
+    result_price = _money(entry_price * (Decimal("1") + direction * move), places=8)
+    change_percent = _money((result_price - entry_price) / entry_price * Decimal("100"), places=4) if entry_price else Decimal("0")
+    return {
+        "session_code": code,
+        "session_index": index,
+        "asset": asset.code,
+        "result_side": result_side,
+        "entry_price": entry_price,
+        "result_price": result_price,
+        "change_percent": change_percent,
+        "source": "system_bo_chart",
+    }
+
+
+def _bo_record_payload(record: BoSessionResult) -> dict:
+    return {
+        "session_code": record.session_code,
+        "session_index": record.session_index,
+        "asset": record.asset,
+        "result_side": record.result_side,
+        "entry_price": _money(record.entry_price, places=8),
+        "result_price": _money(record.result_price, places=8),
+        "change_percent": _money(record.change_percent, places=4),
+        "source": record.source,
+    }
+
+
+def get_or_create_bo_session_result(
+    db: Session,
     session_code: str | int | None = None,
     asset_code: str = "BTC",
     market: dict | None = None,
@@ -144,30 +220,43 @@ def get_bo_session_result(
     total_seconds = settings.bo_trade_open_seconds + settings.bo_result_wait_seconds
     index = _session_index_from_code(session_code, total_seconds)
     code = f"S{index}"
-    asset_code = asset_code.strip().upper()[:16] or "BTC"
-    market = market or get_bo_market_snapshot()
-    asset = next((item for item in market["assets"] if item["code"] == asset_code), None)
-    if not asset:
-        asset = market["assets"][0]
-        asset_code = str(asset["code"])
-    entry_price = _money(asset["price"], places=8)
-    seed = int(hashlib.sha256(f"bo-session-result:{code}:{asset_code}".encode("utf-8")).hexdigest(), 16)
-    result_side = "buy" if seed % 2 == 0 else "sell"
-    move = Decimal(8 + seed % 34) / Decimal("10000")
-    direction = Decimal("1") if result_side == "buy" else Decimal("-1")
-    result_price = _money(entry_price * (Decimal("1") + direction * move), places=8)
-    change_percent = _money((result_price - entry_price) / entry_price * Decimal("100"), places=4) if entry_price else Decimal("0")
-    return {
-        "session_code": code,
-        "asset": asset_code,
-        "result_side": result_side,
-        "entry_price": entry_price,
-        "result_price": result_price,
-        "change_percent": change_percent,
-    }
+    asset = _bo_asset(asset_code)
+    record = (
+        db.query(BoSessionResult)
+        .filter(BoSessionResult.session_code == code, BoSessionResult.asset == asset.code)
+        .first()
+    )
+    if record:
+        return _bo_record_payload(record)
+    data = _build_bo_session_result_data(index, asset.code, market)
+    record = BoSessionResult(
+        session_code=data["session_code"],
+        session_index=data["session_index"],
+        asset=data["asset"],
+        entry_price=data["entry_price"],
+        result_price=data["result_price"],
+        result_side=data["result_side"],
+        change_percent=data["change_percent"],
+        source=data["source"],
+        settled_at=datetime.now(timezone.utc),
+    )
+    try:
+        with db.begin_nested():
+            db.add(record)
+            db.flush()
+    except IntegrityError:
+        record = (
+            db.query(BoSessionResult)
+            .filter(BoSessionResult.session_code == code, BoSessionResult.asset == asset.code)
+            .first()
+        )
+        if record:
+            return _bo_record_payload(record)
+        raise
+    return _bo_record_payload(record)
 
 
-def get_recent_bo_session_results(asset_code: str = "BTC", limit: int = 5, market: dict | None = None) -> list[dict]:
+def get_recent_bo_session_results(db: Session, asset_code: str = "BTC", limit: int = 5, market: dict | None = None) -> list[dict]:
     settings = get_settings()
     total_seconds = settings.bo_trade_open_seconds + settings.bo_result_wait_seconds
     clock = bo_session_clock()
@@ -176,7 +265,73 @@ def get_recent_bo_session_results(asset_code: str = "BTC", limit: int = 5, marke
     if start_index < 0:
         start_index = current_index
     market = market or get_bo_market_snapshot()
-    return [get_bo_session_result(f"S{index}", asset_code, market) for index in range(start_index, max(-1, start_index - max(1, limit)), -1)]
+    return [
+        get_or_create_bo_session_result(db, f"S{index}", asset_code, market)
+        for index in range(start_index, max(-1, start_index - max(1, limit)), -1)
+    ]
+
+
+def _bo_price_at_timestamp(db: Session, asset_code: str, timestamp: int, market: dict | None = None) -> Decimal:
+    settings = get_settings()
+    total_seconds = settings.bo_trade_open_seconds + settings.bo_result_wait_seconds
+    index = timestamp // total_seconds
+    elapsed = max(0, min(total_seconds, timestamp - index * total_seconds))
+    result = get_or_create_bo_session_result(db, f"S{index}", asset_code, market)
+    entry = _money(result["entry_price"], places=8)
+    close = _money(result["result_price"], places=8)
+    if elapsed <= 0:
+        return entry
+    if elapsed >= total_seconds:
+        return close
+    progress = Decimal(elapsed) / Decimal(total_seconds)
+    linear = entry + (close - entry) * progress
+    seed = int(hashlib.sha256(f"bo-price-wiggle:{result['session_code']}:{asset_code}:{elapsed}".encode("utf-8")).hexdigest(), 16)
+    wiggle_scale = max(entry * Decimal("0.00008"), Decimal("0.0001"))
+    wiggle = Decimal(seed % 21 - 10) / Decimal("10") * wiggle_scale
+    return _money(linear + wiggle, places=8)
+
+
+def get_bo_system_candles(
+    db: Session,
+    *,
+    asset_code: str = "BTC",
+    interval: str = "1S",
+    limit: int = 120,
+    market: dict | None = None,
+) -> dict:
+    interval_key, interval_seconds = normalize_bo_interval(interval)
+    limit = max(20, min(int(limit or 120), 260))
+    now = int(time.time())
+    end_ts = now - (now % interval_seconds)
+    start_ts = end_ts - (limit - 1) * interval_seconds
+    market = market or get_bo_market_snapshot()
+    candles: list[dict] = []
+    asset = _bo_asset(asset_code)
+    for open_ts in range(start_ts, end_ts + 1, interval_seconds):
+        close_ts = open_ts + interval_seconds
+        open_price = _bo_price_at_timestamp(db, asset.code, open_ts, market)
+        close_price = _bo_price_at_timestamp(db, asset.code, close_ts, market)
+        seed = int(hashlib.sha256(f"bo-candle:{asset.code}:{interval_key}:{open_ts}".encode("utf-8")).hexdigest(), 16)
+        spread = max(open_price * Decimal("0.00018"), Decimal("0.0001"))
+        upper = Decimal(seed % 9 + 1) / Decimal("10") * spread
+        lower = Decimal((seed >> 4) % 9 + 1) / Decimal("10") * spread
+        candles.append(
+            {
+                "time": open_ts,
+                "open": _money(open_price, places=8),
+                "high": _money(max(open_price, close_price) + upper, places=8),
+                "low": _money(min(open_price, close_price) - lower, places=8),
+                "close": _money(close_price, places=8),
+            }
+        )
+    return {
+        "asset": asset.code,
+        "symbol": asset.tradingview_symbol,
+        "interval": interval_key,
+        "interval_seconds": interval_seconds,
+        "candles": candles,
+        "updated_at": datetime.now(timezone.utc),
+    }
 
 
 def get_rapid_result_board(session_code: str | int | None = None) -> dict:
@@ -527,26 +682,10 @@ def transfer_points(
     if not recipient or recipient.id == sender.id or recipient.is_admin or not recipient.is_active:
         raise ValueError("invalid_recipient")
     sender_wallet = ensure_wallet(db, sender)
-    receiver_wallet = ensure_wallet(db, recipient, sender_wallet.currency)
+    ensure_wallet(db, recipient, sender_wallet.currency)
+    if _money(sender_wallet.available_balance) < amount:
+        raise ValueError("insufficient_balance")
     reference_code = _unique_code(db, PointTransfer, "PT")
-    _debit_wallet(
-        db,
-        wallet=sender_wallet,
-        amount=amount,
-        entry_type=WalletLedgerType.TRANSFER_OUT,
-        reference_type="point_transfer",
-        reference_id=reference_code,
-        reason=f"Transfer to {recipient.uid or recipient.email}",
-    )
-    _credit_wallet(
-        db,
-        wallet=receiver_wallet,
-        amount=amount,
-        entry_type=WalletLedgerType.TRANSFER_IN,
-        reference_type="point_transfer",
-        reference_id=reference_code,
-        reason=f"Transfer from {sender.uid or sender.email}",
-    )
     transfer = PointTransfer(
         reference_code=reference_code,
         sender_user_id=sender.id,
@@ -554,26 +693,128 @@ def transfer_points(
         amount=amount,
         currency=sender_wallet.currency,
         memo=memo.strip(),
+        status="pending_receiver_confirmation",
+        sender_confirmed_at=datetime.now(timezone.utc),
     )
     db.add(transfer)
     _queue_wallet_ops_email(
         db,
         user=sender,
-        subject=f"Guilua point transfer {reference_code}",
+        subject=f"Guilua point transfer pending {reference_code}",
         body=(
             f"Sender: {sender.email} ({sender.uid or sender.id})\n"
             f"Receiver: {recipient.email} ({recipient.uid or recipient.id})\n"
             f"Amount: {amount} {sender_wallet.currency}\n"
             f"Memo: {memo.strip() or '-'}"
         ),
-        event_type="point_transfer_completed",
+        event_type="point_transfer_pending",
     )
     _queue_member_email(
         db,
         user=recipient,
-        subject=f"Guilua point transfer received {reference_code}",
-        body=f"You received {amount} {sender_wallet.currency} from {sender.uid or sender.email}.",
-        event_type="point_transfer_received",
+        subject=f"Guilua point transfer needs confirmation {reference_code}",
+        body=f"{sender.uid or sender.email} created a {amount} {sender_wallet.currency} transfer request. Please confirm it in your member wallet.",
+        event_type="point_transfer_confirmation_required",
+    )
+    db.commit()
+    db.refresh(transfer)
+    return transfer
+
+
+def complete_point_transfer(
+    db: Session,
+    *,
+    transfer: PointTransfer,
+    actor: User,
+    note: str = "",
+) -> PointTransfer:
+    if transfer.status != "pending_receiver_confirmation":
+        raise ValueError("transfer_not_pending")
+    if actor.id != transfer.receiver_user_id and not actor.is_admin:
+        raise ValueError("transfer_forbidden")
+    sender_wallet = ensure_wallet(db, transfer.sender, transfer.currency)
+    receiver_wallet = ensure_wallet(db, transfer.receiver, transfer.currency)
+    amount = _money(transfer.amount)
+    if _money(sender_wallet.available_balance) < amount:
+        raise ValueError("insufficient_balance")
+    transfer.receiver_confirmed_at = datetime.now(timezone.utc)
+    transfer.completed_at = transfer.receiver_confirmed_at
+    transfer.status = "completed"
+    transfer.admin_note = note.strip() if actor.is_admin else transfer.admin_note
+    if actor.is_admin:
+        transfer.reviewed_by_user_id = actor.id
+    _debit_wallet(
+        db,
+        wallet=sender_wallet,
+        amount=amount,
+        entry_type=WalletLedgerType.TRANSFER_OUT,
+        reference_type="point_transfer",
+        reference_id=transfer.reference_code,
+        reason=f"Transfer to {transfer.receiver.uid or transfer.receiver.email}",
+    )
+    _credit_wallet(
+        db,
+        wallet=receiver_wallet,
+        amount=amount,
+        entry_type=WalletLedgerType.TRANSFER_IN,
+        reference_type="point_transfer",
+        reference_id=transfer.reference_code,
+        reason=f"Transfer from {transfer.sender.uid or transfer.sender.email}",
+    )
+    _queue_wallet_ops_email(
+        db,
+        user=transfer.sender,
+        subject=f"Guilua point transfer completed {transfer.reference_code}",
+        body=(
+            f"Sender: {transfer.sender.email}\n"
+            f"Receiver: {transfer.receiver.email}\n"
+            f"Amount: {amount} {transfer.currency}\n"
+            f"Confirmed by: {actor.email}"
+        ),
+        event_type="point_transfer_completed",
+    )
+    _queue_member_email(
+        db,
+        user=transfer.sender,
+        subject=f"Guilua point transfer completed {transfer.reference_code}",
+        body=f"Your transfer of {amount} {transfer.currency} to {transfer.receiver.uid or transfer.receiver.email} was completed.",
+        event_type="point_transfer_completed_sender",
+    )
+    db.commit()
+    db.refresh(transfer)
+    return transfer
+
+
+def cancel_point_transfer(
+    db: Session,
+    *,
+    transfer: PointTransfer,
+    actor: User,
+    note: str = "",
+) -> PointTransfer:
+    if transfer.status != "pending_receiver_confirmation":
+        raise ValueError("transfer_not_pending")
+    if actor.id not in {transfer.sender_user_id, transfer.receiver_user_id} and not actor.is_admin:
+        raise ValueError("transfer_forbidden")
+    transfer.status = "cancelled"
+    transfer.cancelled_at = datetime.now(timezone.utc)
+    if actor.is_admin:
+        transfer.reviewed_by_user_id = actor.id
+        transfer.admin_note = note.strip()
+    elif note.strip():
+        transfer.memo = f"{transfer.memo}\nCancel note: {note.strip()}".strip()
+    _queue_wallet_ops_email(
+        db,
+        user=transfer.sender,
+        subject=f"Guilua point transfer cancelled {transfer.reference_code}",
+        body=(
+            f"Sender: {transfer.sender.email}\n"
+            f"Receiver: {transfer.receiver.email}\n"
+            f"Amount: {transfer.amount} {transfer.currency}\n"
+            f"Cancelled by: {actor.email}\n"
+            f"Note: {note.strip() or '-'}"
+        ),
+        event_type="point_transfer_cancelled",
     )
     db.commit()
     db.refresh(transfer)
@@ -608,7 +849,7 @@ def place_bo_order(
         raise ValueError("session_not_open")
 
     reference_code = _unique_code(db, BoOrder, "BO")
-    session_result = get_bo_session_result(str(clock["session_code"]), asset_code, market)
+    session_result = get_or_create_bo_session_result(db, str(clock["session_code"]), asset_code, market)
     entry_price = _money(session_result["entry_price"], places=8)
     result_price = _money(session_result["result_price"], places=8)
     won = session_result["result_side"] == side.value

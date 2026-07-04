@@ -121,6 +121,13 @@ def require_user(request: Request, db: Session) -> User:
             status_code=status.HTTP_303_SEE_OTHER,
             headers={"Location": f"/login?next={quote(path, safe='/?=&-_%.')}"},
         )
+    if not user.is_admin and not user.is_email_verified:
+        request.state.session.clear()
+        request.state.session["_clear"] = True
+        raise HTTPException(
+            status_code=status.HTTP_303_SEE_OTHER,
+            headers={"Location": "/login?verify_email=1"},
+        )
     return user
 
 

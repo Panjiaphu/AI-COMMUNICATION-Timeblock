@@ -255,6 +255,8 @@
             <th>{{ t("wallet.receiver") }}</th>
             <th>{{ t("table.amount") }}</th>
             <th>{{ t("admin.slbo.note") }}</th>
+            <th>{{ t("table.status") }}</th>
+            <th>{{ t("table.action") }}</th>
             <th>{{ t("table.created") }}</th>
           </tr>
         </thead>
@@ -265,11 +267,30 @@
               <td>{{ item.sender.uid if item.sender else item.sender_user_id }}<br><small>{{ item.sender.email if item.sender else "" }}</small></td>
               <td>{{ item.receiver.uid if item.receiver else item.receiver_user_id }}<br><small>{{ item.receiver.email if item.receiver else "" }}</small></td>
               <td>{{ format_price(item.amount) }} {{ item.currency }}</td>
-              <td>{{ item.memo or "-" }}</td>
+              <td>{{ item.memo or "-" }}{% if item.admin_note %}<br><small>{{ item.admin_note }}</small>{% endif %}</td>
+              <td><span class="badge {{ 'ok' if item.status == 'completed' else ('warn' if item.status == 'pending_receiver_confirmation' else '') }}">{{ t("wallet.transfer_status." ~ item.status) }}</span></td>
+              <td>
+                {% if item.status == 'pending_receiver_confirmation' %}
+                  <div class="action-cell">
+                    <form class="mini-form" method="post" action="/admin/slbo/transfers/{{ item.id }}/complete?lang={{ locale }}">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                      <input name="note" placeholder="{{ t('admin.slbo.note') }}">
+                      <button class="button small primary" type="submit">{{ t("wallet.transfer_confirm") }}</button>
+                    </form>
+                    <form class="mini-form" method="post" action="/admin/slbo/transfers/{{ item.id }}/cancel?lang={{ locale }}">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                      <input name="note" placeholder="{{ t('admin.slbo.note') }}">
+                      <button class="button small" type="submit">{{ t("wallet.transfer_cancel") }}</button>
+                    </form>
+                  </div>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
               <td>{{ item.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
             </tr>
           {% else %}
-            <tr><td colspan="6" class="empty">{{ t("member.utility_empty") }}</td></tr>
+            <tr><td colspan="8" class="empty">{{ t("member.utility_empty") }}</td></tr>
           {% endfor %}
         </tbody>
       </table>

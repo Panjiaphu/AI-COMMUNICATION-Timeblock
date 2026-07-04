@@ -12,7 +12,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import BASE_DIR, get_settings
-from app.core.security import hash_password
+from app.core.security import create_email_token, hash_password
 from app.db.session import Base
 from app.db.session import SessionLocal
 from app.main import app
@@ -47,6 +47,7 @@ from app.services.referrals import create_referral_commissions, ensure_user_refe
 from app.services.slbo import (
     approve_deposit,
     approve_wallet_request,
+    complete_point_transfer,
     create_wallet_request,
     get_recent_rapid_result_boards,
     record_member_loss,
@@ -84,7 +85,9 @@ class FastApiSmokeTest(unittest.TestCase):
         self.assertIn("zh-TW", response.text)
         self.assertIn("/bo?lang=zh-TW", response.text)
         self.assertIn("/rapid?lang=zh-TW", response.text)
-        self.assertNotIn("/member/transactions", response.text)
+        self.assertIn("/member/transactions/send-home", response.text)
+        self.assertIn("/member/transactions/buy-usdt", response.text)
+        self.assertIn("/member/transactions/sell-usdt", response.text)
         self.assertNotIn("/jobs?lang=zh-TW", response.text)
         self.assertNotIn("/shop?lang=zh-TW", response.text)
         self.assertNotIn("/utilities?lang=zh-TW", response.text)
@@ -97,7 +100,9 @@ class FastApiSmokeTest(unittest.TestCase):
         self.assertIn("rate-buy-sell", response.text)
         self.assertNotIn("APP_MODE", response.text)
         self.assertNotIn("REAL_MONEY_ENABLED", response.text)
-        self.assertNotIn("/member/transactions", response.text)
+        self.assertIn("/member/transactions/send-home", response.text)
+        self.assertIn("/member/transactions/buy-usdt", response.text)
+        self.assertIn("/member/transactions/sell-usdt", response.text)
         self.assertNotIn("/jobs?lang=vi", response.text)
         self.assertNotIn("/shop?lang=vi", response.text)
         self.assertNotIn("/utilities?lang=vi", response.text)
@@ -189,6 +194,7 @@ class FastApiSmokeTest(unittest.TestCase):
             follow_redirects=False,
         )
         self.assertEqual(response.status_code, 303)
+        self.assertIn("verify_email=1", response.headers["location"])
 
         with SessionLocal() as db:
             member = db.query(User).filter(User.email == member_email).first()
@@ -196,6 +202,32 @@ class FastApiSmokeTest(unittest.TestCase):
             self.assertEqual(member.referred_by_user_id, sponsor_id)
             self.assertTrue(member.uid.startswith("GL"))
             self.assertTrue(member.referral_code.startswith("RF"))
+            self.assertFalse(member.is_email_verified)
+
+        login_page = self.client.get("/login?lang=vi")
+        login_token = login_page.text.split('name="csrf_token" value="', 1)[1].split('"', 1)[0]
+        blocked = self.client.post(
+            "/login?lang=vi",
+            data={"csrf_token": login_token, "email": member_email, "password": password, "next_url": "/member"},
+        )
+        self.assertEqual(blocked.status_code, 200)
+
+        verify = self.client.get(f"/verify-email?token={create_email_token(member_email)}", follow_redirects=False)
+        self.assertEqual(verify.status_code, 303)
+        self.assertIn("/login?verified=1", verify.headers["location"])
+
+        login_page = self.client.get("/login?lang=vi")
+        login_token = login_page.text.split('name="csrf_token" value="', 1)[1].split('"', 1)[0]
+        allowed = self.client.post(
+            "/login?lang=vi",
+            data={"csrf_token": login_token, "email": member_email, "password": password, "next_url": "/member"},
+            follow_redirects=False,
+        )
+        self.assertEqual(allowed.status_code, 303)
+        self.assertEqual(allowed.headers["location"], "/member")
+
+        with SessionLocal() as db:
+            member = db.query(User).filter(User.email == member_email).first()
             db.query(EmailNotification).filter(EmailNotification.user_id == member.id).delete()
             db.delete(member)
             db.delete(db.get(User, sponsor_id))
@@ -245,8 +277,9 @@ class FastApiSmokeTest(unittest.TestCase):
     def test_slbo_public_rooms_render(self):
         bo = self.client.get("/bo?lang=en")
         self.assertEqual(bo.status_code, 200)
-        self.assertIn("1-second BO candlestick chart", bo.text)
+        self.assertIn("synced system chart", bo.text)
         self.assertIn("TradingView", bo.text)
+        self.assertIn("boSystemChart", bo.text)
         self.assertIn("BUY", bo.text)
         self.assertIn("Max 1000 points", bo.text)
         self.assertIn('data-interval="1S"', bo.text)
@@ -278,6 +311,14 @@ class FastApiSmokeTest(unittest.TestCase):
         self.assertIn("rapid_clock", state_payload)
         self.assertIn("BTC", state_payload["bo_results_by_asset"])
         self.assertGreaterEqual(len(state_payload["rapid_results"]), 5)
+
+        chart = self.client.get("/api/slbo/bo-chart?asset=BTC&interval=1S&limit=40")
+        self.assertEqual(chart.status_code, 200)
+        chart_payload = chart.json()
+        self.assertEqual(chart_payload["asset"], "BTC")
+        self.assertEqual(chart_payload["interval"], "1S")
+        self.assertGreaterEqual(len(chart_payload["candles"]), 20)
+        self.assertIn("recent_results", chart_payload)
 
     def test_rapid_recent_result_boards_persist(self):
         with SessionLocal() as db:
@@ -353,9 +394,16 @@ class FastApiSmokeTest(unittest.TestCase):
                 memo="member transfer",
             )
             self.assertTrue(transfer.reference_code.startswith("PT"))
+            self.assertEqual("pending_receiver_confirmation", transfer.status)
 
             sender_wallet = db.query(InternalWallet).filter(InternalWallet.user_id == sender.id).first()
             receiver_wallet = db.query(InternalWallet).filter(InternalWallet.user_id == receiver.id).first()
+            self.assertEqual(Decimal("500.0000"), sender_wallet.available_balance)
+            self.assertEqual(Decimal("0.0000"), receiver_wallet.available_balance)
+
+            complete_point_transfer(db, transfer=transfer, actor=receiver)
+            db.refresh(sender_wallet)
+            db.refresh(receiver_wallet)
             self.assertEqual(Decimal("375.0000"), sender_wallet.available_balance)
             self.assertEqual(Decimal("125.0000"), receiver_wallet.available_balance)
 

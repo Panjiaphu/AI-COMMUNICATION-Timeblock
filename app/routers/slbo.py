@@ -30,10 +30,13 @@ from app.services.slbo import (
     approve_wallet_request,
     approve_deposit,
     bo_session_clock,
+    cancel_point_transfer,
+    complete_point_transfer,
     create_wallet_request,
     ensure_treasury,
     ensure_wallet,
     get_bo_market_snapshot,
+    get_bo_system_candles,
     get_or_create_rapid_result_board,
     get_recent_bo_session_results,
     get_recent_rapid_result_boards,
@@ -73,6 +76,16 @@ def _bo_result_payload(result: dict) -> dict:
         "entry_price": _format_decimal(result["entry_price"]),
         "result_price": _format_decimal(result["result_price"]),
         "change_percent": _format_decimal(result["change_percent"]),
+    }
+
+
+def _bo_candle_payload(candle: dict) -> dict:
+    return {
+        "time": int(candle["time"]),
+        "open": float(candle["open"]),
+        "high": float(candle["high"]),
+        "low": float(candle["low"]),
+        "close": float(candle["close"]),
     }
 
 
@@ -162,7 +175,8 @@ def bo_room(request: Request, db: Session = Depends(get_db)):
         else []
     )
     market = get_bo_market_snapshot()
-    bo_recent_results = get_recent_bo_session_results("BTC", 5, market)
+    bo_recent_results = get_recent_bo_session_results(db, "BTC", 5, market)
+    db.commit()
     return templates.TemplateResponse(
         request=request,
         name="bo.html",
@@ -254,7 +268,7 @@ def slbo_room_state(request: Request, db: Session = Depends(get_db)):
     rapid_clock = rapid_session_clock()
     market = get_bo_market_snapshot()
     bo_results_by_asset = {
-        item["code"]: [_bo_result_payload(result) for result in get_recent_bo_session_results(str(item["code"]), 5, market)]
+        item["code"]: [_bo_result_payload(result) for result in get_recent_bo_session_results(db, str(item["code"]), 5, market)]
         for item in market["assets"]
     }
     rapid_result = get_or_create_rapid_result_board(db, str(rapid_clock["session_code"]))
@@ -293,6 +307,33 @@ def slbo_room_state(request: Request, db: Session = Depends(get_db)):
             else None,
             "orders": [_bo_order_payload(order) for order in orders],
             "entries": [_rapid_entry_payload(entry) for entry in entries],
+        }
+    )
+
+
+@router.get("/api/slbo/bo-chart")
+def slbo_bo_chart_api(
+    request: Request,
+    db: Session = Depends(get_db),
+    asset: str = "BTC",
+    interval: str = "1S",
+    limit: int = 140,
+):
+    market = get_bo_market_snapshot()
+    chart = get_bo_system_candles(db, asset_code=asset, interval=interval, limit=limit, market=market)
+    recent_results = get_recent_bo_session_results(db, chart["asset"], 5, market)
+    latest = chart["candles"][-1] if chart["candles"] else None
+    db.commit()
+    return JSONResponse(
+        {
+            "asset": chart["asset"],
+            "symbol": chart["symbol"],
+            "interval": chart["interval"],
+            "interval_seconds": chart["interval_seconds"],
+            "updated_at": chart["updated_at"].isoformat(),
+            "latest": _bo_candle_payload(latest) if latest else None,
+            "candles": [_bo_candle_payload(item) for item in chart["candles"]],
+            "recent_results": [_bo_result_payload(item) for item in recent_results],
         }
     )
 
@@ -384,7 +425,7 @@ def create_member_point_transfer(
     user = require_user(request, db)
     locale = resolve_locale(request)
     try:
-        transfer_points(
+        transfer = transfer_points(
             db,
             sender=user,
             recipient_identifier=recipient_identifier,
@@ -394,7 +435,50 @@ def create_member_point_transfer(
     except (ValueError, InvalidOperation) as exc:
         db.rollback()
         return RedirectResponse(f"/member/wallet?lang={locale}&error={str(exc)}", status_code=303)
-    return RedirectResponse(f"/member/wallet?lang={locale}&transferred=1", status_code=303)
+    return RedirectResponse(f"/member/wallet?lang={locale}&transfer_pending={transfer.reference_code}", status_code=303)
+
+
+@router.post("/member/wallet/transfers/{transfer_id}/confirm")
+def member_confirm_point_transfer(
+    transfer_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+):
+    verify_csrf(request, csrf_token)
+    user = require_user(request, db)
+    locale = resolve_locale(request)
+    transfer = db.get(PointTransfer, transfer_id)
+    if not transfer:
+        return RedirectResponse(f"/member/wallet?lang={locale}&error=not_found", status_code=303)
+    try:
+        complete_point_transfer(db, transfer=transfer, actor=user)
+    except (ValueError, InvalidOperation) as exc:
+        db.rollback()
+        return RedirectResponse(f"/member/wallet?lang={locale}&error={str(exc)}", status_code=303)
+    return RedirectResponse(f"/member/wallet?lang={locale}&transfer_completed=1", status_code=303)
+
+
+@router.post("/member/wallet/transfers/{transfer_id}/cancel")
+def member_cancel_point_transfer(
+    transfer_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+    note: str = Form(""),
+):
+    verify_csrf(request, csrf_token)
+    user = require_user(request, db)
+    locale = resolve_locale(request)
+    transfer = db.get(PointTransfer, transfer_id)
+    if not transfer:
+        return RedirectResponse(f"/member/wallet?lang={locale}&error=not_found", status_code=303)
+    try:
+        cancel_point_transfer(db, transfer=transfer, actor=user, note=note)
+    except (ValueError, InvalidOperation) as exc:
+        db.rollback()
+        return RedirectResponse(f"/member/wallet?lang={locale}&error={str(exc)}", status_code=303)
+    return RedirectResponse(f"/member/wallet?lang={locale}&transfer_cancelled=1", status_code=303)
 
 
 @router.post("/rapid/entries")
@@ -550,3 +634,47 @@ def admin_reject_wallet_request(
         db.rollback()
         return RedirectResponse(f"/admin/slbo?lang={locale}&error={str(exc)}", status_code=303)
     return RedirectResponse(f"/admin/slbo?lang={locale}&reviewed=1", status_code=303)
+
+
+@router.post("/admin/slbo/transfers/{transfer_id}/complete")
+def admin_complete_point_transfer(
+    transfer_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+    note: str = Form(""),
+):
+    verify_csrf(request, csrf_token)
+    admin = require_admin(request, db)
+    locale = resolve_locale(request)
+    transfer = db.get(PointTransfer, transfer_id)
+    if not transfer:
+        return RedirectResponse(f"/admin/slbo?lang={locale}&error=not_found", status_code=303)
+    try:
+        complete_point_transfer(db, transfer=transfer, actor=admin, note=note)
+    except (ValueError, InvalidOperation) as exc:
+        db.rollback()
+        return RedirectResponse(f"/admin/slbo?lang={locale}&error={str(exc)}", status_code=303)
+    return RedirectResponse(f"/admin/slbo?lang={locale}&transfer_completed=1", status_code=303)
+
+
+@router.post("/admin/slbo/transfers/{transfer_id}/cancel")
+def admin_cancel_point_transfer(
+    transfer_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+    note: str = Form(""),
+):
+    verify_csrf(request, csrf_token)
+    admin = require_admin(request, db)
+    locale = resolve_locale(request)
+    transfer = db.get(PointTransfer, transfer_id)
+    if not transfer:
+        return RedirectResponse(f"/admin/slbo?lang={locale}&error=not_found", status_code=303)
+    try:
+        cancel_point_transfer(db, transfer=transfer, actor=admin, note=note)
+    except (ValueError, InvalidOperation) as exc:
+        db.rollback()
+        return RedirectResponse(f"/admin/slbo?lang={locale}&error={str(exc)}", status_code=303)
+    return RedirectResponse(f"/admin/slbo?lang={locale}&transfer_cancelled=1", status_code=303)

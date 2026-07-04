@@ -117,8 +117,7 @@ def register(
         "email_verification",
         user=user,
     )
-    login_user(request, user)
-    return RedirectResponse("/member?registered=1", status_code=303)
+    return RedirectResponse(f"/login?lang={resolve_locale(request)}&verify_email=1", status_code=303)
 
 
 @router.get("/login")
@@ -130,7 +129,14 @@ def login_form(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
         request=request,
         name="auth/login.html",
-        context=context(request, error="", next_url=next_url, reset_success=request.query_params.get("reset") == "1"),
+        context=context(
+            request,
+            error="",
+            next_url=next_url,
+            reset_success=request.query_params.get("reset") == "1",
+            verify_email=request.query_params.get("verify_email") == "1",
+            verified=request.query_params.get("verified") == "1",
+        ),
     )
 
 
@@ -179,6 +185,23 @@ def login(
             name="auth/login.html",
             context=context(request, error=_message(request, "error.account_disabled"), next_url=redirect_to),
         )
+    if not user.is_admin and not user.is_email_verified:
+        log_security_event(
+            db,
+            request=request,
+            event_type="login_failed",
+            severity="low",
+            risk_score=15,
+            status_code=403,
+            username_or_email=normalized_email,
+            user=user,
+            details={"reason": "email_not_verified"},
+        )
+        return templates.TemplateResponse(
+            request=request,
+            name="auth/login.html",
+            context=context(request, error=_message(request, "error.email_not_verified"), next_url=redirect_to),
+        )
     login_user(request, user, remember_me=remember_me == "1")
     log_security_event(
         db,
@@ -209,7 +232,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     if user:
         user.is_email_verified = True
         db.commit()
-    return RedirectResponse("/member?verified=1", status_code=303)
+    return RedirectResponse("/login?verified=1", status_code=303)
 
 
 @router.get("/forgot-password")

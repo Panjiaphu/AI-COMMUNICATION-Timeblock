@@ -136,6 +136,8 @@
             <th>{{ t("wallet.counterparty") }}</th>
             <th>{{ t("table.amount") }}</th>
             <th>{{ t("admin.slbo.note") }}</th>
+            <th>{{ t("table.status") }}</th>
+            <th>{{ t("table.action") }}</th>
             <th>{{ t("table.created") }}</th>
           </tr>
         </thead>
@@ -152,10 +154,32 @@
               </td>
               <td>{{ format_price(item.amount) }} {{ item.currency }}</td>
               <td>{{ item.memo or "-" }}</td>
+              <td><span class="badge {{ 'ok' if item.status == 'completed' else ('warn' if item.status == 'pending_receiver_confirmation' else '') }}">{{ t("wallet.transfer_status." ~ item.status) }}</span></td>
+              <td>
+                {% if item.status == 'pending_receiver_confirmation' and item.receiver_user_id == user.id %}
+                  <div class="action-cell">
+                    <form class="mini-form" method="post" action="/member/wallet/transfers/{{ item.id }}/confirm?lang={{ locale }}">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                      <button class="button small primary" type="submit">{{ t("wallet.transfer_confirm") }}</button>
+                    </form>
+                    <form class="mini-form" method="post" action="/member/wallet/transfers/{{ item.id }}/cancel?lang={{ locale }}">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                      <button class="button small" type="submit">{{ t("wallet.transfer_cancel") }}</button>
+                    </form>
+                  </div>
+                {% elif item.status == 'pending_receiver_confirmation' and item.sender_user_id == user.id %}
+                  <form class="mini-form" method="post" action="/member/wallet/transfers/{{ item.id }}/cancel?lang={{ locale }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button class="button small" type="submit">{{ t("wallet.transfer_cancel") }}</button>
+                  </form>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
               <td>{{ item.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
             </tr>
           {% else %}
-            <tr><td colspan="5" class="empty">{{ t("member.utility_empty") }}</td></tr>
+            <tr><td colspan="7" class="empty">{{ t("member.utility_empty") }}</td></tr>
           {% endfor %}
         </tbody>
       </table>
