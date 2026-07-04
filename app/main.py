@@ -7,6 +7,7 @@ from app.core.config import BASE_DIR, get_settings
 from app.core.i18n import resolve_locale
 from app.core.security import SessionMiddleware, ensure_admin_bootstrap
 from app.db.session import Base, SessionLocal, engine
+from app.services import slbo_settlement_guard  # noqa: F401
 from app.routers import admin, agent, auth, member, public, slbo, webhooks
 from app.services.commercial import ensure_default_utilities
 from app.services.rates import ensure_default_rates
