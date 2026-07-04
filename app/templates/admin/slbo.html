@@ -67,6 +67,27 @@
     </div>
   </section>
 
+  <section class="panel risk-guard-panel">
+    <div class="section-head">
+      <div>
+        <h2>Sandbox outcome setting</h2>
+        <p class="muted">Admin-only target for completed BO and Rapid sandbox requests. Member UI never shows this setting.</p>
+      </div>
+      <span class="badge warn">Sandbox only</span>
+    </div>
+    <form class="form admin-inline-form" method="post" action="/admin/slbo/outcome-settings?lang={{ locale }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Member target success rate (%)
+        <input type="number" name="member_target_success_rate" min="0" max="100" step="0.01" value="{{ outcome_settings.member_target_success_rate if outcome_settings else 45 }}" required>
+      </label>
+      <label>Admin note
+        <input name="note" value="{{ outcome_settings.note if outcome_settings else '' }}" placeholder="Internal sandbox note">
+      </label>
+      <button class="button primary" type="submit">Save setting</button>
+    </form>
+    <p class="muted">Current setting: {{ outcome_settings.member_target_success_rate if outcome_settings else 45 }}%. Applies only to sandbox/internal point settlement after a session is complete.</p>
+  </section>
+
   <section class="layout">
     <div class="panel">
       <div class="section-head">
