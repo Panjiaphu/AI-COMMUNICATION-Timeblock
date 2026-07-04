@@ -17,54 +17,18 @@ branch_labels = None
 depends_on = None
 
 
-wallet_ledger_type = sa.Enum(
-    "DEPOSIT_APPROVED",
-    "WITHDRAW_APPROVED",
-    "BO_STAKE",
-    "BO_PAYOUT",
-    "RAPID_STAKE",
-    "RAPID_PAYOUT",
-    "ADJUSTMENT",
-    name="walletledgertype",
-)
-sandbox_request_type = sa.Enum("DEPOSIT", "WITHDRAW", name="sandboxrequesttype")
-sandbox_request_status = sa.Enum("PENDING", "APPROVED", "REJECTED", "CANCELLED", name="sandboxrequeststatus")
-game_request_status = sa.Enum(
-    "PENDING_CONFIRMATION",
-    "ACCEPTED",
-    "REJECTED_BY_SESSION_CONDITION",
-    "REFUNDED",
-    "WON",
-    "LOST",
-    "CANCELLED_BY_SYSTEM",
-    name="gamerequeststatus",
-)
-bo_side = sa.Enum("BUY", "SELL", name="boside")
-rapid_play_type = sa.Enum(
-    "BAO_LO_2",
-    "BAO_LO_3",
-    "XIEN_2",
-    "XIEN_3",
-    "HEAD",
-    "TAIL",
-    "EVEN_ODD",
-    name="rapidplaytype",
-)
+# Store enum-like values as strings in this sandbox migration. This avoids
+# Render/Postgres deploy failures from duplicate CREATE TYPE statements after a
+# partial/failed previous deploy.
+wallet_ledger_type = sa.String(length=64)
+sandbox_request_type = sa.String(length=32)
+sandbox_request_status = sa.String(length=32)
+game_request_status = sa.String(length=64)
+bo_side = sa.String(length=16)
+rapid_play_type = sa.String(length=32)
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
-    if bind.dialect.name == "postgresql":
-        for enum in (
-            wallet_ledger_type,
-            sandbox_request_type,
-            sandbox_request_status,
-            game_request_status,
-            bo_side,
-            rapid_play_type,
-        ):
-            enum.create(bind, checkfirst=True)
-
     op.create_table(
         "internal_wallets",
         sa.Column("id", sa.Integer(), primary_key=True),
@@ -292,15 +256,3 @@ def downgrade() -> None:
     op.drop_index("ix_internal_wallets_currency", table_name="internal_wallets")
     op.drop_index("ix_internal_wallets_user_id", table_name="internal_wallets")
     op.drop_table("internal_wallets")
-
-    bind = op.get_bind()
-    if bind.dialect.name == "postgresql":
-        for enum in (
-            rapid_play_type,
-            bo_side,
-            game_request_status,
-            sandbox_request_status,
-            sandbox_request_type,
-            wallet_ledger_type,
-        ):
-            enum.drop(bind, checkfirst=True)
