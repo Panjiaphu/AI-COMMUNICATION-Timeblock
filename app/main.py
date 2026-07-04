@@ -63,38 +63,47 @@ def _drop_orphan_postgres_enum_types() -> None:
     if engine.dialect.name != "postgresql":
         return
 
-    enum_names = list(POSTGRES_ENUM_NAMES)
     with engine.begin() as conn:
-        for enum_name in enum_names:
-            conn.execute(
+        for enum_name in POSTGRES_ENUM_NAMES:
+            enum_exists = conn.execute(
                 text(
                     """
-                    DO $$
-                    BEGIN
-                        IF EXISTS (
-                            SELECT 1
-                            FROM pg_type t
-                            JOIN pg_namespace n ON n.oid = t.typnamespace
-                            WHERE t.typname = :enum_name
-                              AND n.nspname = current_schema()
-                        ) AND NOT EXISTS (
-                            SELECT 1
-                            FROM pg_attribute a
-                            JOIN pg_type t ON a.atttypid = t.oid
-                            JOIN pg_class c ON a.attrelid = c.oid
-                            JOIN pg_namespace n ON n.oid = t.typnamespace
-                            WHERE t.typname = :enum_name
-                              AND n.nspname = current_schema()
-                              AND c.relkind IN ('r', 'p')
-                              AND NOT a.attisdropped
-                        ) THEN
-                            EXECUTE format('DROP TYPE %I', :enum_name);
-                        END IF;
-                    END $$;
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_type t
+                        JOIN pg_namespace n ON n.oid = t.typnamespace
+                        WHERE t.typname = :enum_name
+                          AND n.nspname = current_schema()
+                    )
                     """
                 ),
                 {"enum_name": enum_name},
-            )
+            ).scalar()
+            if not enum_exists:
+                continue
+
+            enum_is_used = conn.execute(
+                text(
+                    """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_attribute a
+                        JOIN pg_type t ON a.atttypid = t.oid
+                        JOIN pg_class c ON a.attrelid = c.oid
+                        JOIN pg_namespace n ON n.oid = t.typnamespace
+                        WHERE t.typname = :enum_name
+                          AND n.nspname = current_schema()
+                          AND c.relkind IN ('r', 'p')
+                          AND NOT a.attisdropped
+                    )
+                    """
+                ),
+                {"enum_name": enum_name},
+            ).scalar()
+            if enum_is_used:
+                continue
+
+            conn.execute(text(f'DROP TYPE "{enum_name}"'))
 
 
 def _prepare_database_bootstrap() -> None:
