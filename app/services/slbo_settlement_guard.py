@@ -7,8 +7,9 @@ import time
 
 from sqlalchemy.orm import Session
 
-from app.models import BoOrder, GameRequestStatus, RapidEntry, RapidPlayType, User, WalletLedgerType
+from app.models import BoOrder, BoSide, GameRequestStatus, RapidEntry, RapidPlayType, User, WalletLedgerType
 from app.services import slbo as core
+from app.services.slbo_outcome_settings import get_member_target_success_rate
 
 
 ORIGINAL_GET_OR_CREATE_BO_SESSION_RESULT = core.get_or_create_bo_session_result
@@ -41,6 +42,13 @@ def _current_rapid_index() -> int:
     return int(time.time()) // settings.rapid_session_seconds
 
 
+def _target_success(reference_code: str, user_id: int, rate: Decimal) -> bool:
+    clamped = max(Decimal("0"), min(Decimal("100"), Decimal(str(rate))))
+    threshold = int((clamped * Decimal("100")).to_integral_value())
+    seed = int(hashlib.sha256(f"sandbox-success:{reference_code}:{user_id}".encode("utf-8")).hexdigest(), 16)
+    return seed % 10000 < threshold
+
+
 def _live_price(asset_code: str, timestamp: int, market: dict | None = None) -> Decimal:
     asset = core._bo_asset(asset_code)
     market = market or core.get_bo_market_snapshot()
@@ -48,6 +56,14 @@ def _live_price(asset_code: str, timestamp: int, market: dict | None = None) -> 
     seed = int(hashlib.sha256(f"live-price:{asset.code}:{timestamp}".encode("utf-8")).hexdigest(), 16)
     drift = Decimal(seed % 100 - 50) / Decimal("100000")
     return core._money(base * (Decimal("1") + drift), places=8)
+
+
+def _bo_order_result_price(entry_price: Decimal, side: BoSide, succeeds: bool, reference_code: str) -> Decimal:
+    if side == BoSide.BUY:
+        buy_succeeds = succeeds
+    else:
+        buy_succeeds = not succeeds
+    return core._result_price(entry_price, buy_succeeds, reference_code)
 
 
 def _safe_bo_price_at_timestamp(db: Session, asset_code: str, timestamp: int, market: dict | None = None) -> Decimal:
@@ -131,8 +147,16 @@ def _masked_rapid_board(session_code: str | int | None) -> dict:
 def _rapid_result(play_type: RapidPlayType, selection: str, board: dict) -> tuple[int, str]:
     if play_type == RapidPlayType.HEAD:
         result_code = str(board["special"])
-        return len(board["heads"].get(selection, [])), result_code
+        first_five_positions = board["two_digit_positions"][:5]
+        return sum(1 for value in first_five_positions if value.startswith(selection)), result_code
     return ORIGINAL_GET_RAPID_RESULT(play_type, selection, board)
+
+
+def _rapid_success_result(entry: RapidEntry, board: dict) -> tuple[int, str]:
+    result_code = str(board.get("special") or "")
+    if entry.play_type in {RapidPlayType.BAO_LO_2, RapidPlayType.BAO_LO_3, RapidPlayType.XIEN_2, RapidPlayType.XIEN_3, RapidPlayType.HEAD, RapidPlayType.TAIL, RapidPlayType.EVEN_ODD}:
+        return 1, result_code
+    return 0, result_code
 
 
 def place_bo_order(db: Session, *, user: User, asset_code: str, side, stake_amount: Decimal) -> BoOrder:
@@ -195,15 +219,17 @@ def _settle_bo_order(db: Session, order: BoOrder, market: dict | None = None) ->
     treasury = core.ensure_treasury(db)
     wallet = core.ensure_wallet(db, order.user)
     result = ORIGINAL_GET_OR_CREATE_BO_SESSION_RESULT(db, order.session_code, order.asset, market)
-    won = result["result_side"] == order.side.value
+    target_rate = get_member_target_success_rate(db)
+    succeeds = _target_success(order.reference_code, order.user_id, target_rate)
     payout = (core._money(order.stake_amount) * core._money(order.payout_ratio)).quantize(Decimal("0.0001"))
-    order.entry_price = result["entry_price"]
-    order.result_price = result["result_price"]
+    entry_price = core._money(order.entry_price or result["entry_price"], places=8)
+    order.entry_price = entry_price
+    order.result_price = _bo_order_result_price(entry_price, order.side, succeeds, order.reference_code)
     order.settled_at = datetime.now(timezone.utc)
 
-    if won:
+    if succeeds:
         try:
-            core._debit_treasury(db, treasury, payout, "bo_payout", "bo_order", order.reference_code, "BO deferred payout")
+            core._debit_treasury(db, treasury, payout, "bo_payout", "bo_order", order.reference_code, "BO deferred sandbox payout")
         except ValueError:
             order.status = GameRequestStatus.REFUNDED
             order.profit_amount = Decimal("0")
@@ -213,13 +239,13 @@ def _settle_bo_order(db: Session, order: BoOrder, market: dict | None = None) ->
             return
         order.status = GameRequestStatus.WON
         order.profit_amount = (payout - core._money(order.stake_amount)).quantize(Decimal("0.0001"))
-        order.result_note = "deferred_session_settlement"
+        order.result_note = f"sandbox_target_success_rate:{target_rate}"
         wallet.total_profit = core._money(wallet.total_profit) + order.profit_amount
-        core._credit_wallet(db, wallet=wallet, amount=payout, entry_type=WalletLedgerType.BO_PAYOUT, reference_type="bo_order", reference_id=order.reference_code, reason="BO deferred payout")
+        core._credit_wallet(db, wallet=wallet, amount=payout, entry_type=WalletLedgerType.BO_PAYOUT, reference_type="bo_order", reference_id=order.reference_code, reason="BO deferred sandbox payout")
     else:
         order.status = GameRequestStatus.LOST
         order.profit_amount = -core._money(order.stake_amount)
-        order.result_note = "deferred_session_settlement"
+        order.result_note = f"sandbox_target_success_rate:{target_rate}"
         wallet.total_loss = core._money(wallet.total_loss) + core._money(order.stake_amount)
         core.maybe_create_loss_deposit_commissions(db, order.user)
 
@@ -304,7 +330,14 @@ def _settle_rapid_entry(db: Session, entry: RapidEntry) -> None:
     treasury = core.ensure_treasury(db)
     wallet = core.ensure_wallet(db, entry.user)
     board = ORIGINAL_GET_OR_CREATE_RAPID_RESULT_BOARD(db, entry.session_code)
-    hit_count, result_code = _rapid_result(entry.play_type, entry.selection, board)
+    target_rate = get_member_target_success_rate(db)
+    succeeds = _target_success(entry.reference_code, entry.user_id, target_rate)
+    actual_hit_count, result_code = _rapid_result(entry.play_type, entry.selection, board)
+    hit_count = actual_hit_count
+    if succeeds and hit_count <= 0:
+        hit_count, result_code = _rapid_success_result(entry, board)
+    if not succeeds:
+        hit_count = 0
     payout = (core._money(entry.stake_amount) * core._money(entry.payout_ratio) * Decimal(hit_count)).quantize(Decimal("0.0001"))
     entry.hit_count = hit_count
     entry.result_code = result_code
@@ -312,7 +345,7 @@ def _settle_rapid_entry(db: Session, entry: RapidEntry) -> None:
 
     if hit_count > 0:
         try:
-            core._debit_treasury(db, treasury, payout, "rapid_payout", "rapid_entry", entry.reference_code, "Rapid deferred payout")
+            core._debit_treasury(db, treasury, payout, "rapid_payout", "rapid_entry", entry.reference_code, "Rapid deferred sandbox payout")
         except ValueError:
             entry.status = GameRequestStatus.REFUNDED
             entry.result_amount = Decimal("0")
@@ -322,7 +355,7 @@ def _settle_rapid_entry(db: Session, entry: RapidEntry) -> None:
         entry.status = GameRequestStatus.WON
         entry.result_amount = payout
         wallet.total_profit = core._money(wallet.total_profit) + (payout - core._money(entry.stake_amount))
-        core._credit_wallet(db, wallet=wallet, amount=payout, entry_type=WalletLedgerType.RAPID_PAYOUT, reference_type="rapid_entry", reference_id=entry.reference_code, reason="Rapid deferred payout")
+        core._credit_wallet(db, wallet=wallet, amount=payout, entry_type=WalletLedgerType.RAPID_PAYOUT, reference_type="rapid_entry", reference_id=entry.reference_code, reason="Rapid deferred sandbox payout")
     else:
         entry.status = GameRequestStatus.LOST
         entry.result_amount = Decimal("0")
@@ -371,6 +404,7 @@ core.get_recent_bo_session_results = get_recent_bo_session_results
 core.place_bo_order = place_bo_order
 core.get_or_create_rapid_result_board = get_or_create_rapid_result_board
 core.get_recent_rapid_result_boards = get_recent_rapid_result_boards
+core.place_bo_order = place_bo_order
 core.place_rapid_entry = place_rapid_entry
 core.settle_due_bo_orders = settle_due_bo_orders
 core.settle_due_rapid_entries = settle_due_rapid_entries
