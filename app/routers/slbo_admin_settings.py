@@ -19,6 +19,7 @@ from app.models import (
     User,
 )
 from app.services.slbo import bo_session_clock, ensure_treasury, rapid_session_clock, sandbox_flags
+from app.services.slbo_member_outcome_settings import profit_percent, settings_map, update_setting
 from app.services.slbo_outcome_settings import get_slbo_outcome_settings, update_member_target_success_rate
 
 
@@ -63,6 +64,8 @@ def admin_slbo_with_outcome_settings(request: Request, db: Session = Depends(get
     members = db.query(User).filter(User.is_admin.is_(False)).order_by(User.created_at.desc()).limit(300).all()
     wallets = db.query(InternalWallet).order_by(InternalWallet.updated_at.desc()).limit(300).all()
     wallet_by_user = {wallet.user_id: wallet for wallet in wallets}
+    member_profit_percent = {member.id: profit_percent(wallet_by_user.get(member.id)) for member in members}
+    member_policy_settings = settings_map(db, members)
     treasury = ensure_treasury(db)
     orders = db.query(BoOrder).order_by(BoOrder.created_at.desc()).limit(40).all()
     entries = db.query(RapidEntry).order_by(RapidEntry.created_at.desc()).limit(40).all()
@@ -84,6 +87,8 @@ def admin_slbo_with_outcome_settings(request: Request, db: Session = Depends(get
             admin=admin,
             members=members,
             wallet_by_user=wallet_by_user,
+            member_profit_percent=member_profit_percent,
+            member_policy_settings=member_policy_settings,
             treasury=treasury,
             orders=orders,
             entries=entries,
@@ -121,3 +126,36 @@ def update_slbo_outcome_settings(
         db.rollback()
         return RedirectResponse(f"/admin/slbo?lang={locale}&error=invalid_success_rate", status_code=303)
     return RedirectResponse(f"/admin/slbo?lang={locale}&outcome_updated=1", status_code=303)
+
+
+@router.post("/admin/slbo/member-profit-cap")
+def update_member_profit_cap(
+    request: Request,
+    db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+    user_id: int = Form(...),
+    profit_cap_percent: str = Form("0"),
+    enabled: str | None = Form(None),
+    note: str = Form(""),
+):
+    verify_csrf(request, csrf_token)
+    admin = require_admin(request, db)
+    locale = resolve_locale(request)
+    member = db.get(User, user_id)
+    if not member or member.is_admin:
+        return RedirectResponse(f"/admin/slbo?lang={locale}&error=invalid_member", status_code=303)
+    try:
+        outcome_settings = get_slbo_outcome_settings(db)
+        update_setting(
+            db,
+            user_id=user_id,
+            target_rate=Decimal(str(outcome_settings["member_target_success_rate"])),
+            guard_percent=Decimal(profit_cap_percent),
+            guard_enabled=enabled == "1",
+            note=note,
+            admin_user_id=admin.id,
+        )
+    except (ValueError, InvalidOperation):
+        db.rollback()
+        return RedirectResponse(f"/admin/slbo?lang={locale}&error=invalid_profit_cap", status_code=303)
+    return RedirectResponse(f"/admin/slbo?lang={locale}&member_profit_cap_updated=1", status_code=303)
