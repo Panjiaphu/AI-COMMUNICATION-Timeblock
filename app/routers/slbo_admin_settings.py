@@ -61,6 +61,29 @@ def _platform_risk_summary(orders: list[BoOrder], entries: list[RapidEntry], tre
     }
 
 
+def _admin_control_context(request: Request, db: Session, admin: User) -> dict:
+    wallets = db.query(InternalWallet).order_by(InternalWallet.updated_at.desc()).limit(300).all()
+    return context(
+        request,
+        admin=admin,
+        positive_member_count=positive_member_count(db, wallets),
+        demo_order_controls=get_controls(db),
+        bo_exposure_controls=get_exposure_controls(db),
+        bo_balance_controls=get_balance_controls(db),
+        sandbox=sandbox_flags(),
+    )
+
+
+@router.get("/admin/slbo/controls")
+def admin_slbo_controls(request: Request, db: Session = Depends(get_db)):
+    admin = require_admin(request, db)
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/slbo_controls.html",
+        context=_admin_control_context(request, db, admin),
+    )
+
+
 @router.get("/admin/slbo")
 def admin_slbo_with_outcome_settings(request: Request, db: Session = Depends(get_db)):
     admin = require_admin(request, db)
@@ -164,8 +187,8 @@ def update_demo_order_controls(
         )
     except (ValueError, InvalidOperation):
         db.rollback()
-        return RedirectResponse(f"/admin/slbo?lang={locale}&error=invalid_demo_controls", status_code=303)
-    return RedirectResponse(f"/admin/slbo?lang={locale}&demo_controls_updated=1", status_code=303)
+        return RedirectResponse(f"/admin/slbo/controls?lang={locale}&error=invalid_demo_controls", status_code=303)
+    return RedirectResponse(f"/admin/slbo/controls?lang={locale}&demo_controls_updated=1", status_code=303)
 
 
 @router.post("/admin/slbo/bo-exposure-controls")
@@ -192,8 +215,8 @@ def update_bo_exposure_controls(
         )
     except (ValueError, InvalidOperation):
         db.rollback()
-        return RedirectResponse(f"/admin/slbo?lang={locale}&error=invalid_exposure_controls", status_code=303)
-    return RedirectResponse(f"/admin/slbo?lang={locale}&bo_exposure_updated=1", status_code=303)
+        return RedirectResponse(f"/admin/slbo/controls?lang={locale}&error=invalid_exposure_controls", status_code=303)
+    return RedirectResponse(f"/admin/slbo/controls?lang={locale}&bo_exposure_updated=1", status_code=303)
 
 
 @router.post("/admin/slbo/bo-balance-controls")
@@ -220,8 +243,8 @@ def update_bo_balance_controls(
         )
     except (ValueError, InvalidOperation):
         db.rollback()
-        return RedirectResponse(f"/admin/slbo?lang={locale}&error=invalid_balance_controls", status_code=303)
-    return RedirectResponse(f"/admin/slbo?lang={locale}&bo_balance_updated=1", status_code=303)
+        return RedirectResponse(f"/admin/slbo/controls?lang={locale}&error=invalid_balance_controls", status_code=303)
+    return RedirectResponse(f"/admin/slbo/controls?lang={locale}&bo_balance_updated=1", status_code=303)
 
 
 @router.post("/admin/slbo/member-profit-cap")
