@@ -68,11 +68,6 @@
           <strong>{{ t("home.card.bo.title") }}</strong>
           <small>{{ t("home.card.bo.desc") }}</small>
         </a>
-        <a class="action-card" href="/rapid?lang={{ locale }}">
-          <span class="icon">{{ icons.icon("spark") }}</span>
-          <strong>{{ t("home.card.rapid.title") }}</strong>
-          <small>{{ t("home.card.rapid.desc") }}</small>
-        </a>
       </div>
     </section>
 
@@ -98,25 +93,6 @@
         <tbody>
           {% for item in bo_orders %}
             <tr><td>{{ item.reference_code }}</td><td>{{ item.asset }} {{ item.side.value|upper }}</td><td>{{ format_price(item.stake_amount) }}</td><td>{{ status_label(item.status) }}</td></tr>
-          {% else %}
-            <tr><td colspan="4" class="empty">{{ t("member.utility_empty") }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="panel">
-    <div class="section-head">
-      <h2>{{ t("rapid.history") }}</h2>
-      <span>{{ rapid_entries|length }}</span>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>{{ t("table.ref") }}</th><th>{{ t("table.type") }}</th><th>{{ t("table.amount") }}</th><th>{{ t("table.result") }}</th></tr></thead>
-        <tbody>
-          {% for item in rapid_entries %}
-            <tr><td>{{ item.reference_code }}</td><td>{{ t("rapid.type." ~ item.play_type.value) }}</td><td>{{ format_price(item.stake_amount) }}</td><td>{{ status_label(item.status) }}</td></tr>
           {% else %}
             <tr><td colspan="4" class="empty">{{ t("member.utility_empty") }}</td></tr>
           {% endfor %}
