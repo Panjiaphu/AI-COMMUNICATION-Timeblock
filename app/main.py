@@ -9,6 +9,7 @@ from app.core.security import SessionMiddleware, ensure_admin_bootstrap
 from app.db.session import Base, SessionLocal, engine
 from app.services import slbo_settlement_guard  # noqa: F401
 from app.services import slbo_member_profit_cap  # noqa: F401
+from app.services import slbo_exposure_wrapper  # noqa: F401
 from app.routers import admin, agent, auth, member, public, slbo, slbo_admin_settings, webhooks
 from app.services.commercial import ensure_default_utilities
 from app.services.rates import ensure_default_rates
@@ -83,78 +84,75 @@ def _drop_orphan_postgres_enum_types() -> None:
             ).scalar()
             if not enum_exists:
                 continue
-
-            enum_is_used = conn.execute(
+            referenced = conn.execute(
                 text(
                     """
                     SELECT EXISTS (
                         SELECT 1
                         FROM pg_attribute a
-                        JOIN pg_type t ON a.atttypid = t.oid
-                        JOIN pg_class c ON a.attrelid = c.oid
-                        JOIN pg_namespace n ON n.oid = t.typnamespace
-                        WHERE t.typname = :enum_name
-                          AND n.nspname = current_schema()
-                          AND c.relkind IN ('r', 'p')
+                        JOIN pg_class c ON c.oid = a.attrelid
+                        JOIN pg_namespace n ON n.oid = c.relnamespace
+                        WHERE a.atttypid = (
+                            SELECT t.oid
+                            FROM pg_type t
+                            JOIN pg_namespace tn ON tn.oid = t.typnamespace
+                            WHERE t.typname = :enum_name
+                              AND tn.nspname = current_schema()
+                        )
+                          AND a.attnum > 0
                           AND NOT a.attisdropped
+                          AND c.relkind IN ('r', 'p')
+                          AND n.nspname = current_schema()
                     )
                     """
                 ),
                 {"enum_name": enum_name},
             ).scalar()
-            if enum_is_used:
-                continue
-
-            conn.execute(text(f'DROP TYPE "{enum_name}"'))
+            if not referenced:
+                conn.execute(text(f'DROP TYPE IF EXISTS "{enum_name}"'))
 
 
-def _prepare_database_bootstrap() -> None:
-    _disable_native_enums_for_bootstrap_create_all()
-    _drop_orphan_postgres_enum_types()
+settings = get_settings()
+_disable_native_enums_for_bootstrap_create_all()
+_drop_orphan_postgres_enum_types()
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title=settings.app_name, debug=settings.debug)
+app.add_middleware(SessionMiddleware)
+app.add_middleware(SecurityFirewallMiddleware)
+app.mount("/static", StaticFiles(directory=BASE_DIR / "app" / "static"), name="static")
 
 
-def create_app() -> FastAPI:
-    settings = get_settings()
-    app = FastAPI(title=settings.app_name, debug=settings.debug)
-    app.add_middleware(SessionMiddleware)
-    app.add_middleware(SecurityFirewallMiddleware)
-    app.mount("/static", StaticFiles(directory=str(BASE_DIR / "app" / "static")), name="static")
-    app.include_router(public.router)
-    app.include_router(auth.router)
-    app.include_router(member.router)
-    app.include_router(slbo_admin_settings.router)
-    app.include_router(slbo.router)
-    app.include_router(admin.router)
-    app.include_router(agent.router)
-    app.include_router(webhooks.router)
-
-    @app.on_event("startup")
-    def startup() -> None:
-        _prepare_database_bootstrap()
-        Base.metadata.create_all(bind=engine)
-        ensure_admin_bootstrap()
-        with SessionLocal() as db:
-            ensure_default_rates(db)
-            ensure_default_utilities(db)
-            ensure_default_playbooks(db)
-            ensure_all_user_referral_identities(db)
-
-    @app.middleware("http")
-    async def locale_cookie(request: Request, call_next):
-        response = await call_next(request)
-        locale = resolve_locale(request)
-        response.set_cookie("lang", locale, max_age=60 * 60 * 24 * 365, samesite="lax")
-        return response
-
-    @app.get("/healthz/")
-    def healthz():
-        return {"status": "ok", "app": settings.app_name}
-
-    @app.get("/dashboard")
-    def dashboard_redirect():
-        return RedirectResponse("/member", status_code=303)
-
-    return app
+@app.on_event("startup")
+def startup_tasks() -> None:
+    with SessionLocal() as db:
+        ensure_default_rates(db)
+        ensure_default_utilities(db)
+        ensure_all_user_referral_identities(db)
+        ensure_default_playbooks(db)
+        ensure_admin_bootstrap(db)
 
 
-app = create_app()
+app.include_router(public.router)
+app.include_router(auth.router)
+app.include_router(member.router)
+app.include_router(admin.router)
+app.include_router(slbo.router)
+app.include_router(slbo_admin_settings.router)
+app.include_router(agent.router)
+app.include_router(webhooks.router)
+
+
+@app.get("/language/{locale}")
+def set_language(locale: str, request: Request):
+    if locale not in settings.supported_locales:
+        locale = settings.default_locale
+    request.session["locale"] = locale
+    redirect_to = request.headers.get("referer") or "/"
+    return RedirectResponse(redirect_to)
+
+
+@app.exception_handler(404)
+def not_found(request: Request, exc):
+    locale = resolve_locale(request)
+    return RedirectResponse(f"/?lang={locale}", status_code=302)
