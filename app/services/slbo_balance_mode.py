@@ -6,9 +6,8 @@ from decimal import Decimal, InvalidOperation
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.models import BoSessionResult
+from app.models import BoOrder, BoSessionResult, GameRequestStatus
 from app.services import slbo as core
-from app.services.slbo_exposure_guard import session_side_totals
 
 
 def _amount(value, places: str = "0.0001") -> Decimal:
@@ -17,6 +16,34 @@ def _amount(value, places: str = "0.0001") -> Decimal:
     except (InvalidOperation, ValueError) as exc:
         raise ValueError("invalid_balance_mode_setting") from exc
     return parsed if parsed > 0 else Decimal("0")
+
+
+def _session_side_totals(db: Session, *, session_code: str, asset_code: str) -> dict:
+    rows = (
+        db.query(BoOrder)
+        .filter(BoOrder.session_code == str(session_code), BoOrder.asset == asset_code.strip().upper())
+        .all()
+    )
+    active = {GameRequestStatus.ACCEPTED, GameRequestStatus.WON, GameRequestStatus.LOST}
+    buy_total = Decimal("0.0000")
+    sell_total = Decimal("0.0000")
+    for row in rows:
+        if row.status not in active:
+            continue
+        if row.side.value == "buy":
+            buy_total += _amount(row.stake_amount)
+        elif row.side.value == "sell":
+            sell_total += _amount(row.stake_amount)
+    total = buy_total + sell_total
+    gap_percent = Decimal("0.00")
+    if total > 0:
+        gap_percent = (abs(buy_total - sell_total) / total * Decimal("100")).quantize(Decimal("0.01"))
+    return {
+        "buy_total": buy_total,
+        "sell_total": sell_total,
+        "total": total,
+        "gap_percent": gap_percent,
+    }
 
 
 def ensure_table(db: Session) -> None:
@@ -108,7 +135,7 @@ def update_balance_controls(
 
 def _selected_low_exposure_side(db: Session, *, session_code: str, asset_code: str) -> tuple[str, dict] | tuple[None, dict]:
     controls = get_balance_controls(db)
-    snapshot = session_side_totals(db, session_code=session_code, asset_code=asset_code)
+    snapshot = _session_side_totals(db, session_code=session_code, asset_code=asset_code)
     if not controls["enabled"]:
         return None, {**snapshot, "reason": "balance_mode_disabled"}
     if _amount(snapshot["total"]) < _amount(controls["min_total_stake"]):
