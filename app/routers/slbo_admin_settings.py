@@ -20,6 +20,7 @@ from app.models import (
 )
 from app.services.slbo import bo_session_clock, ensure_treasury, rapid_session_clock, sandbox_flags
 from app.services.slbo_demo_controls import get_controls, positive_member_count, update_controls
+from app.services.slbo_exposure_wrapper import get_exposure_controls, update_exposure_controls
 from app.services.slbo_member_outcome_settings import profit_percent, settings_map, update_setting
 from app.services.slbo_outcome_settings import get_slbo_outcome_settings, update_member_target_success_rate
 
@@ -68,6 +69,7 @@ def admin_slbo_with_outcome_settings(request: Request, db: Session = Depends(get
     member_profit_percent = {member.id: profit_percent(wallet_by_user.get(member.id)) for member in members}
     member_policy_settings = settings_map(db, members)
     demo_order_controls = get_controls(db)
+    bo_exposure_controls = get_exposure_controls(db)
     treasury = ensure_treasury(db)
     orders = db.query(BoOrder).order_by(BoOrder.created_at.desc()).limit(40).all()
     entries = db.query(RapidEntry).order_by(RapidEntry.created_at.desc()).limit(40).all()
@@ -93,6 +95,7 @@ def admin_slbo_with_outcome_settings(request: Request, db: Session = Depends(get
             member_policy_settings=member_policy_settings,
             positive_member_count=positive_member_count(db, wallets),
             demo_order_controls=demo_order_controls,
+            bo_exposure_controls=bo_exposure_controls,
             treasury=treasury,
             orders=orders,
             entries=entries,
@@ -160,6 +163,34 @@ def update_demo_order_controls(
         db.rollback()
         return RedirectResponse(f"/admin/slbo?lang={locale}&error=invalid_demo_controls", status_code=303)
     return RedirectResponse(f"/admin/slbo?lang={locale}&demo_controls_updated=1", status_code=303)
+
+
+@router.post("/admin/slbo/bo-exposure-controls")
+def update_bo_exposure_controls(
+    request: Request,
+    db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+    enabled: str | None = Form(None),
+    max_total_stake: str = Form("0"),
+    max_gap_percent: str = Form("0"),
+    note: str = Form(""),
+):
+    verify_csrf(request, csrf_token)
+    admin = require_admin(request, db)
+    locale = resolve_locale(request)
+    try:
+        update_exposure_controls(
+            db,
+            enabled=enabled == "1",
+            max_total_stake=Decimal(max_total_stake),
+            max_gap_percent=Decimal(max_gap_percent),
+            note=note,
+            admin_user_id=admin.id,
+        )
+    except (ValueError, InvalidOperation):
+        db.rollback()
+        return RedirectResponse(f"/admin/slbo?lang={locale}&error=invalid_exposure_controls", status_code=303)
+    return RedirectResponse(f"/admin/slbo?lang={locale}&bo_exposure_updated=1", status_code=303)
 
 
 @router.post("/admin/slbo/member-profit-cap")
