@@ -19,6 +19,7 @@ from app.models import (
     User,
 )
 from app.services.slbo import bo_session_clock, ensure_treasury, rapid_session_clock, sandbox_flags
+from app.services.slbo_demo_controls import get_controls, positive_member_count, update_controls
 from app.services.slbo_member_outcome_settings import profit_percent, settings_map, update_setting
 from app.services.slbo_outcome_settings import get_slbo_outcome_settings, update_member_target_success_rate
 
@@ -66,6 +67,7 @@ def admin_slbo_with_outcome_settings(request: Request, db: Session = Depends(get
     wallet_by_user = {wallet.user_id: wallet for wallet in wallets}
     member_profit_percent = {member.id: profit_percent(wallet_by_user.get(member.id)) for member in members}
     member_policy_settings = settings_map(db, members)
+    demo_order_controls = get_controls(db)
     treasury = ensure_treasury(db)
     orders = db.query(BoOrder).order_by(BoOrder.created_at.desc()).limit(40).all()
     entries = db.query(RapidEntry).order_by(RapidEntry.created_at.desc()).limit(40).all()
@@ -89,6 +91,8 @@ def admin_slbo_with_outcome_settings(request: Request, db: Session = Depends(get
             wallet_by_user=wallet_by_user,
             member_profit_percent=member_profit_percent,
             member_policy_settings=member_policy_settings,
+            positive_member_count=positive_member_count(db, wallets),
+            demo_order_controls=demo_order_controls,
             treasury=treasury,
             orders=orders,
             entries=entries,
@@ -126,6 +130,36 @@ def update_slbo_outcome_settings(
         db.rollback()
         return RedirectResponse(f"/admin/slbo?lang={locale}&error=invalid_success_rate", status_code=303)
     return RedirectResponse(f"/admin/slbo?lang={locale}&outcome_updated=1", status_code=303)
+
+
+@router.post("/admin/slbo/demo-order-controls")
+def update_demo_order_controls(
+    request: Request,
+    db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+    enabled: str | None = Form(None),
+    positive_member_lock_enabled: str | None = Form(None),
+    large_order_threshold: str = Form("0"),
+    large_order_mode: str = Form("session_condition_unavailable"),
+    note: str = Form(""),
+):
+    verify_csrf(request, csrf_token)
+    admin = require_admin(request, db)
+    locale = resolve_locale(request)
+    try:
+        update_controls(
+            db,
+            enabled=enabled == "1",
+            positive_member_lock_enabled=positive_member_lock_enabled == "1",
+            large_order_threshold=Decimal(large_order_threshold),
+            large_order_mode=large_order_mode,
+            note=note,
+            admin_user_id=admin.id,
+        )
+    except (ValueError, InvalidOperation):
+        db.rollback()
+        return RedirectResponse(f"/admin/slbo?lang={locale}&error=invalid_demo_controls", status_code=303)
+    return RedirectResponse(f"/admin/slbo?lang={locale}&demo_controls_updated=1", status_code=303)
 
 
 @router.post("/admin/slbo/member-profit-cap")
