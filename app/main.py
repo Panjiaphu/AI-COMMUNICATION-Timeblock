@@ -130,7 +130,7 @@ def startup_tasks() -> None:
         ensure_default_utilities(db)
         ensure_all_user_referral_identities(db)
         ensure_default_playbooks(db)
-        ensure_admin_bootstrap(db)
+    ensure_admin_bootstrap()
 
 
 app.include_router(public.router)
