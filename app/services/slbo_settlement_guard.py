@@ -7,7 +7,7 @@ import time
 
 from sqlalchemy.orm import Session
 
-from app.models import BoOrder, BoSide, GameRequestStatus, RapidEntry, RapidPlayType, User, WalletLedgerType
+from app.models import BoOrder, GameRequestStatus, RapidEntry, RapidPlayType, User, WalletLedgerType
 from app.services import slbo as core
 from app.services.slbo_outcome_settings import get_member_target_success_rate
 
@@ -56,14 +56,6 @@ def _live_price(asset_code: str, timestamp: int, market: dict | None = None) -> 
     seed = int(hashlib.sha256(f"live-price:{asset.code}:{timestamp}".encode("utf-8")).hexdigest(), 16)
     drift = Decimal(seed % 100 - 50) / Decimal("100000")
     return core._money(base * (Decimal("1") + drift), places=8)
-
-
-def _bo_order_result_price(entry_price: Decimal, side: BoSide, succeeds: bool, reference_code: str) -> Decimal:
-    if side == BoSide.BUY:
-        buy_succeeds = succeeds
-    else:
-        buy_succeeds = not succeeds
-    return core._result_price(entry_price, buy_succeeds, reference_code)
 
 
 def _safe_bo_price_at_timestamp(db: Session, asset_code: str, timestamp: int, market: dict | None = None) -> Decimal:
@@ -202,7 +194,7 @@ def place_bo_order(db: Session, *, user: User, asset_code: str, side, stake_amou
         result_price=Decimal("0"),
         status=GameRequestStatus.ACCEPTED,
         profit_amount=Decimal("0"),
-        result_note="pending_session_result",
+        result_note="pending_canonical_session_result",
         settled_at=None,
     )
     db.add(order)
@@ -219,17 +211,15 @@ def _settle_bo_order(db: Session, order: BoOrder, market: dict | None = None) ->
     treasury = core.ensure_treasury(db)
     wallet = core.ensure_wallet(db, order.user)
     result = ORIGINAL_GET_OR_CREATE_BO_SESSION_RESULT(db, order.session_code, order.asset, market)
-    target_rate = get_member_target_success_rate(db)
-    succeeds = _target_success(order.reference_code, order.user_id, target_rate)
+    result_side = str(result["result_side"])
+    won = order.side.value == result_side
     payout = (core._money(order.stake_amount) * core._money(order.payout_ratio)).quantize(Decimal("0.0001"))
-    entry_price = core._money(order.entry_price or result["entry_price"], places=8)
-    order.entry_price = entry_price
-    order.result_price = _bo_order_result_price(entry_price, order.side, succeeds, order.reference_code)
+    order.result_price = core._money(result["result_price"], places=8)
     order.settled_at = datetime.now(timezone.utc)
 
-    if succeeds:
+    if won:
         try:
-            core._debit_treasury(db, treasury, payout, "bo_payout", "bo_order", order.reference_code, "BO deferred sandbox payout")
+            core._debit_treasury(db, treasury, payout, "bo_payout", "bo_order", order.reference_code, "BO canonical session payout")
         except ValueError:
             order.status = GameRequestStatus.REFUNDED
             order.profit_amount = Decimal("0")
@@ -239,13 +229,13 @@ def _settle_bo_order(db: Session, order: BoOrder, market: dict | None = None) ->
             return
         order.status = GameRequestStatus.WON
         order.profit_amount = (payout - core._money(order.stake_amount)).quantize(Decimal("0.0001"))
-        order.result_note = f"sandbox_target_success_rate:{target_rate}"
+        order.result_note = f"canonical_session_result:{result_side}"
         wallet.total_profit = core._money(wallet.total_profit) + order.profit_amount
-        core._credit_wallet(db, wallet=wallet, amount=payout, entry_type=WalletLedgerType.BO_PAYOUT, reference_type="bo_order", reference_id=order.reference_code, reason="BO deferred sandbox payout")
+        core._credit_wallet(db, wallet=wallet, amount=payout, entry_type=WalletLedgerType.BO_PAYOUT, reference_type="bo_order", reference_id=order.reference_code, reason="BO canonical session payout")
     else:
         order.status = GameRequestStatus.LOST
         order.profit_amount = -core._money(order.stake_amount)
-        order.result_note = f"sandbox_target_success_rate:{target_rate}"
+        order.result_note = f"canonical_session_result:{result_side}"
         wallet.total_loss = core._money(wallet.total_loss) + core._money(order.stake_amount)
         core.maybe_create_loss_deposit_commissions(db, order.user)
 
@@ -404,7 +394,6 @@ core.get_recent_bo_session_results = get_recent_bo_session_results
 core.place_bo_order = place_bo_order
 core.get_or_create_rapid_result_board = get_or_create_rapid_result_board
 core.get_recent_rapid_result_boards = get_recent_rapid_result_boards
-core.place_bo_order = place_bo_order
 core.place_rapid_entry = place_rapid_entry
 core.settle_due_bo_orders = settle_due_bo_orders
 core.settle_due_rapid_entries = settle_due_rapid_entries
