@@ -5,6 +5,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.models import BoOrder, GameRequestStatus
+from app.services import slbo_balance_wrapper  # noqa: F401
 
 
 def _amount(value) -> Decimal:
