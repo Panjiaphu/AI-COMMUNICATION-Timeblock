@@ -18,7 +18,9 @@ def _amount(value, places="0.0001") -> Decimal:
         parsed = Decimal(str(value or 0)).quantize(Decimal(places))
     except (InvalidOperation, ValueError) as exc:
         raise ValueError("invalid_exposure_setting") from exc
-    return parsed if parsed > 0 else Decimal(places)
+    if parsed < 0:
+        return Decimal("0").quantize(Decimal(places))
+    return parsed
 
 
 def ensure_table(db: Session) -> None:
