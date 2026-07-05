@@ -19,6 +19,7 @@ from app.models import (
     User,
 )
 from app.services.slbo import bo_session_clock, ensure_treasury, rapid_session_clock, sandbox_flags
+from app.services.slbo_balance_mode import get_balance_controls, update_balance_controls
 from app.services.slbo_demo_controls import get_controls, positive_member_count, update_controls
 from app.services.slbo_exposure_wrapper import get_exposure_controls, update_exposure_controls
 from app.services.slbo_member_outcome_settings import profit_percent, settings_map, update_setting
@@ -70,6 +71,7 @@ def admin_slbo_with_outcome_settings(request: Request, db: Session = Depends(get
     member_policy_settings = settings_map(db, members)
     demo_order_controls = get_controls(db)
     bo_exposure_controls = get_exposure_controls(db)
+    bo_balance_controls = get_balance_controls(db)
     treasury = ensure_treasury(db)
     orders = db.query(BoOrder).order_by(BoOrder.created_at.desc()).limit(40).all()
     entries = db.query(RapidEntry).order_by(RapidEntry.created_at.desc()).limit(40).all()
@@ -96,6 +98,7 @@ def admin_slbo_with_outcome_settings(request: Request, db: Session = Depends(get
             positive_member_count=positive_member_count(db, wallets),
             demo_order_controls=demo_order_controls,
             bo_exposure_controls=bo_exposure_controls,
+            bo_balance_controls=bo_balance_controls,
             treasury=treasury,
             orders=orders,
             entries=entries,
@@ -191,6 +194,34 @@ def update_bo_exposure_controls(
         db.rollback()
         return RedirectResponse(f"/admin/slbo?lang={locale}&error=invalid_exposure_controls", status_code=303)
     return RedirectResponse(f"/admin/slbo?lang={locale}&bo_exposure_updated=1", status_code=303)
+
+
+@router.post("/admin/slbo/bo-balance-controls")
+def update_bo_balance_controls(
+    request: Request,
+    db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+    enabled: str | None = Form(None),
+    min_total_stake: str = Form("100"),
+    min_gap_percent: str = Form("20"),
+    note: str = Form(""),
+):
+    verify_csrf(request, csrf_token)
+    admin = require_admin(request, db)
+    locale = resolve_locale(request)
+    try:
+        update_balance_controls(
+            db,
+            enabled=enabled == "1",
+            min_total_stake=Decimal(min_total_stake),
+            min_gap_percent=Decimal(min_gap_percent),
+            note=note,
+            admin_user_id=admin.id,
+        )
+    except (ValueError, InvalidOperation):
+        db.rollback()
+        return RedirectResponse(f"/admin/slbo?lang={locale}&error=invalid_balance_controls", status_code=303)
+    return RedirectResponse(f"/admin/slbo?lang={locale}&bo_balance_updated=1", status_code=303)
 
 
 @router.post("/admin/slbo/member-profit-cap")
