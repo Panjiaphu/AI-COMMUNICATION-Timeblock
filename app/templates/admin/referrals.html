@@ -4,8 +4,6 @@
 <section class="admin-shell referral-admin-page">
   <div class="admin-nav panel">
     <a href="/admin?lang={{ locale }}">{{ t("admin.dashboard") }}</a>
-    <a href="/admin/posts/jobs?lang={{ locale }}">{{ t("admin.hub.jobs") }}</a>
-    <a href="/admin/posts/shop?lang={{ locale }}">{{ t("admin.hub.shop") }}</a>
     <a href="/admin/posts/crypto-analysis?lang={{ locale }}">{{ t("admin.hub.crypto_analysis") }}</a>
     <a href="/admin/referrals?lang={{ locale }}">{{ t("referral.admin_title") }}</a>
     <a href="/admin/ai-agents?lang={{ locale }}">{{ t("admin.hub.ai_agents") }}</a>
@@ -78,73 +76,17 @@
 
   <section class="panel">
     <div class="section-head">
-      <h2>{{ t("referral.member_network") }}</h2>
-      <span>{{ members|length }}</span>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>UID</th><th>Email</th><th>{{ t("referral.sponsor") }}</th><th>L1</th><th>L2</th><th>L3</th><th>{{ t("table.created") }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for member in members %}
-            {% set summaries = member_referral_counts.get(member.id, []) %}
-            <tr>
-              <td>{{ member.uid }}</td>
-              <td>{{ member.email }}</td>
-              <td>{% if member.sponsor %}{{ member.sponsor.uid }}{% else %}-{% endif %}</td>
-              <td>{{ summaries[0].count if summaries|length > 0 else 0 }}</td>
-              <td>{{ summaries[1].count if summaries|length > 1 else 0 }}</td>
-              <td>{{ summaries[2].count if summaries|length > 2 else 0 }}</td>
-              <td>{{ member.created_at.strftime("%Y-%m-%d") }}</td>
-            </tr>
-          {% else %}
-            <tr><td colspan="7" class="empty">{{ t("referral.empty_members") }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="panel">
-    <div class="section-head">
-      <h2>{{ t("referral.commission_ledger") }}</h2>
+      <h2>{{ t("referral.commission_history") }}</h2>
       <span>{{ commissions|length }}</span>
     </div>
     <div class="table-wrap">
       <table>
-        <thead>
-          <tr>
-            <th>{{ t("referral.ref") }}</th><th>{{ t("referral.beneficiary") }}</th><th>{{ t("referral.source_member") }}</th><th>{{ t("referral.level") }}</th><th>{{ t("referral.type") }}</th><th>{{ t("referral.base") }}</th><th>{{ t("referral.amount") }}</th><th>{{ t("referral.status") }}</th><th></th>
-          </tr>
-        </thead>
+        <thead><tr><th>{{ t("referral.ref") }}</th><th>{{ t("referral.member") }}</th><th>{{ t("referral.type") }}</th><th>{{ t("referral.amount") }}</th><th>{{ t("referral.status") }}</th></tr></thead>
         <tbody>
           {% for item in commissions %}
-            <tr>
-              <td>{{ item.reference_code }}</td>
-              <td>{{ item.beneficiary.uid }}<br><small>{{ item.beneficiary.email }}</small></td>
-              <td>{{ item.source_user.uid }}<br><small>{{ item.source_user.email }}</small></td>
-              <td>{{ item.level }}</td>
-              <td>{{ t("referral.type_" ~ item.commission_type.value) }}</td>
-              <td>{{ format_price(item.base_amount) }} {{ item.currency }}</td>
-              <td>{{ format_price(item.amount) }} {{ item.currency }}</td>
-              <td>{{ t("referral.status_" ~ item.status.value) }}</td>
-              <td>
-                <form method="post" action="/admin/referrals/commissions/{{ item.id }}/status" class="mini-form">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                  <select name="status">
-                    {% for state in commission_statuses %}
-                      <option value="{{ state.value }}" {% if item.status == state %}selected{% endif %}>{{ t("referral.status_" ~ state.value) }}</option>
-                    {% endfor %}
-                  </select>
-                  <button class="button small" type="submit">{{ t("admin.save") }}</button>
-                </form>
-              </td>
-            </tr>
+            <tr><td>{{ item.reference_code }}</td><td>{{ item.user.email if item.user else item.user_id }}</td><td>{{ item.commission_type.value }}</td><td>{{ format_price(item.amount) }}</td><td>{{ item.status.value }}</td></tr>
           {% else %}
-            <tr><td colspan="9" class="empty">{{ t("referral.empty_commission") }}</td></tr>
+            <tr><td colspan="5" class="empty">{{ t("referral.empty_commission") }}</td></tr>
           {% endfor %}
         </tbody>
       </table>
