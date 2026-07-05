@@ -88,6 +88,58 @@
     <p class="muted">Current setting: {{ outcome_settings.member_target_success_rate if outcome_settings else 45 }}%. Applies only to sandbox/internal point settlement after a session is complete.</p>
   </section>
 
+  <section class="panel risk-guard-panel">
+    <div class="section-head">
+      <div>
+        <h2>Per-member profit cap</h2>
+        <p class="muted">Transparent demo control: when a member reaches the saved profit cap, new BO/Rapid orders are blocked. Existing accepted orders still use canonical session results.</p>
+      </div>
+      <span class="badge warn">Risk lock</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>UID</th>
+            <th>Email</th>
+            <th>Balance</th>
+            <th>Total P/L</th>
+            <th>Current P/L %</th>
+            <th>Profit cap</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for member in members %}
+            {% set wallet = wallet_by_user.get(member.id) %}
+            {% set setting = member_policy_settings.get(member.id) if member_policy_settings else none %}
+            <tr>
+              <td>{{ member.uid or member.id }}</td>
+              <td>{{ member.email }}</td>
+              <td>{{ format_price(wallet.available_balance if wallet else 0) }}</td>
+              <td>
+                <small>Profit: {{ format_price(wallet.total_profit if wallet else 0) }}</small><br>
+                <small>Loss: {{ format_price(wallet.total_loss if wallet else 0) }}</small>
+              </td>
+              <td>{{ member_profit_percent.get(member.id, 0) if member_profit_percent else 0 }}%</td>
+              <td>
+                <form class="mini-form" method="post" action="/admin/slbo/member-profit-cap?lang={{ locale }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <input type="hidden" name="user_id" value="{{ member.id }}">
+                  <input type="number" name="profit_cap_percent" min="0" max="100" step="0.01" value="{{ setting.positive_profit_guard_percent if setting else 0 }}" required>
+                  <label><input type="checkbox" name="enabled" value="1" {% if setting and setting.guard_enabled %}checked{% endif %}> enabled</label>
+                  <input name="note" value="{{ setting.note if setting else '' }}" placeholder="Internal note">
+                  <button class="button small primary" type="submit">Save</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" class="empty">{{ t("member.utility_empty") }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="layout">
     <div class="panel">
       <div class="section-head">
