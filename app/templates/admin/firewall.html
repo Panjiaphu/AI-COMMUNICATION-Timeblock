@@ -4,8 +4,6 @@
 <section class="admin-shell">
   <div class="admin-nav panel">
     <a href="/admin?lang={{ locale }}">Dashboard</a>
-    <a href="/admin/posts/jobs?lang={{ locale }}">Job Posts</a>
-    <a href="/admin/posts/shop?lang={{ locale }}">Shop Posts</a>
     <a href="/admin/posts/crypto-analysis?lang={{ locale }}">Crypto Analysis</a>
     <a href="/admin/referrals?lang={{ locale }}">{{ t("admin.hub.referrals") }}</a>
     <a href="/admin/ai-agents?lang={{ locale }}">AI Agents</a>
@@ -91,108 +89,6 @@
         </table>
       </div>
     </section>
-
-    <aside class="panel compact">
-      <span class="icon">{{ icons.icon("shield") }}</span>
-      <h2>{{ t("firewall.top_ips") }}</h2>
-      <div class="contact-list">
-        {% for ip, count in security_summary.top_ips %}
-          <span>{{ ip }}<strong>{{ count }}</strong></span>
-        {% else %}
-          <span>{{ t("firewall.no_events") }}</span>
-        {% endfor %}
-      </div>
-      <div class="support-box">
-        <h3>{{ t("firewall.limits") }}</h3>
-        <p>{{ t("firewall.limits_desc") }}</p>
-      </div>
-    </aside>
-  </section>
-
-  <section class="panel">
-    <div class="section-head">
-      <div>
-        <h2>{{ t("firewall.incidents") }}</h2>
-        <span>{{ t("firewall.incidents_desc") }}</span>
-      </div>
-    </div>
-    <div class="table-wrap">
-      <table class="coin-table">
-        <thead><tr><th>{{ t("firewall.incident") }}</th><th>{{ t("firewall.severity") }}</th><th>{{ t("firewall.status") }}</th><th>{{ t("firewall.last_seen") }}</th><th></th></tr></thead>
-        <tbody>
-          {% for incident in incidents %}
-            <tr>
-              <td><strong>{{ incident.title }}</strong><br><span class="muted">{{ incident.affected_ip }} · {{ incident.event_count }} events</span></td>
-              <td>{{ incident.severity }}</td>
-              <td>{{ incident.status }}</td>
-              <td>{{ incident.last_seen_at or incident.created_at }}</td>
-              <td>
-                <form method="post" action="/admin/firewall/incidents/{{ incident.id }}" class="inline-form">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                  <select name="status">
-                    {% for value in ["open", "investigating", "contained", "resolved", "false_positive"] %}
-                      <option value="{{ value }}" {% if incident.status == value %}selected{% endif %}>{{ value }}</option>
-                    {% endfor %}
-                  </select>
-                  <input name="resolution_note" placeholder="{{ t("firewall.resolution_note") }}" value="{{ incident.resolution_note }}">
-                  <button class="button small ghost" type="submit">{{ t("admin.save") }}</button>
-                </form>
-              </td>
-            </tr>
-          {% else %}
-            <tr><td colspan="5">{{ t("firewall.no_incidents") }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="panel">
-    <div class="section-head">
-      <div>
-        <h2>{{ t("firewall.playbooks") }}</h2>
-        <span>{{ t("firewall.playbooks_desc") }}</span>
-      </div>
-    </div>
-    <div class="playbook-grid">
-      {% for playbook in playbooks %}
-        <article class="playbook-card">
-          <h3>{{ playbook.title }}</h3>
-          <p>{{ playbook.description }}</p>
-          <strong>{{ t("firewall.immediate_steps") }}</strong>
-          <p>{{ playbook.immediate_steps }}</p>
-          <strong>{{ t("firewall.prevention_steps") }}</strong>
-          <p>{{ playbook.prevention_steps }}</p>
-        </article>
-      {% endfor %}
-    </div>
-  </section>
-
-  <section class="panel">
-    <div class="section-head">
-      <div>
-        <h2>{{ t("firewall.events") }}</h2>
-        <span>{{ t("firewall.events_desc") }}</span>
-      </div>
-    </div>
-    <div class="table-wrap">
-      <table class="coin-table">
-        <thead><tr><th>{{ t("firewall.event") }}</th><th>IP</th><th>Path</th><th>{{ t("firewall.risk") }}</th><th>{{ t("crypto.updated") }}</th></tr></thead>
-        <tbody>
-          {% for event in events %}
-            <tr>
-              <td><strong>{{ event.event_type }}</strong><br><span class="muted">{{ event.severity }}</span></td>
-              <td>{{ event.ip_address }}</td>
-              <td>{{ event.method }} {{ event.path }}</td>
-              <td>{{ event.risk_score }}</td>
-              <td>{{ event.created_at }}</td>
-            </tr>
-          {% else %}
-            <tr><td colspan="5">{{ t("firewall.no_events") }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
   </section>
 </section>
 {% endblock %}
