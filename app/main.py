@@ -10,7 +10,7 @@ from app.db.session import Base, SessionLocal, engine
 from app.services import slbo_settlement_guard  # noqa: F401
 from app.services import slbo_member_profit_cap  # noqa: F401
 from app.services import slbo_exposure_wrapper  # noqa: F401
-from app.routers import admin, agent, auth, member, public, slbo, slbo_admin_settings, webhooks
+from app.routers import admin, admin_member_verification, agent, auth, member, public, slbo, slbo_admin_settings, webhooks
 from app.services.commercial import ensure_default_utilities
 from app.services.rates import ensure_default_rates
 from app.services.referrals import ensure_all_user_referral_identities
@@ -137,6 +137,7 @@ app.include_router(public.router)
 app.include_router(auth.router)
 app.include_router(member.router)
 app.include_router(admin.router)
+app.include_router(admin_member_verification.router)
 app.include_router(slbo.router)
 app.include_router(slbo_admin_settings.router)
 app.include_router(agent.router)
