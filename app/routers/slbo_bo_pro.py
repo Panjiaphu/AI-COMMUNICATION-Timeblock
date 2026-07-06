@@ -1,16 +1,19 @@
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import time
 
-from fastapi import APIRouter, Request, Depends
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Request, Depends, Form
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
-from app.core.security import get_current_user
+from app.core.i18n import resolve_locale
+from app.core.security import get_current_user, require_user, verify_csrf
+from app.core.templates import context, templates
 from app.db.session import get_db
-from app.models import BoOrder, RapidEntry
-from app.services import slbo_delayed_settlement  # noqa: F401 - load delayed settlement wrapper before API helpers
+from app.models import BoOrder, BoSide, RapidEntry
+from app.services import slbo as slbo_service
+from app.services import slbo_delayed_settlement  # noqa: F401 - load delayed settlement wrapper before route/API helpers
 from app.services.slbo import (
     bo_session_clock,
     ensure_wallet,
@@ -143,6 +146,73 @@ def _rapid_entry_payload(entry: RapidEntry) -> dict:
         "result_amount": _format_decimal(entry.result_amount),
         "created_at": entry.created_at.isoformat(),
     }
+
+
+@router.get("/bo")
+def bo_room_pro(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    wallet = ensure_wallet(db, user) if user else None
+    if user and wallet:
+        grant_initial_member_points_if_needed(db, wallet=wallet, user=user)
+    settled_count = settle_due_bo_orders(db)
+    orders = (
+        db.query(BoOrder)
+        .filter(BoOrder.user_id == user.id)
+        .order_by(BoOrder.created_at.desc())
+        .limit(20)
+        .all()
+        if user
+        else []
+    )
+    market = get_bo_market_snapshot()
+    bo_recent_results = get_recent_bo_session_results(db, "BTC", 5, market)
+    db.commit()
+    if wallet:
+        db.refresh(wallet)
+    return templates.TemplateResponse(
+        request=request,
+        name="bo.html",
+        context=context(
+            request,
+            user=user,
+            wallet=wallet,
+            orders=orders,
+            market=market,
+            bo_assets=slbo_service.BO_ASSETS,
+            bo_clock=bo_session_clock(),
+            bo_result=bo_recent_results[0] if bo_recent_results else None,
+            bo_recent_results=bo_recent_results,
+            bo_recent_results_json=[_bo_result_payload(item) for item in bo_recent_results],
+            sandbox=slbo_service.sandbox_flags(),
+            bo_settled_count=settled_count,
+        ),
+    )
+
+
+@router.post("/bo/orders")
+def create_bo_order_pro(
+    request: Request,
+    db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+    asset: str = Form(...),
+    side: str = Form(...),
+    stake_amount: str = Form(...),
+):
+    verify_csrf(request, csrf_token)
+    user = require_user(request, db)
+    locale = resolve_locale(request)
+    try:
+        order = slbo_service.place_bo_order(
+            db,
+            user=user,
+            asset_code=asset,
+            side=BoSide(side),
+            stake_amount=Decimal(stake_amount),
+        )
+    except (ValueError, InvalidOperation) as exc:
+        db.rollback()
+        return RedirectResponse(f"/bo?lang={locale}&error={str(exc)}", status_code=303)
+    return RedirectResponse(f"/bo?lang={locale}&created={order.reference_code}&session={order.session_code}", status_code=303)
 
 
 @router.get("/api/slbo/room-state")
