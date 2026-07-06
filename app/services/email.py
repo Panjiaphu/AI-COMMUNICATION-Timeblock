@@ -1,5 +1,8 @@
 from datetime import datetime, timezone
+from email.utils import formataddr
+from html import unescape
 import json
+import re
 import smtplib
 from email.message import EmailMessage
 
@@ -32,15 +35,45 @@ def queue_email(
     return item
 
 
+def _is_html_body(body: str) -> bool:
+    sample = (body or "").lstrip().lower()
+    return sample.startswith("<!doctype html") or sample.startswith("<html") or "<body" in sample[:500]
+
+
+def _html_to_text(body: str) -> str:
+    text = re.sub(r"(?is)<(script|style).*?>.*?</\\1>", " ", body or "")
+    text = re.sub(r"(?i)<br\\s*/?>", "\n", text)
+    text = re.sub(r"(?i)</p>", "\n\n", text)
+    text = re.sub(r"(?i)</h[1-6]>", "\n\n", text)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = unescape(text)
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n\s+", "\n", text)
+    return text.strip()
+
+
+def _from_header() -> str:
+    settings = get_settings()
+    return formataddr((settings.app_name or "Guilua", settings.smtp_from_email))
+
+
 def send_queued_email(item: EmailNotification) -> None:
     settings = get_settings()
     if not settings.smtp_host:
         raise RuntimeError("SMTP_HOST is not configured")
     message = EmailMessage()
-    message["From"] = settings.smtp_from_email
+    message["From"] = _from_header()
     message["To"] = item.recipient
     message["Subject"] = item.subject
-    message.set_content(item.body)
+    if settings.admin_notification_email:
+        message["Reply-To"] = settings.admin_notification_email
+    message["X-Entity-Ref-ID"] = f"guilua-{item.event_type}-{item.id}"
+    message["X-Auto-Response-Suppress"] = "OOF, AutoReply"
+    if _is_html_body(item.body):
+        message.set_content(_html_to_text(item.body))
+        message.add_alternative(item.body, subtype="html")
+    else:
+        message.set_content(item.body)
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as client:
         if settings.smtp_use_tls:
             client.starttls()
