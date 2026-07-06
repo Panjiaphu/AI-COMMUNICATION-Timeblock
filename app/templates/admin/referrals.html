@@ -27,7 +27,7 @@
     <div class="success">{{ t("referral.admin_created") }}: {{ request.query_params.get("created") }}</div>
   {% endif %}
   {% if request.query_params.get("updated") %}
-    <div class="success">Commission status updated.</div>
+    <div class="success">Commission status updated and payout checked.</div>
   {% endif %}
 
   <section class="referral-grid">
@@ -160,7 +160,7 @@
               <td>{{ format_price(item.amount) }} {{ item.currency }}</td>
               <td><span class="badge {{ 'ok' if item.status.value == 'paid' else 'warn' }}">{{ item.status.value }}</span></td>
               <td>
-                <form method="post" action="/admin/referrals/commissions/{{ item.id }}/status">
+                <form method="post" action="/admin/referral-commissions/{{ item.id }}/status">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                   <select name="status">
                     {% for status in commission_statuses %}
