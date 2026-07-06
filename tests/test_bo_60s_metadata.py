@@ -34,6 +34,7 @@ class BoSixtySecondSessionMetadataTest(unittest.TestCase):
         self.assertIn("current_session_cutoff_ts", bo_clock)
         self.assertIn("current_session_close_ts", bo_clock)
         self.assertEqual("1m", payload["settlement"]["settlement_interval"])
+        self.assertEqual(True, payload["settlement"]["delayed_settlement"])
 
     def test_bo_chart_exposes_settlement_metadata(self):
         response = self.client.get("/api/slbo/bo-chart?asset=BTC&interval=1&limit=40")
@@ -42,9 +43,11 @@ class BoSixtySecondSessionMetadataTest(unittest.TestCase):
         self.assertEqual("1m", payload["settlement_interval"])
         self.assertEqual("BO System Chart", payload["settlement_source"])
         self.assertEqual("reference_only", payload["tradingview_role"])
+        self.assertEqual(True, payload["delayed_settlement"])
         self.assertIn("cutoff_ts", payload)
         self.assertIn("close_ts", payload)
         self.assertIn("processing_zone", payload)
+        self.assertIn("member_order_markers", payload)
         self.assertGreaterEqual(len(payload["candles"]), 20)
 
     def test_bo_session_result_side_matches_entry_and_result_price(self):
