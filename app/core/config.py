@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     live_settlement_enabled: bool = False
     slbo_point_currency: str = "SLB_POINT"
     bo_trade_open_seconds: int = 30
-    bo_result_wait_seconds: int = 15
+    bo_result_wait_seconds: int = 30
     bo_payout_ratio: float = 1.95
     rapid_session_seconds: int = 120
     rapid_entry_open_seconds: int = 105
