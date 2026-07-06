@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.models import User
 from app.services import slbo as core
+from app.services import slbo_chart_sync  # noqa: F401
 from app.services.slbo_demo_controls import check_order_controls
 from app.services.slbo_member_outcome_settings import effective_policy
 
