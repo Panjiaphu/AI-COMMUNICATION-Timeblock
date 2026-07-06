@@ -2,7 +2,15 @@
 {% block content %}
 <section class="auth-card">
   <h1>{{ t("auth.login") }}</h1>
-  <p class="muted">{{ t("auth.login_hint") }}</p>
+  <p class="muted">
+    {% if locale == "zh-TW" %}
+      登入 Guilua 帳戶以管理點數錢包、查看交易紀錄並使用支援的服務。
+    {% elif locale == "en" %}
+      Sign in to access your Guilua account, manage your points wallet, review activity history, and use supported services.
+    {% else %}
+      Đăng nhập để truy cập tài khoản Guilua, quản lý ví điểm, theo dõi lịch sử giao dịch và sử dụng các dịch vụ được hỗ trợ.
+    {% endif %}
+  </p>
   {% if error %}<p class="alert">{{ error }}</p>{% endif %}
   {% if reset_success %}<p class="success">{{ t("auth.reset_success") }}</p>{% endif %}
   {% if verify_email %}<p class="success">{{ t("auth.verify_email_sent") }}</p>{% endif %}
