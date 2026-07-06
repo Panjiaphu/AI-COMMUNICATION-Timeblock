@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from decimal import Decimal
+import random
+import time
 
 from app.services import slbo as core
 
@@ -20,6 +22,52 @@ def _market_latest(asset_code: str, market: dict | None) -> Decimal | None:
     return None
 
 
+def _bounded_market_candles(*, asset: str, latest_price: Decimal, interval_seconds: int, limit: int) -> list[dict]:
+    """Build a smooth reference chart around the current market price.
+
+    The BO result engine can still use canonical session results, but the visual
+    system chart must not drift hundreds of points away from the asset card.
+    This keeps all displayed prices in the same range as the market snapshot.
+    """
+
+    now = int(time.time())
+    end_ts = now - (now % max(1, interval_seconds))
+    start_ts = end_ts - (limit - 1) * interval_seconds
+    rng = random.Random(f"bo-chart-display:{asset}:{end_ts // max(1, interval_seconds)}")
+    closes: list[Decimal] = []
+    price = latest_price
+    for _ in range(limit):
+        step = Decimal(str(rng.uniform(-0.000006, 0.000006)))
+        price = price * (Decimal("1") + step)
+        closes.append(price)
+    if closes and closes[-1] > 0:
+        ratio = latest_price / closes[-1]
+        closes = [value * ratio for value in closes]
+    candles: list[dict] = []
+    previous = closes[0] if closes else latest_price
+    for index, close in enumerate(closes):
+        open_price = previous if index else close * (Decimal("1") + Decimal(str(rng.uniform(-0.000004, 0.000004))))
+        wick = max(latest_price * Decimal("0.00008"), Decimal("0.0001"))
+        high = max(open_price, close) + wick
+        low = min(open_price, close) - wick
+        candles.append(
+            {
+                "time": start_ts + index * interval_seconds,
+                "open": core._money(open_price, places=8),
+                "high": core._money(high, places=8),
+                "low": core._money(low, places=8),
+                "close": core._money(close, places=8),
+            }
+        )
+        previous = close
+    if candles:
+        latest = candles[-1]
+        latest["close"] = core._money(latest_price, places=8)
+        latest["high"] = core._money(max(Decimal(str(latest["open"])), latest_price) + max(latest_price * Decimal("0.00005"), Decimal("0.0001")), places=8)
+        latest["low"] = core._money(min(Decimal(str(latest["open"])), latest_price) - max(latest_price * Decimal("0.00005"), Decimal("0.0001")), places=8)
+    return candles
+
+
 def get_bo_system_candles(db, *, asset_code="BTC", interval="1S", limit=120, market=None):
     market = market or core.get_bo_market_snapshot()
     chart = _ORIGINAL_GET_BO_SYSTEM_CANDLES(
@@ -30,18 +78,16 @@ def get_bo_system_candles(db, *, asset_code="BTC", interval="1S", limit=120, mar
         market=market,
     )
     latest_price = _market_latest(chart.get("asset") or asset_code, market)
-    candles = chart.get("candles") or []
-    if not latest_price or not candles:
+    if not latest_price:
         return chart
-    latest = candles[-1]
-    previous_close = Decimal(str(candles[-2]["close"] if len(candles) > 1 else latest.get("open") or latest_price))
-    open_price = previous_close
-    close_price = latest_price
-    wiggle = max(latest_price * Decimal("0.00035"), Decimal("0.0001"))
-    latest["open"] = core._money(open_price, places=8)
-    latest["close"] = core._money(close_price, places=8)
-    latest["high"] = core._money(max(open_price, close_price) + wiggle, places=8)
-    latest["low"] = core._money(min(open_price, close_price) - wiggle, places=8)
+    interval_seconds = int(chart.get("interval_seconds") or 1)
+    chart_limit = max(20, min(int(limit or 120), 260))
+    chart["candles"] = _bounded_market_candles(
+        asset=str(chart.get("asset") or asset_code),
+        latest_price=latest_price,
+        interval_seconds=interval_seconds,
+        limit=chart_limit,
+    )
     chart["latest_price"] = core._money(latest_price, places=8)
     return chart
 
