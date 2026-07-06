@@ -11,7 +11,7 @@ from app.services import slbo_settlement_guard  # noqa: F401
 from app.services import slbo_member_profit_cap  # noqa: F401
 from app.services import slbo_exposure_wrapper  # noqa: F401
 from app.services import slbo_transfer_direct  # noqa: F401
-from app.routers import admin, admin_legacy, admin_member_verification, agent, auth, member, member_point_transfer, public, slbo, slbo_admin_settings, webhooks
+from app.routers import admin, admin_legacy, admin_member_verification, agent, auth, member, member_point_transfer, public, slbo, slbo_admin_settings, slbo_bo_pro, webhooks
 from app.services.commercial import ensure_default_utilities
 from app.services.rates import ensure_default_rates
 from app.services.referral_policy import ensure_referral_policy_table
@@ -143,6 +143,7 @@ app.include_router(member_point_transfer.router)
 app.include_router(admin.router)
 app.include_router(admin_member_verification.router)
 app.include_router(admin_legacy.router)
+app.include_router(slbo_bo_pro.router)
 app.include_router(slbo.router)
 app.include_router(slbo_admin_settings.router)
 app.include_router(agent.router)
