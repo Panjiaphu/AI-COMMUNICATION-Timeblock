@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.i18n import resolve_locale
 from app.core.security import require_user, verify_csrf
 from app.db.session import get_db
-from app.services.slbo import transfer_points
+from app.services.slbo_transfer_direct import transfer_points
 
 
 router = APIRouter()
