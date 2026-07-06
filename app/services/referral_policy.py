@@ -31,7 +31,7 @@ def _decimal(value, places: str = "0.0001") -> Decimal:
     return parsed
 
 
-def ensure_referral_policy_table(db: Session) -> None:
+def ensure_referral_policy_table(db: Session, *, commit: bool = False) -> None:
     db.execute(
         text(
             """
@@ -67,11 +67,12 @@ def ensure_referral_policy_table(db: Session) -> None:
             """
         )
     )
-    db.commit()
+    if commit:
+        db.commit()
 
 
 def get_referral_policy(db: Session) -> dict:
-    ensure_referral_policy_table(db)
+    ensure_referral_policy_table(db, commit=False)
     row = db.execute(text("SELECT * FROM referral_commission_policy WHERE id = 1")).mappings().first()
     if not row:
         return dict(DEFAULT_POLICY)
@@ -106,7 +107,7 @@ def update_referral_policy(
     note: str = "",
     admin_user_id: int | None = None,
 ) -> dict:
-    ensure_referral_policy_table(db)
+    ensure_referral_policy_table(db, commit=False)
     values = {
         "activity_l1": _decimal(activity_l1),
         "activity_l2": _decimal(activity_l2),
