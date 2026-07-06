@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.security import get_current_user
 from app.db.session import get_db
 from app.models import BoOrder, RapidEntry
+from app.services import slbo_delayed_settlement  # noqa: F401 - load delayed settlement wrapper before API helpers
 from app.services.slbo import (
     bo_session_clock,
     ensure_wallet,
@@ -20,6 +21,7 @@ from app.services.slbo import (
     get_recent_rapid_result_boards,
     grant_initial_member_points_if_needed,
     rapid_session_clock,
+    settle_due_bo_orders,
 )
 
 
@@ -28,6 +30,10 @@ router = APIRouter()
 
 def _format_decimal(value) -> str:
     return f"{Decimal(str(value or 0)):.4f}"
+
+
+def _format_price8(value) -> str:
+    return f"{Decimal(str(value or 0)):.8f}"
 
 
 def _session_index(clock: dict) -> int:
@@ -64,8 +70,8 @@ def _bo_result_payload(result: dict) -> dict:
         "session_code": result["session_code"],
         "asset": result["asset"],
         "result_side": result["result_side"],
-        "entry_price": _format_decimal(result["entry_price"]),
-        "result_price": _format_decimal(result["result_price"]),
+        "entry_price": _format_price8(result["entry_price"]),
+        "result_price": _format_price8(result["result_price"]),
         "change_percent": _format_decimal(result["change_percent"]),
         "status": "settled",
     }
@@ -88,9 +94,30 @@ def _bo_order_payload(order: BoOrder) -> dict:
         "asset": order.asset,
         "side": order.side.value,
         "stake_amount": _format_decimal(order.stake_amount),
+        "entry_price": _format_price8(order.entry_price),
+        "result_price": _format_price8(order.result_price),
+        "profit_amount": _format_decimal(order.profit_amount),
         "status": order.status.value,
-        "result_price": _format_decimal(order.result_price),
+        "result_note": order.result_note,
+        "settled_at": order.settled_at.isoformat() if order.settled_at else None,
         "created_at": order.created_at.isoformat(),
+    }
+
+
+def _bo_order_marker(order: BoOrder) -> dict:
+    return {
+        "reference_code": order.reference_code,
+        "side": order.side.value,
+        "stake_amount": _format_decimal(order.stake_amount),
+        "entry_price": _format_price8(order.entry_price),
+        "created_at": order.created_at.isoformat(),
+        "session_code": order.session_code,
+        "asset": order.asset,
+        "status": order.status.value,
+        "result_price": _format_price8(order.result_price),
+        "profit_amount": _format_decimal(order.profit_amount),
+        "settled_at": order.settled_at.isoformat() if order.settled_at else None,
+        "marker_type": "entry" if order.settled_at is None else "result",
     }
 
 
@@ -125,6 +152,7 @@ def slbo_room_state_pro(request: Request, db: Session = Depends(get_db)):
     if user:
         wallet = ensure_wallet(db, user)
         grant_initial_member_points_if_needed(db, wallet=wallet, user=user)
+    settle_due_bo_orders(db)
     bo_clock = bo_session_clock()
     bo_meta = _session_payload(bo_clock)
     rapid_clock = rapid_session_clock()
@@ -173,6 +201,7 @@ def slbo_room_state_pro(request: Request, db: Session = Depends(get_db)):
                 "source": "BO System Chart",
                 "tradingview_role": "reference_only",
                 "settlement_interval": "1m",
+                "delayed_settlement": True,
             },
         }
     )
@@ -186,6 +215,8 @@ def slbo_bo_chart_api_pro(
     interval: str = "1",
     limit: int = 140,
 ):
+    user = get_current_user(request, db)
+    settle_due_bo_orders(db)
     bo_clock = bo_session_clock()
     bo_meta = _session_payload(bo_clock)
     market = get_bo_market_snapshot()
@@ -196,6 +227,15 @@ def slbo_bo_chart_api_pro(
     if bo_meta["state"] != "open":
         rows = [item for item in recent_results if item["session_code"] == bo_meta["session_code"]]
         current_result = _bo_result_payload(rows[0]) if rows else None
+    marker_query = []
+    if user:
+        marker_query = (
+            db.query(BoOrder)
+            .filter(BoOrder.user_id == user.id, BoOrder.asset == chart["asset"])
+            .order_by(BoOrder.created_at.desc())
+            .limit(20)
+            .all()
+        )
     db.commit()
     return JSONResponse(
         {
@@ -206,10 +246,12 @@ def slbo_bo_chart_api_pro(
             "settlement_interval": "1m",
             "settlement_source": "BO System Chart",
             "tradingview_role": "reference_only",
+            "delayed_settlement": True,
             "updated_at": chart["updated_at"].isoformat(),
             "latest": _bo_candle_payload(latest) if latest else None,
             "candles": [_bo_candle_payload(item) for item in chart["candles"]],
             "recent_results": [_bo_result_payload(item) for item in recent_results],
+            "member_order_markers": [_bo_order_marker(order) for order in marker_query],
             "current_session_code": bo_meta["session_code"],
             "current_session_start_ts": bo_meta["current_session_start_ts"],
             "cutoff_ts": bo_meta["current_session_cutoff_ts"],
