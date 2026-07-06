@@ -12,6 +12,33 @@
       a[href*="/admin/posts/shop"] {
         display: none !important;
       }
+      .bo-pro-phase-panel {
+        border-bottom: 1px solid rgba(255,255,255,.08);
+        background: linear-gradient(90deg, rgba(47,240,188,.1), rgba(22,167,255,.08), rgba(255,193,7,.08));
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(280px, .9fr);
+        gap: 14px;
+        align-items: center;
+        padding: 12px 16px;
+      }
+      .bo-pro-phase-panel span { color: rgba(255,255,255,.62); font-size: 12px; font-weight: 800; }
+      .bo-pro-phase-panel strong { color: #fff; display: block; font-size: 15px; margin-top: 3px; }
+      .bo-pro-phase-steps { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+      .bo-pro-phase-steps span {
+        border: 1px solid rgba(255,255,255,.12);
+        border-radius: 999px;
+        background: rgba(255,255,255,.06);
+        padding: 7px 10px;
+      }
+      .bo-pro-phase-steps span.active {
+        border-color: rgba(47,240,188,.75);
+        color: #06100d;
+        background: linear-gradient(135deg, #2ff0bc, #16a7ff);
+      }
+      @media (max-width: 900px) {
+        .bo-pro-phase-panel { grid-template-columns: 1fr; }
+        .bo-pro-phase-steps { justify-content: flex-start; }
+      }
     </style>
   </head>
   <body>
@@ -58,5 +85,6 @@
         }
       })();
     </script>
+    <script src="{{ url_for('static', path='bo_pro_patch.js') }}?v=20260706-bo-60s"></script>
   </body>
 </html>
