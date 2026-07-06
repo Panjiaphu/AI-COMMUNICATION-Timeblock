@@ -1,0 +1,123 @@
+@media (max-width: 768px) {
+  main {
+    width: min(100% - 18px, 100%);
+    margin-bottom: 32px;
+  }
+
+  .topbar {
+    padding: 12px 14px;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .topbar .nav {
+    overflow-x: auto;
+    white-space: nowrap;
+    max-width: 100%;
+    padding-bottom: 4px;
+  }
+
+  .bo-trading-page,
+  .bo-trading-shell,
+  .bo-trading-main {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .bo-trading-top,
+  .bo-market-toolbar,
+  .bo-chart-workspace,
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+  }
+
+  .bo-asset-tabs,
+  .bo-interval-tabs {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .bo-asset-tabs > *,
+  .bo-interval-tabs > * {
+    flex: 0 0 auto;
+  }
+
+  .bo-chart-frame,
+  .bo-order-ticket,
+  .panel,
+  .account-card {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .bo-chart-frame {
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  .bo-chart-head {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .bo-chart-actions,
+  .bo-chart-mode-tabs {
+    width: 100%;
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .bo-system-canvas-wrap,
+  .bo-tradingview-widget {
+    height: min(52vh, 390px) !important;
+    min-height: 320px;
+    max-height: 430px;
+  }
+
+  #boSystemChart {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+  }
+
+  .bo-order-ticket {
+    position: relative;
+    top: auto;
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .bo-wallet-chip,
+  .session-chip,
+  .trade-session-panel,
+  .bo-latest-result {
+    width: 100%;
+  }
+
+  .bo-side-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .bo-side-grid .button {
+    min-height: 52px;
+    font-size: 16px;
+  }
+
+  .bo-session-history > div {
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
