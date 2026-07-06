@@ -9,9 +9,6 @@ from app.models import PointTransfer, User, WalletLedgerType
 from app.services import slbo as core
 
 
-_ORIGINAL_TRANSFER_POINTS = core.transfer_points
-
-
 def transfer_points(
     db: Session,
     *,
@@ -20,14 +17,6 @@ def transfer_points(
     amount: Decimal,
     memo: str = "",
 ) -> PointTransfer:
-    """Immediately move internal points from one member wallet to another.
-
-    The earlier flow created a pending transfer and waited for receiver confirmation.
-    For the member-to-member point wallet, the safer production behavior is to
-    settle atomically: debit sender, credit receiver, mark the transfer completed,
-    and write both ledger entries under the same reference code.
-    """
-
     amount = core._positive_amount(amount)
     recipient = core._find_member_for_transfer(db, recipient_identifier)
     if not recipient or recipient.id == sender.id or recipient.is_admin or not recipient.is_active:
@@ -105,6 +94,3 @@ def transfer_points(
     db.commit()
     db.refresh(transfer)
     return transfer
-
-
-core.transfer_points = transfer_points
