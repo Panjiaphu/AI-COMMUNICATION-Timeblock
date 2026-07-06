@@ -21,6 +21,7 @@ from app.models import (
 from app.services.slbo import bo_session_clock, ensure_treasury, rapid_session_clock, sandbox_flags
 from app.services.slbo_balance_mode import get_balance_controls, update_balance_controls
 from app.services.slbo_demo_controls import get_controls, positive_member_count, update_controls
+from app.services.slbo_demo_reset import apply_demo_dashboard_reset
 from app.services.slbo_exposure_wrapper import get_exposure_controls, update_exposure_controls
 from app.services.slbo_member_outcome_settings import profit_percent, settings_map, update_setting
 from app.services.slbo_outcome_settings import get_slbo_outcome_settings, update_member_target_success_rate
@@ -87,6 +88,7 @@ def admin_slbo_controls(request: Request, db: Session = Depends(get_db)):
 @router.get("/admin/slbo")
 def admin_slbo_with_outcome_settings(request: Request, db: Session = Depends(get_db)):
     admin = require_admin(request, db)
+    apply_demo_dashboard_reset(db)
     members = db.query(User).filter(User.is_admin.is_(False)).order_by(User.created_at.desc()).limit(300).all()
     wallets = db.query(InternalWallet).order_by(InternalWallet.updated_at.desc()).limit(300).all()
     wallet_by_user = {wallet.user_id: wallet for wallet in wallets}
