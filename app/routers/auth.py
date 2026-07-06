@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.security import (
-    create_email_token,
     create_password_reset_token,
     get_current_user,
     hash_password,
@@ -20,6 +19,7 @@ from app.core.templates import context, templates
 from app.db.session import get_db
 from app.models import User
 from app.services.email import flush_email_queue, queue_email
+from app.services.email_verification import queue_member_verification_email
 from app.services.referrals import ensure_user_referral_identity, find_referrer, normalize_referral_code
 from app.services.security_firewall import log_security_event
 
@@ -120,16 +120,7 @@ def register(
     db.add(user)
     db.commit()
     db.refresh(user)
-    token = create_email_token(user.email)
-    verify_url = str(request.url_for("verify_email")) + f"?token={token}"
-    queue_email(
-        db,
-        user.email,
-        "Guilua - verify email",
-        f"Open this link to verify your Guilua email: {verify_url}",
-        "email_verification",
-        user=user,
-    )
+    queue_member_verification_email(db, request, user, flush=False)
     if settings.admin_notification_email:
         queue_email(
             db,
