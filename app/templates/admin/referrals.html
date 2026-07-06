@@ -4,19 +4,18 @@
 <section class="admin-shell referral-admin-page">
   <div class="admin-nav panel">
     <a href="/admin?lang={{ locale }}">{{ t("admin.dashboard") }}</a>
-    <a href="/admin/posts/crypto-analysis?lang={{ locale }}">{{ t("admin.hub.crypto_analysis") }}</a>
     <a href="/admin/referrals?lang={{ locale }}">{{ t("referral.admin_title") }}</a>
-    <a href="/admin/ai-agents?lang={{ locale }}">{{ t("admin.hub.ai_agents") }}</a>
-    <a href="/admin/utilities?lang={{ locale }}">{{ t("admin.hub.utilities") }}</a>
-    <a href="/admin/members?lang={{ locale }}">{{ t("admin.hub.members") }}</a>
+    <a href="/admin/slbo?lang={{ locale }}">BO Admin</a>
+    <a href="/admin/slbo/controls?lang={{ locale }}">BO Controls</a>
+    <a href="/admin/member-verification?lang={{ locale }}">Member verification</a>
     <a href="/admin/firewall?lang={{ locale }}">Firewall</a>
   </div>
 
   <section class="panel referral-admin-hero">
     <div>
-      <p class="eyebrow">{{ t("referral.admin_kicker") }}</p>
-      <h1>{{ t("referral.admin_title") }}</h1>
-      <p class="muted">{{ t("referral.admin_desc") }}</p>
+      <p class="eyebrow">Referral Operations</p>
+      <h1>Đại lý & hoa hồng 3 cấp</h1>
+      <p class="muted">Theo dõi đại lý, tuyến dưới, hoa hồng giao dịch, hoa hồng loss-deposit và trạng thái payout tự động vào ví SLB_POINT.</p>
     </div>
     <span class="icon">{{ icons.icon("affiliate") }}</span>
   </section>
@@ -27,19 +26,80 @@
   {% if request.query_params.get("created") %}
     <div class="success">{{ t("referral.admin_created") }}: {{ request.query_params.get("created") }}</div>
   {% endif %}
+  {% if request.query_params.get("updated") %}
+    <div class="success">Commission status updated.</div>
+  {% endif %}
 
   <section class="referral-grid">
-    <article class="panel referral-stat-card"><span>{{ t("referral.members") }}</span><strong>{{ summary.members }}</strong></article>
-    <article class="panel referral-stat-card"><span>{{ t("referral.referred_members") }}</span><strong>{{ summary.referred_members }}</strong></article>
-    <article class="panel referral-stat-card"><span>{{ t("referral.pending_total") }}</span><strong>{{ format_price(summary.pending_total) }}</strong><small>POINT</small></article>
-    <article class="panel referral-stat-card"><span>{{ t("referral.approved_total") }}</span><strong>{{ format_price(summary.approved_total) }}</strong><small>POINT</small></article>
+    <article class="panel referral-stat-card"><span>Total members</span><strong>{{ summary.members }}</strong></article>
+    <article class="panel referral-stat-card"><span>Referred members</span><strong>{{ summary.referred_members }}</strong></article>
+    <article class="panel referral-stat-card"><span>Pending</span><strong>{{ format_price(summary.pending_total) }}</strong><small>SLB_POINT</small></article>
+    <article class="panel referral-stat-card"><span>Approved</span><strong>{{ format_price(summary.approved_total) }}</strong><small>SLB_POINT</small></article>
+    <article class="panel referral-stat-card"><span>Paid</span><strong>{{ format_price(summary.paid_total or 0) }}</strong><small>SLB_POINT</small></article>
+    <article class="panel referral-stat-card"><span>Activity commission</span><strong>{{ format_price(summary.activity_total or 0) }}</strong><small>Auto</small></article>
+    <article class="panel referral-stat-card"><span>Loss-deposit commission</span><strong>{{ format_price(summary.loss_deposit_total or 0) }}</strong><small>Auto</small></article>
+  </section>
+
+  <section class="panel">
+    <div class="section-head">
+      <div>
+        <h2>Commission policy</h2>
+        <span>Auto payout đang bật trong backend. Activity tính theo stake giao dịch. Loss-deposit chỉ kích hoạt khi member lỗ hết tổng tiền nạp và ví còn ≤ 1 điểm.</span>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Type</th><th>Level 1</th><th>Level 2</th><th>Level 3</th><th>Base</th><th>Payout</th></tr></thead>
+        <tbody>
+          <tr><td>Activity</td><td>0.20%</td><td>0.08%</td><td>0.03%</td><td>BO stake</td><td>Auto paid to agent wallet</td></tr>
+          <tr><td>Loss-deposit</td><td>6.00%</td><td>2.00%</td><td>1.00%</td><td>Approved deposit lost only</td><td>Auto paid when depleted</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="section-head">
+      <div>
+        <h2>Agent overview</h2>
+        <span>Danh sách member có tuyến dưới. Cấp 1/2/3 dùng để kiểm tra cấu trúc đại lý.</span>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Agent</th><th>Referral code</th><th>L1</th><th>L2</th><th>L3</th><th>Paid</th><th>Pending</th></tr></thead>
+        <tbody>
+          {% for member in members %}
+            {% set levels = member_referral_counts.get(member.id, []) %}
+            {% set l1 = levels[0].count if levels|length > 0 else 0 %}
+            {% set l2 = levels[1].count if levels|length > 1 else 0 %}
+            {% set l3 = levels[2].count if levels|length > 2 else 0 %}
+            {% set paid = commissions|selectattr('beneficiary_user_id', 'equalto', member.id)|selectattr('status.value', 'equalto', 'paid')|sum(attribute='amount') %}
+            {% set pending = commissions|selectattr('beneficiary_user_id', 'equalto', member.id)|selectattr('status.value', 'equalto', 'pending')|sum(attribute='amount') %}
+            {% if l1 or l2 or l3 or paid or pending %}
+              <tr>
+                <td><strong>{{ member.email }}</strong><br><small>{{ member.uid or member.id }}</small></td>
+                <td>{{ member.referral_code or "-" }}</td>
+                <td>{{ l1 }}</td>
+                <td>{{ l2 }}</td>
+                <td>{{ l3 }}</td>
+                <td>{{ format_price(paid or 0) }}</td>
+                <td>{{ format_price(pending or 0) }}</td>
+              </tr>
+            {% endif %}
+          {% else %}
+            <tr><td colspan="7" class="empty">No agents.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <section class="panel">
     <div class="section-head">
       <div>
         <h2>{{ t("referral.record_commission") }}</h2>
-        <span>{{ t("referral.record_commission_desc") }}</span>
+        <span>Manual fallback only. Auto commission is created from BO activity/loss rules.</span>
       </div>
     </div>
     <form class="admin-referral-form" method="post" action="/admin/referrals/commissions">
@@ -59,7 +119,7 @@
         </select>
       </label>
       <label>{{ t("referral.base") }}<input name="base_amount" type="number" step="0.0001" min="0.0001" required></label>
-      <label>{{ t("referral.currency") }}<input name="currency" value="POINT" maxlength="16"></label>
+      <label>{{ t("referral.currency") }}<input name="currency" value="SLB_POINT" maxlength="16"></label>
       <label>{{ t("referral.status") }}
         <select name="status">
           {% for item in commission_statuses %}
@@ -69,24 +129,50 @@
       </label>
       <label>{{ t("referral.reference_type") }}<input name="reference_type" value="manual"></label>
       <label>{{ t("referral.reference_id") }}<input name="reference_id" placeholder="optional"></label>
-      <label class="wide">{{ t("admin.note") }}<input name="note" placeholder="{{ t('referral.note_placeholder') }}"></label>
+      <label class="wide">{{ t("admin.note") }}<input name="note" placeholder="Internal audit note"></label>
       <button class="button primary" type="submit">{{ t("referral.create_commission") }}</button>
     </form>
   </section>
 
   <section class="panel">
     <div class="section-head">
-      <h2>{{ t("referral.commission_history") }}</h2>
+      <div>
+        <h2>{{ t("referral.commission_history") }}</h2>
+        <span>Auto-paid records include ledger entries in member wallets.</span>
+      </div>
       <span>{{ commissions|length }}</span>
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>{{ t("referral.ref") }}</th><th>{{ t("referral.member") }}</th><th>{{ t("referral.type") }}</th><th>{{ t("referral.amount") }}</th><th>{{ t("referral.status") }}</th></tr></thead>
+        <thead>
+          <tr><th>Ref</th><th>Agent</th><th>Source member</th><th>Type</th><th>Level</th><th>Base</th><th>Rate</th><th>Amount</th><th>Status</th><th>Action</th></tr>
+        </thead>
         <tbody>
           {% for item in commissions %}
-            <tr><td>{{ item.reference_code }}</td><td>{{ item.user.email if item.user else item.user_id }}</td><td>{{ item.commission_type.value }}</td><td>{{ format_price(item.amount) }}</td><td>{{ item.status.value }}</td></tr>
+            <tr>
+              <td><strong>{{ item.reference_code }}</strong><br><small>{{ item.reference_type }}: {{ item.reference_id }}</small></td>
+              <td>{{ item.beneficiary.email if item.beneficiary else item.beneficiary_user_id }}</td>
+              <td>{{ item.source_user.email if item.source_user else item.source_user_id }}</td>
+              <td>{{ item.commission_type.value }}</td>
+              <td>L{{ item.level }}</td>
+              <td>{{ format_price(item.base_amount) }}</td>
+              <td>{{ item.rate_percent }}%</td>
+              <td>{{ format_price(item.amount) }} {{ item.currency }}</td>
+              <td><span class="badge {{ 'ok' if item.status.value == 'paid' else 'warn' }}">{{ item.status.value }}</span></td>
+              <td>
+                <form method="post" action="/admin/referrals/commissions/{{ item.id }}/status">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <select name="status">
+                    {% for status in commission_statuses %}
+                      <option value="{{ status.value }}" {% if item.status.value == status.value %}selected{% endif %}>{{ status.value }}</option>
+                    {% endfor %}
+                  </select>
+                  <button class="button small" type="submit">Save</button>
+                </form>
+              </td>
+            </tr>
           {% else %}
-            <tr><td colspan="5" class="empty">{{ t("referral.empty_commission") }}</td></tr>
+            <tr><td colspan="10" class="empty">{{ t("referral.empty_commission") }}</td></tr>
           {% endfor %}
         </tbody>
       </table>
