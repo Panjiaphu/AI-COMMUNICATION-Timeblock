@@ -40,6 +40,12 @@ def _row(member: User, csrf_token: str) -> str:
     )
 
 
+@router.get("/members")
+def admin_members_redirect(request: Request, db: Session = Depends(get_db)):
+    require_admin(request, db)
+    return RedirectResponse("/admin/member-verification?lang=vi", status_code=303)
+
+
 @router.get("/member-verification", response_class=HTMLResponse)
 def member_verification_page(request: Request, db: Session = Depends(get_db)):
     require_admin(request, db)
@@ -57,7 +63,7 @@ def member_verification_page(request: Request, db: Session = Depends(get_db)):
         "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'>"
         "<title>Member verification</title><link rel='stylesheet' href='/static/app.css?v=20260704-bo-wallet'></head><body>"
         "<main><section class='admin-shell'>"
-        "<div class='admin-nav panel'><a href='/admin?lang=vi'>Dashboard</a><a href='/admin/member-verification?lang=vi'>Member verification</a><a href='/admin/members?lang=vi'>Members</a><a href='/admin/slbo?lang=vi'>BO Admin</a></div>"
+        "<div class='admin-nav panel'><a href='/admin?lang=vi'>Dashboard</a><a href='/admin/member-verification?lang=vi'>Member verification</a><a href='/admin/slbo?lang=vi'>BO Admin</a><a href='/admin/firewall?lang=vi'>Firewall</a></div>"
         "<section class='panel'><div class='section-head'><div><h1>Member verification</h1><span>Review registered members and resend account verification links.</span></div></div>"
         f"{notice}<div class='table-wrap'><table class='coin-table'><thead><tr><th>Email</th><th>Name / UID</th><th>Referral code</th><th>Referrer</th><th>Email verified</th><th>Created</th><th>Action</th></tr></thead><tbody>{rows}</tbody></table></div>"
         "</section></section></main></body></html>"
