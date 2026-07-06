@@ -49,5 +49,14 @@
       <span>{{ t("admin.contact.email") }}: {{ admin_contact.email }}</span>
       <span>{{ t("admin.contact.line") }}: {{ admin_contact.line }}</span>
     </footer>
+    <script>
+      (() => {
+        const target = "/admin/member-verification?lang={{ locale }}";
+        document.querySelectorAll('a[href^="/admin/members"]').forEach((link) => { link.href = target; });
+        if (window.location.pathname === "/admin/members") {
+          window.location.replace(target);
+        }
+      })();
+    </script>
   </body>
 </html>
