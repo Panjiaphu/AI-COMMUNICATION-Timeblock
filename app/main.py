@@ -13,6 +13,7 @@ from app.services import slbo_exposure_wrapper  # noqa: F401
 from app.routers import admin, admin_legacy, admin_member_verification, agent, auth, member, public, slbo, slbo_admin_settings, webhooks
 from app.services.commercial import ensure_default_utilities
 from app.services.rates import ensure_default_rates
+from app.services.referral_policy import ensure_referral_policy_table
 from app.services.referrals import ensure_all_user_referral_identities
 from app.services.security_firewall import SecurityFirewallMiddleware, ensure_default_playbooks
 
@@ -129,6 +130,7 @@ def startup_tasks() -> None:
         ensure_default_rates(db)
         ensure_default_utilities(db)
         ensure_all_user_referral_identities(db)
+        ensure_referral_policy_table(db, commit=True)
         ensure_default_playbooks(db)
     ensure_admin_bootstrap()
 
