@@ -10,6 +10,7 @@ from app.core.security import require_admin, verify_csrf
 from app.db.session import get_db
 from app.models import ReferralCommission, ReferralCommissionStatus, User
 from app.services.email_verification import queue_member_verification_email
+from app.services.referral_policy import update_referral_policy
 from app.services.referrals import auto_pay_referral_commission
 
 
@@ -115,3 +116,42 @@ def update_referral_commission_status_with_payout(
         auto_pay_referral_commission(db, commission)
     db.commit()
     return RedirectResponse("/admin/referrals?updated=1", status_code=303)
+
+
+@router.post("/referrals/policy")
+def update_referral_commission_policy(
+    request: Request,
+    db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+    activity_l1: str = Form(...),
+    activity_l2: str = Form(...),
+    activity_l3: str = Form(...),
+    loss_l1: str = Form(...),
+    loss_l2: str = Form(...),
+    loss_l3: str = Form(...),
+    auto_payout_enabled: str | None = Form(None),
+    dust_balance_limit: str = Form("1.0000"),
+    min_commission_payout: str = Form("0.0001"),
+    note: str = Form(""),
+):
+    verify_csrf(request, csrf_token)
+    admin = require_admin(request, db)
+    try:
+        update_referral_policy(
+            db,
+            activity_l1=activity_l1,
+            activity_l2=activity_l2,
+            activity_l3=activity_l3,
+            loss_l1=loss_l1,
+            loss_l2=loss_l2,
+            loss_l3=loss_l3,
+            auto_payout_enabled=auto_payout_enabled == "1",
+            dust_balance_limit=dust_balance_limit,
+            min_commission_payout=min_commission_payout,
+            note=note,
+            admin_user_id=admin.id,
+        )
+    except ValueError:
+        db.rollback()
+        return RedirectResponse("/admin/referrals?error=invalid_policy", status_code=303)
+    return RedirectResponse("/admin/referrals?policy_updated=1", status_code=303)
