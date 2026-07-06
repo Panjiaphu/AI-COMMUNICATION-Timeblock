@@ -18,6 +18,7 @@ from app.models import (
     User,
     WalletLedgerType,
 )
+from app.services.referral_policy import activity_rates, get_referral_policy, loss_deposit_rates
 
 
 MAX_REFERRAL_LEVEL = 3
@@ -86,9 +87,10 @@ def build_referral_link(user: User, base_url: str, locale: str = "vi") -> str:
 def referral_level_counts(db: Session, root_user: User, max_level: int = MAX_REFERRAL_LEVEL) -> list[ReferralLevelSummary]:
     results: list[ReferralLevelSummary] = []
     current_parent_ids = [root_user.id]
+    rates = activity_rates(get_referral_policy(db))
     for level in range(1, max_level + 1):
         if not current_parent_ids:
-            results.append(ReferralLevelSummary(level, 0, ACTIVITY_COMMISSION_RATES[level]))
+            results.append(ReferralLevelSummary(level, 0, rates[level]))
             continue
         children = (
             db.query(User.id)
@@ -96,7 +98,7 @@ def referral_level_counts(db: Session, root_user: User, max_level: int = MAX_REF
             .all()
         )
         child_ids = [int(row[0]) for row in children]
-        results.append(ReferralLevelSummary(level, len(child_ids), ACTIVITY_COMMISSION_RATES[level]))
+        results.append(ReferralLevelSummary(level, len(child_ids), rates[level]))
         current_parent_ids = child_ids
     return results
 
@@ -141,10 +143,11 @@ def member_commission_summary(db: Session, user: User) -> dict:
     return {"totals": totals, "total_amount": total_amount, "recent": recent}
 
 
-def commission_rates_for_type(commission_type: ReferralCommissionType) -> dict[int, Decimal]:
+def commission_rates_for_type(db: Session, commission_type: ReferralCommissionType) -> dict[int, Decimal]:
+    policy = get_referral_policy(db)
     if commission_type == ReferralCommissionType.LOSS_DEPOSIT:
-        return LOSS_DEPOSIT_COMMISSION_RATES
-    return ACTIVITY_COMMISSION_RATES
+        return loss_deposit_rates(policy)
+    return activity_rates(policy)
 
 
 def create_referral_commissions(
@@ -164,9 +167,11 @@ def create_referral_commissions(
         raise ValueError("base_amount_must_be_positive")
     current = source_user
     created: list[ReferralCommission] = []
-    rates = commission_rates_for_type(commission_type)
+    policy = get_referral_policy(db)
+    rates = loss_deposit_rates(policy) if commission_type == ReferralCommissionType.LOSS_DEPOSIT else activity_rates(policy)
     normalized_reference_type = reference_type.strip()[:64]
     normalized_reference_id = reference_id.strip()[:64]
+    min_payout = Decimal(str(policy.get("min_commission_payout") or MIN_COMMISSION_PAYOUT))
     for level in range(1, MAX_REFERRAL_LEVEL + 1):
         sponsor_id = current.referred_by_user_id
         if not sponsor_id:
@@ -191,7 +196,7 @@ def create_referral_commissions(
             continue
         rate = rates[level]
         amount = (base_amount * rate / Decimal("100")).quantize(Decimal("0.0001"))
-        if amount < MIN_COMMISSION_PAYOUT:
+        if amount < min_payout:
             current = sponsor
             continue
         commission = ReferralCommission(
@@ -212,7 +217,7 @@ def create_referral_commissions(
         )
         db.add(commission)
         db.flush()
-        if AUTO_PAYOUT_ENABLED and commission.status in {ReferralCommissionStatus.PENDING, ReferralCommissionStatus.APPROVED}:
+        if bool(policy.get("auto_payout_enabled")) and commission.status in {ReferralCommissionStatus.PENDING, ReferralCommissionStatus.APPROVED}:
             auto_pay_referral_commission(db, commission)
         created.append(commission)
         current = sponsor
@@ -224,6 +229,7 @@ def create_referral_commissions(
 
 
 def auto_pay_referral_commission(db: Session, commission: ReferralCommission) -> ReferralCommission:
+    policy = get_referral_policy(db)
     if commission.status == ReferralCommissionStatus.PAID:
         return commission
     if commission.status == ReferralCommissionStatus.VOID:
@@ -234,7 +240,8 @@ def auto_pay_referral_commission(db: Session, commission: ReferralCommission) ->
         commission.note = f"{commission.note}\nAuto void: inactive or invalid beneficiary.".strip()
         return commission
     amount = Decimal(str(commission.amount or 0)).quantize(Decimal("0.0001"))
-    if amount < MIN_COMMISSION_PAYOUT:
+    min_payout = Decimal(str(policy.get("min_commission_payout") or MIN_COMMISSION_PAYOUT))
+    if amount < min_payout:
         commission.status = ReferralCommissionStatus.VOID
         commission.note = f"{commission.note}\nAuto void: below minimum payout.".strip()
         return commission
