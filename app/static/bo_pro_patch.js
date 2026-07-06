@@ -245,8 +245,9 @@
       if (form.dataset.boRealtimeGuarded === "1") return;
       form.dataset.boRealtimeGuarded = "1";
       form.addEventListener("submit", (event) => {
-        const state = text(lastClock?.state || "");
-        const remaining = Number(lastClock?.remaining || 0) - Math.floor((Date.now() - Number(lastClock?.receivedAt || 0)) / 1000);
+        if (!lastClock) return;
+        const state = text(lastClock.state || "");
+        const remaining = Number(lastClock.remaining || 0) - Math.floor((Date.now() - Number(lastClock.receivedAt || 0)) / 1000);
         if (state !== "open" || remaining <= 0) {
           event.preventDefault();
           pollRealtime();
