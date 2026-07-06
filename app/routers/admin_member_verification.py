@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session
 
 from app.core.security import require_admin, verify_csrf
 from app.db.session import get_db
-from app.models import User
+from app.models import ReferralCommission, ReferralCommissionStatus, User
 from app.services.email_verification import queue_member_verification_email
+from app.services.referrals import auto_pay_referral_commission
 
 
 router = APIRouter(prefix="/admin")
@@ -90,3 +91,27 @@ def send_member_verification(
         db.rollback()
         return RedirectResponse("/admin/member-verification?verification_error=email_send_failed", status_code=303)
     return RedirectResponse("/admin/member-verification?verification_status=sent", status_code=303)
+
+
+@router.post("/referral-commissions/{commission_id}/status")
+def update_referral_commission_status_with_payout(
+    commission_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+    status: str = Form(...),
+):
+    verify_csrf(request, csrf_token)
+    require_admin(request, db)
+    commission = db.get(ReferralCommission, commission_id)
+    if not commission:
+        return RedirectResponse("/admin/referrals?error=not_found", status_code=303)
+    try:
+        next_status = ReferralCommissionStatus(status)
+    except ValueError:
+        return RedirectResponse("/admin/referrals?error=invalid_status", status_code=303)
+    commission.status = next_status
+    if next_status in {ReferralCommissionStatus.APPROVED, ReferralCommissionStatus.PAID}:
+        auto_pay_referral_commission(db, commission)
+    db.commit()
+    return RedirectResponse("/admin/referrals?updated=1", status_code=303)
