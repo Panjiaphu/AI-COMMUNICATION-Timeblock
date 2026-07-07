@@ -39,32 +39,42 @@ def _format_price8(value) -> str:
     return f"{Decimal(str(value or 0)):.8f}"
 
 
-def _session_index(clock: dict) -> int:
+def _server_now_ms() -> int:
+    return int(time.time() * 1000)
+
+
+def _session_index(clock: dict, now_ms: int | None = None) -> int:
     raw = str(clock.get("session_code", "S0")).upper().removeprefix("S")
-    return int(raw) if raw.isdigit() else int(time.time()) // int(clock.get("total_seconds") or 60)
+    return int(raw) if raw.isdigit() else int((now_ms or _server_now_ms()) // 1000) // int(clock.get("total_seconds") or 60)
 
 
-def _session_payload(clock: dict) -> dict:
+def _session_payload(clock: dict, *, now_ms: int | None = None) -> dict:
+    server_now_ms = now_ms or _server_now_ms()
     total_seconds = int(clock["total_seconds"])
     open_seconds = int(clock["open_seconds"])
     processing_seconds = max(0, total_seconds - open_seconds)
-    index = _session_index(clock)
-    start_ts = index * total_seconds
-    cutoff_ts = start_ts + open_seconds
-    close_ts = start_ts + total_seconds
-    state = str(clock["state"])
+    index = _session_index(clock, server_now_ms)
+    start_ms = index * total_seconds * 1000
+    cutoff_ms = start_ms + open_seconds * 1000
+    close_ms = start_ms + total_seconds * 1000
+    next_start_ms = close_ms
+    state = "open" if server_now_ms < cutoff_ms else "processing"
+    remaining_ms = max(0, (cutoff_ms if state == "open" else close_ms) - server_now_ms)
+    elapsed_ms = max(0, min(total_seconds * 1000, server_now_ms - start_ms))
     return {
         "session_code": str(clock["session_code"]),
         "state": state,
         "phase_label": "Đang đặt lệnh" if state == "open" else "Đang xử lý kết quả",
-        "remaining": int(clock["remaining"]),
-        "elapsed": int(clock["elapsed"]),
+        "remaining": int((remaining_ms + 999) // 1000),
+        "elapsed": int(elapsed_ms // 1000),
         "total_seconds": total_seconds,
         "open_seconds": open_seconds,
         "processing_seconds": processing_seconds,
-        "current_session_start_ts": start_ts,
-        "current_session_cutoff_ts": cutoff_ts,
-        "current_session_close_ts": close_ts,
+        "server_now_ts": server_now_ms,
+        "current_session_start_ts": start_ms,
+        "current_session_cutoff_ts": cutoff_ms,
+        "current_session_close_ts": close_ms,
+        "next_session_start_ts": next_start_ms,
     }
 
 
@@ -223,8 +233,9 @@ def slbo_room_state_pro(request: Request, db: Session = Depends(get_db)):
         wallet = ensure_wallet(db, user)
         grant_initial_member_points_if_needed(db, wallet=wallet, user=user)
     settle_due_bo_orders(db)
+    now_ms = _server_now_ms()
     bo_clock = bo_session_clock()
-    bo_meta = _session_payload(bo_clock)
+    bo_meta = _session_payload(bo_clock, now_ms=now_ms)
     rapid_clock = rapid_session_clock()
     market = get_bo_market_snapshot()
     bo_results_by_asset = {
@@ -254,8 +265,9 @@ def slbo_room_state_pro(request: Request, db: Session = Depends(get_db)):
     db.commit()
     return JSONResponse(
         {
+            "server_now_ts": now_ms,
             "bo_clock": bo_meta,
-            "rapid_clock": _session_payload(rapid_clock),
+            "rapid_clock": _session_payload(rapid_clock, now_ms=now_ms),
             "bo_results_by_asset": bo_results_by_asset,
             "rapid_result": _rapid_board_payload(rapid_result),
             "rapid_results": [_rapid_board_payload(item) for item in rapid_results],
@@ -287,14 +299,15 @@ def slbo_bo_chart_api_pro(
 ):
     user = get_current_user(request, db)
     settle_due_bo_orders(db)
+    now_ms = _server_now_ms()
     bo_clock = bo_session_clock()
-    bo_meta = _session_payload(bo_clock)
+    bo_meta = _session_payload(bo_clock, now_ms=now_ms)
     market = get_bo_market_snapshot()
     chart = get_bo_system_candles(db, asset_code=asset, interval=interval, limit=limit, market=market)
     recent_results = get_recent_bo_session_results(db, chart["asset"], 5, market)
     latest = chart["candles"][-1] if chart["candles"] else None
     current_result = None
-    if bo_meta["state"] != "open":
+    if now_ms >= int(bo_meta["current_session_close_ts"]):
         rows = [item for item in recent_results if item["session_code"] == bo_meta["session_code"]]
         current_result = _bo_result_payload(rows[0]) if rows else None
     marker_query = []
@@ -309,6 +322,7 @@ def slbo_bo_chart_api_pro(
     db.commit()
     return JSONResponse(
         {
+            "server_now_ts": now_ms,
             "asset": chart["asset"],
             "symbol": chart["symbol"],
             "interval": chart["interval"],
