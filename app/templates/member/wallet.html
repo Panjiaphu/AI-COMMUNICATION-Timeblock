@@ -12,7 +12,19 @@
   </div>
 
   {% if error %}
-    <div class="notice-panel warn">{{ error }}</div>
+    <div class="notice-panel warn">
+      {% if error == 'invalid_recipient' %}
+        Không tìm thấy member nhận, member bị khóa, là admin hoặc bạn đang chuyển cho chính mình.
+      {% elif error == 'insufficient_balance' %}
+        Số dư SLB_POINT không đủ để chuyển.
+      {% elif error == 'invalid_amount' %}
+        Số điểm chuyển không hợp lệ.
+      {% elif error == 'sandbox_only' %}
+        Chức năng chuyển điểm chỉ hoạt động trong chế độ sandbox nội bộ.
+      {% else %}
+        Chuyển điểm thất bại. Vui lòng kiểm tra UID/email/referral code và thử lại sau khi hệ thống deploy xong.
+      {% endif %}
+    </div>
   {% endif %}
   {% if request.query_params.get("transfer_completed") %}
     <div class="notice-panel success">Chuyển điểm hoàn thành: {{ request.query_params.get("transfer_completed") }}</div>
