@@ -168,10 +168,43 @@ def _ensure_postgres_enum_labels() -> None:
                 conn.execute(text(f"ALTER TYPE \"{safe_enum_name}\" ADD VALUE IF NOT EXISTS '{safe_label}'"))
 
 
+def _ensure_postgres_point_transfer_columns() -> None:
+    """Patch older point_transfers tables that predate direct transfer fields."""
+
+    if engine.dialect.name != "postgresql":
+        return
+
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = current_schema()
+                      AND table_name = 'point_transfers'
+                )
+                """
+            )
+        ).scalar()
+        if not exists:
+            return
+        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS currency VARCHAR(16) DEFAULT 'SLB_POINT'"))
+        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS status VARCHAR(32) DEFAULT 'pending_receiver_confirmation'"))
+        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS memo TEXT DEFAULT ''"))
+        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS admin_note TEXT DEFAULT ''"))
+        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS sender_confirmed_at TIMESTAMP WITH TIME ZONE NULL"))
+        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS receiver_confirmed_at TIMESTAMP WITH TIME ZONE NULL"))
+        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP WITH TIME ZONE NULL"))
+        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP WITH TIME ZONE NULL"))
+        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS reviewed_by_user_id INTEGER NULL"))
+
+
 settings = get_settings()
 _disable_native_enums_for_bootstrap_create_all()
 _drop_orphan_postgres_enum_types()
 _ensure_postgres_enum_labels()
+_ensure_postgres_point_transfer_columns()
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
