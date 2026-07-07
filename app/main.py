@@ -37,6 +37,23 @@ POSTGRES_ENUM_NAMES = (
     "contentposttype",
 )
 
+POSTGRES_ENUM_LABELS = {
+    "walletledgertype": (
+        "deposit_approved",
+        "withdraw_approved",
+        "transfer_in",
+        "transfer_out",
+        "bo_stake",
+        "bo_payout",
+        "rapid_stake",
+        "rapid_payout",
+        "adjustment",
+    ),
+    "sandboxrequeststatus": ("pending", "approved", "rejected", "cancelled"),
+    "gamerequeststatus": ("accepted", "won", "lost", "refunded", "cancelled"),
+    "referralcommissionstatus": ("pending", "approved", "paid", "void"),
+}
+
 
 def _disable_native_enums_for_bootstrap_create_all() -> None:
     """Avoid Render/Postgres startup failures caused by duplicate enum types.
@@ -115,9 +132,46 @@ def _drop_orphan_postgres_enum_types() -> None:
                 conn.execute(text(f'DROP TYPE IF EXISTS "{enum_name}"'))
 
 
+def _ensure_postgres_enum_labels() -> None:
+    """Add enum labels needed by older Render Postgres databases.
+
+    Existing Render databases may still have native PostgreSQL enum columns from
+    earlier deploys. create_all() does not add enum labels to an existing type,
+    so new wallet ledger values such as transfer_in/transfer_out can raise a
+    500 during member point transfer unless we patch the type at startup.
+    """
+
+    if engine.dialect.name != "postgresql":
+        return
+
+    with engine.begin() as conn:
+        for enum_name, labels in POSTGRES_ENUM_LABELS.items():
+            enum_exists = conn.execute(
+                text(
+                    """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_type t
+                        JOIN pg_namespace n ON n.oid = t.typnamespace
+                        WHERE t.typname = :enum_name
+                          AND n.nspname = current_schema()
+                    )
+                    """
+                ),
+                {"enum_name": enum_name},
+            ).scalar()
+            if not enum_exists:
+                continue
+            safe_enum_name = enum_name.replace('"', '')
+            for label in labels:
+                safe_label = label.replace("'", "''")
+                conn.execute(text(f"ALTER TYPE \"{safe_enum_name}\" ADD VALUE IF NOT EXISTS '{safe_label}'"))
+
+
 settings = get_settings()
 _disable_native_enums_for_bootstrap_create_all()
 _drop_orphan_postgres_enum_types()
+_ensure_postgres_enum_labels()
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
