@@ -1,12 +1,57 @@
 (() => {
   if (window.location.pathname !== "/bo") return;
 
-  let lastClock = null;
+  const CLOCK_RENDER_MS = 250;
+  const ROOM_POLL_MS = 2000;
+  const CHART_POLL_MS = 2000;
+  const DRIFT_REFRESH_MS = 1500;
+
+  const text = (value) => String(value == null ? "" : value);
+  const toMs = (value) => {
+    const number = Number(value || 0);
+    return number > 0 && number < 1000000000000 ? number * 1000 : number;
+  };
+
   let realtimePending = false;
   let chartPending = false;
+  let lastForceRefreshAt = 0;
 
-  function text(value) {
-    return String(value == null ? "" : value);
+  const clock = {
+    ready: false,
+    serverNowMs: 0,
+    clientReceivedAtMs: 0,
+    sessionCode: "",
+    sessionStartMs: 0,
+    cutoffMs: 0,
+    closeMs: 0,
+    openSeconds: 30,
+    totalSeconds: 60,
+    currentPhase: "syncing",
+  };
+
+  function estimatedServerNowMs() {
+    if (!clock.ready) return 0;
+    return clock.serverNowMs + (performance.now() - clock.clientReceivedAtMs);
+  }
+
+  function computePhase() {
+    if (!clock.ready) return { phase: "syncing", remaining: 0 };
+    const now = estimatedServerNowMs();
+    if (now < clock.cutoffMs) {
+      return { phase: "open", remaining: Math.max(1, Math.ceil((clock.cutoffMs - now) / 1000)) };
+    }
+    if (now < clock.closeMs) {
+      return { phase: "processing", remaining: Math.max(1, Math.ceil((clock.closeMs - now) / 1000)) };
+    }
+    return { phase: "syncing", remaining: 0 };
+  }
+
+  function activeAsset() {
+    return document.querySelector("[data-tv].active")?.dataset.asset || document.getElementById("boAssetInput")?.value || "BTC";
+  }
+
+  function setAll(selector, value) {
+    document.querySelectorAll(selector).forEach((node) => { node.textContent = value; });
   }
 
   function addStyle() {
@@ -24,10 +69,10 @@
       .bo-pro-marker.lost{box-shadow:0 0 0 1px rgba(255,78,102,.35) inset;color:#ffd4dc}
       .bo-pro-marker.refunded{box-shadow:0 0 0 1px rgba(255,207,86,.35) inset;color:#fff1bb}
       .bo-pro-marker.pending{color:#fff1bb}
+      .bo-pro-sync{border-color:rgba(255,207,86,.55)!important;background:rgba(255,207,86,.12)!important;color:#fff1bb!important}
       .bo-pro-chart-note{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px;color:rgba(255,255,255,.68);font-size:12px;font-weight:800}
       .bo-pro-chart-note span{border-radius:999px;background:rgba(255,255,255,.07);padding:6px 9px}
       .bo-side-grid button.is-disabled{opacity:.42;cursor:not-allowed;filter:grayscale(.55)}
-      .bo-pro-sync{border-color:rgba(255,207,86,.55)!important;background:rgba(255,207,86,.12)!important;color:#fff1bb!important}
       @media (max-width:900px){.bo-pro-phase-panel{grid-template-columns:1fr!important}.bo-pro-phase-steps{justify-content:flex-start!important}.bo-pro-marker-panel{padding:8px 10px}.bo-pro-marker{font-size:11px}}
     `;
     document.head.appendChild(style);
@@ -42,15 +87,15 @@
     panel.innerHTML = `
       <div>
         <span>BO settlement</span>
-        <strong data-bo-pro-phase>30s đặt lệnh + 30s xử lý = nến 1 phút</strong>
+        <strong data-bo-pro-phase>Đang đồng bộ đồng hồ phiên...</strong>
         <div class="bo-pro-chart-note">
           <span>Settlement: BO System Chart 1m</span>
           <span>TradingView: reference only</span>
-          <span>Realtime settle after close 60s</span>
+          <span>30s open + 30s processing</span>
         </div>
       </div>
       <div class="bo-pro-phase-steps">
-        <span class="active" data-bo-pro-open>0-30s Open</span>
+        <span data-bo-pro-open>0-30s Open</span>
         <span data-bo-pro-processing>30-60s Processing</span>
       </div>
     `;
@@ -68,16 +113,10 @@
     }
   }
 
-  function activeAsset() {
-    return document.querySelector("[data-tv].active")?.dataset.asset || document.getElementById("boAssetInput")?.value || "BTC";
-  }
-
   function forceOneMinuteDefault() {
     const active = document.querySelector(".bo-interval-tabs button.active");
     const oneMinute = document.querySelector('.bo-interval-tabs button[data-interval="1"]');
-    if (oneMinute && active !== oneMinute) {
-      oneMinute.click();
-    }
+    if (oneMinute && active !== oneMinute) oneMinute.click();
     const note = document.querySelector(".bo-system-chart-meta");
     if (note && !note.querySelector("[data-bo-pro-note]")) {
       const span = document.createElement("span");
@@ -87,50 +126,73 @@
     }
   }
 
-  function setNodeText(selector, value) {
-    document.querySelectorAll(selector).forEach((node) => { node.textContent = value; });
+  function resyncClock(payload) {
+    const boClock = payload?.bo_clock || {};
+    const serverNowMs = toMs(payload?.server_now_ts || boClock.server_now_ts);
+    const startMs = toMs(boClock.current_session_start_ts);
+    const cutoffMs = toMs(boClock.current_session_cutoff_ts);
+    const closeMs = toMs(boClock.current_session_close_ts);
+    if (!serverNowMs || !startMs || !cutoffMs || !closeMs) return;
+
+    clock.ready = true;
+    clock.serverNowMs = serverNowMs;
+    clock.clientReceivedAtMs = performance.now();
+    clock.sessionCode = text(boClock.session_code);
+    clock.sessionStartMs = startMs;
+    clock.cutoffMs = cutoffMs;
+    clock.closeMs = closeMs;
+    clock.openSeconds = Number(boClock.open_seconds || 30);
+    clock.totalSeconds = Number(boClock.total_seconds || 60);
+    clock.currentPhase = computePhase().phase;
   }
 
-  function updatePhase(clock) {
-    if (!clock) return;
-    ensureProPanel();
-    lastClock = { ...clock, receivedAt: Date.now() };
-    const state = text(clock.state);
-    const remaining = Number(clock.remaining || 0);
-    const session = text(clock.session_code);
-    const phase = document.querySelector("[data-bo-pro-phase]");
-    const open = document.querySelector("[data-bo-pro-open]");
-    const processing = document.querySelector("[data-bo-pro-processing]");
-    const buttons = document.querySelectorAll(".bo-side-grid button");
-    const stateLabel = state === "open" ? "Đang mở" : "Đang xử lý";
-    if (phase) {
-      phase.textContent = state === "open"
-        ? `Đang đặt lệnh: còn ${remaining}s / cutoff 30s`
-        : `Đang xử lý kết quả: còn ${remaining}s / close 60s`;
-    }
-    setNodeText("[data-bo-session-code], [data-bo-ticket-session]", session);
-    setNodeText("[data-bo-countdown], [data-bo-ticket-countdown]", `${remaining}s`);
-    setNodeText("[data-bo-session-state], [data-bo-ticket-state]", stateLabel);
-    open?.classList.toggle("active", state === "open");
-    processing?.classList.toggle("active", state !== "open");
-    const canSubmit = state === "open" && remaining > 0;
-    buttons.forEach((button) => {
-      button.disabled = !canSubmit;
-      button.classList.toggle("is-disabled", !canSubmit);
+  function setButtons(enabled) {
+    document.querySelectorAll(".bo-side-grid button").forEach((button) => {
+      button.disabled = !enabled;
+      button.classList.toggle("is-disabled", !enabled);
     });
   }
 
-  function optimisticTick() {
-    if (!lastClock) return;
-    const ageSeconds = Math.floor((Date.now() - Number(lastClock.receivedAt || 0)) / 1000);
-    const remaining = Math.max(0, Number(lastClock.remaining || 0) - ageSeconds);
-    if (lastClock.state === "open" && remaining <= 0) {
-      updatePhase({ ...lastClock, state: "processing", remaining: Math.max(1, Number(lastClock.processing_seconds || 30)) });
-      pollRealtime();
-      return;
+  function renderClock() {
+    ensureProPanel();
+    const phaseState = computePhase();
+    const phase = phaseState.phase;
+    const remaining = phaseState.remaining;
+    clock.currentPhase = phase;
+
+    const phaseNode = document.querySelector("[data-bo-pro-phase]");
+    const openNode = document.querySelector("[data-bo-pro-open]");
+    const processingNode = document.querySelector("[data-bo-pro-processing]");
+
+    let label = "Đang đồng bộ";
+    let countdown = "...";
+    if (phase === "open") {
+      label = "Đang mở";
+      countdown = `${remaining}s`;
+      if (phaseNode) phaseNode.textContent = `Còn ${remaining}s để đặt lệnh`;
+      setButtons(remaining > 0);
+    } else if (phase === "processing") {
+      label = "Đang xử lý";
+      countdown = `${remaining}s`;
+      if (phaseNode) phaseNode.textContent = `Còn ${remaining}s xử lý kết quả`;
+      setButtons(false);
+    } else {
+      label = "Đang đồng bộ";
+      countdown = "0s";
+      if (phaseNode) phaseNode.textContent = "Đang đồng bộ kết quả...";
+      setButtons(false);
+      const now = performance.now();
+      if (now - lastForceRefreshAt > DRIFT_REFRESH_MS) {
+        lastForceRefreshAt = now;
+        refreshRoomState(true);
+      }
     }
-    setNodeText("[data-bo-countdown], [data-bo-ticket-countdown]", `${remaining}s`);
-    if (remaining <= 0) pollRealtime();
+
+    setAll("[data-bo-session-code], [data-bo-ticket-session]", clock.sessionCode || "...");
+    setAll("[data-bo-countdown], [data-bo-ticket-countdown]", countdown);
+    setAll("[data-bo-session-state], [data-bo-ticket-state]", label);
+    openNode?.classList.toggle("active", phase === "open");
+    processingNode?.classList.toggle("active", phase === "processing");
   }
 
   function markerStatusClass(marker) {
@@ -187,8 +249,7 @@
   }
 
   function renderResults(resultsByAsset) {
-    const asset = activeAsset();
-    const rows = (resultsByAsset && (resultsByAsset[asset] || resultsByAsset.BTC)) || [];
+    const rows = (resultsByAsset && (resultsByAsset[activeAsset()] || resultsByAsset.BTC)) || [];
     const latest = Array.isArray(rows) ? rows[0] : null;
     const latestNode = document.querySelector("[data-bo-last-result]");
     const history = document.querySelector("[data-bo-session-history]");
@@ -203,29 +264,31 @@
 
   function updateWallet(wallet) {
     if (!wallet) return;
-    document.querySelectorAll("[data-wallet-balance]").forEach((node) => { node.textContent = text(wallet.available_balance); });
+    setAll("[data-wallet-balance]", text(wallet.available_balance));
   }
 
-  async function pollRealtime() {
-    if (realtimePending) return;
+  async function refreshRoomState(force = false) {
+    if (realtimePending && !force) return;
     realtimePending = true;
     try {
       const response = await fetch(`/api/slbo/room-state?_=${Date.now()}`, { cache: "no-store", headers: { Accept: "application/json" } });
       if (!response.ok) return;
       const payload = await response.json();
-      updatePhase(payload.bo_clock);
+      resyncClock(payload);
       renderResults(payload.bo_results_by_asset || {});
       renderOrders(payload.orders || []);
       updateWallet(payload.wallet);
+      renderClock();
     } catch (error) {
-      console.warn("BO realtime refresh failed", error);
+      console.warn("BO room-state refresh failed", error);
+      if (clock.ready && estimatedServerNowMs() >= clock.closeMs) setButtons(false);
     } finally {
       realtimePending = false;
     }
   }
 
-  async function pollChartMarkers() {
-    if (chartPending) return;
+  async function refreshChartMarkers(force = false) {
+    if (chartPending && !force) return;
     chartPending = true;
     try {
       const response = await fetch(`/api/slbo/bo-chart?asset=${encodeURIComponent(activeAsset())}&interval=1&limit=100&_=${Date.now()}`, { cache: "no-store", headers: { Accept: "application/json" } });
@@ -234,7 +297,7 @@
       renderMarkers(payload.member_order_markers || []);
       if (payload.recent_results) renderResults({ [payload.asset || activeAsset()]: payload.recent_results });
     } catch (error) {
-      console.warn("BO pro chart marker refresh failed", error);
+      console.warn("BO marker refresh failed", error);
     } finally {
       chartPending = false;
     }
@@ -245,26 +308,29 @@
       if (form.dataset.boRealtimeGuarded === "1") return;
       form.dataset.boRealtimeGuarded = "1";
       form.addEventListener("submit", (event) => {
-        if (!lastClock) return;
-        const state = text(lastClock.state || "");
-        const remaining = Number(lastClock.remaining || 0) - Math.floor((Date.now() - Number(lastClock.receivedAt || 0)) / 1000);
-        if (state !== "open" || remaining <= 0) {
+        const phase = computePhase();
+        if (clock.ready && (phase.phase !== "open" || phase.remaining <= 0)) {
           event.preventDefault();
-          pollRealtime();
+          refreshRoomState(true);
           alert("Phiên đã đóng đặt lệnh. Vui lòng chờ phiên mới mở.");
         }
       });
     });
   }
 
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) refreshRoomState(true);
+  });
+  window.addEventListener("online", () => refreshRoomState(true));
+
   window.addEventListener("load", () => {
     ensureProPanel();
     forceOneMinuteDefault();
     guardOrderForm();
-    pollRealtime();
-    pollChartMarkers();
-    setInterval(optimisticTick, 1000);
-    setInterval(pollRealtime, 1000);
-    setInterval(pollChartMarkers, 1500);
+    refreshRoomState(true);
+    refreshChartMarkers(true);
+    setInterval(renderClock, CLOCK_RENDER_MS);
+    setInterval(refreshRoomState, ROOM_POLL_MS);
+    setInterval(refreshChartMarkers, CHART_POLL_MS);
   });
 })();
