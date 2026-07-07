@@ -15,6 +15,21 @@ from app.services.slbo_transfer_direct import transfer_points
 router = APIRouter()
 
 
+TRANSFER_ERROR_CODES = {
+    "invalid_recipient",
+    "insufficient_balance",
+    "invalid_amount",
+    "sandbox_only",
+}
+
+
+def _redirect_wallet(locale: str, *, error: str | None = None, transfer_code: str | None = None) -> RedirectResponse:
+    if transfer_code:
+        return RedirectResponse(f"/member/wallet?lang={locale}&transfer_completed={transfer_code}", status_code=303)
+    safe_error = error if error in TRANSFER_ERROR_CODES else "transfer_failed"
+    return RedirectResponse(f"/member/wallet?lang={locale}&error={safe_error}", status_code=303)
+
+
 @router.post("/member/wallet/transfers")
 def create_direct_member_point_transfer(
     request: Request,
@@ -24,10 +39,10 @@ def create_direct_member_point_transfer(
     amount: str = Form(...),
     memo: str = Form(""),
 ):
-    verify_csrf(request, csrf_token)
-    user = require_user(request, db)
     locale = resolve_locale(request)
     try:
+        verify_csrf(request, csrf_token)
+        user = require_user(request, db)
         transfer = transfer_points(
             db,
             sender=user,
@@ -37,5 +52,8 @@ def create_direct_member_point_transfer(
         )
     except (ValueError, InvalidOperation) as exc:
         db.rollback()
-        return RedirectResponse(f"/member/wallet?lang={locale}&error={str(exc)}", status_code=303)
-    return RedirectResponse(f"/member/wallet?lang={locale}&transfer_completed={transfer.reference_code}", status_code=303)
+        return _redirect_wallet(locale, error=str(exc))
+    except Exception:
+        db.rollback()
+        return _redirect_wallet(locale, error="transfer_failed")
+    return _redirect_wallet(locale, transfer_code=transfer.reference_code)
