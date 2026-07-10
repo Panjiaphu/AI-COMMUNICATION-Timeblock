@@ -3,7 +3,7 @@
 {% block content %}
 <section class="bo-trading-page">
   <section class="bo-trading-shell">
-    <main class="bo-trading-main">
+    <div class="bo-trading-main">
       <header class="bo-trading-top">
         <div>
           <h1>{{ t("bo.title") }}</h1>
@@ -117,7 +117,7 @@
             </div>
           {% endif %}
           {% if request.query_params.get("error") %}
-            <div class="notice-panel warn">{{ error_label(request.query_params.get("error")) }}</div>
+            <div class="notice-panel warn" data-session-error>{{ error_label(request.query_params.get("error")) }}</div>
           {% endif %}
           <div class="bo-session-history">
             <h3>{{ t("bo.session_history") }}</h3>
@@ -133,7 +133,7 @@
           </div>
         </aside>
       </section>
-    </main>
+    </div>
   </section>
 
   <section class="panel">
@@ -188,6 +188,7 @@
   const sessionHistoryNode = document.querySelector("[data-bo-session-history]");
   const orderHistoryNode = document.querySelector("[data-bo-order-history]");
   const walletBalanceNode = document.querySelector("[data-wallet-balance]");
+  let sessionErrorNode = document.querySelector("[data-session-error]");
   const sideButtons = document.querySelectorAll(".bo-side-grid button");
   const labels = {
     buy: "{{ t('bo.buy') }}",
@@ -197,8 +198,11 @@
     processing: "{{ t('bo.state.processing') }}",
     won: "{{ t('status.won') }}",
     lost: "{{ t('status.lost') }}",
+    accepted: "{{ t('status.accepted') }}",
+    refunded: "{{ t('status.refunded') }}",
     empty: "{{ t('member.utility_empty') }}",
-    noChart: "{{ t('bo.no_chart_data') }}"
+    noChart: "{{ t('bo.no_chart_data') }}",
+    chartTiming: "{{ t('bo.chart_timing') }}"
   };
   let activeSymbol = "BINANCE:BTCUSDT";
   let activeAsset = "BTC";
@@ -339,11 +343,11 @@
     const ctx = systemCanvas.getContext("2d");
     const { width, height } = size;
     ctx.clearRect(0, 0, width, height);
-    const gradient = ctx.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, "#061a14");
-    gradient.addColorStop(0.45, "#070c13");
-    gradient.addColorStop(1, "#071323");
-    ctx.fillStyle = gradient;
+    const bg = ctx.createLinearGradient(0, 0, width, height);
+    bg.addColorStop(0, "#07111b");
+    bg.addColorStop(0.48, "#080c13");
+    bg.addColorStop(1, "#0d1626");
+    ctx.fillStyle = bg;
     ctx.fillRect(0, 0, width, height);
     const candles = chart?.candles || [];
     if (!candles.length) {
@@ -360,6 +364,9 @@
     };
     const plotW = width - pad.left - pad.right;
     const plotH = height - pad.top - pad.bottom;
+    const volumeH = Math.max(58, plotH * 0.14);
+    const priceH = plotH - volumeH - Math.max(14, height * 0.018);
+    const volumeTop = pad.top + priceH + Math.max(14, height * 0.018);
     let min = Math.min(...candles.map((item) => Number(item.low)));
     let max = Math.max(...candles.map((item) => Number(item.high)));
     if (min === max) {
@@ -369,15 +376,22 @@
     const range = max - min;
     min -= range * 0.08;
     max += range * 0.08;
-    const yFor = (price) => pad.top + (max - Number(price)) / (max - min) * plotH;
+    const yFor = (price) => pad.top + (max - Number(price)) / (max - min) * priceH;
     const xFor = (index) => pad.left + (candles.length <= 1 ? 0 : index / (candles.length - 1) * plotW);
 
-    ctx.strokeStyle = "rgba(255,255,255,.06)";
+    const plotGradient = ctx.createLinearGradient(0, pad.top, 0, volumeTop + volumeH);
+    plotGradient.addColorStop(0, "rgba(47,240,188,.055)");
+    plotGradient.addColorStop(0.5, "rgba(22,167,255,.025)");
+    plotGradient.addColorStop(1, "rgba(255,255,255,.015)");
+    ctx.fillStyle = plotGradient;
+    ctx.fillRect(pad.left, pad.top, plotW, volumeTop + volumeH - pad.top);
+
+    ctx.strokeStyle = "rgba(255,255,255,.065)";
     ctx.lineWidth = 1;
     ctx.font = `${Math.max(12, width * 0.011)}px sans-serif`;
     ctx.fillStyle = "rgba(255,255,255,.55)";
     for (let i = 0; i <= 6; i += 1) {
-      const y = pad.top + (plotH / 6) * i;
+      const y = pad.top + (priceH / 6) * i;
       ctx.beginPath();
       ctx.moveTo(pad.left, y);
       ctx.lineTo(width - pad.right, y);
@@ -393,8 +407,26 @@
       ctx.stroke();
     }
 
+    const totalSeconds = Number(chart?.clock?.total_seconds || 60);
+    const openSeconds = Number(chart?.clock?.open_seconds || 30);
+    candles.forEach((item, index) => {
+      const phase = ((Number(item.time) % totalSeconds) + totalSeconds) % totalSeconds;
+      if (phase === 0 || phase === openSeconds) {
+        const x = xFor(index);
+        ctx.strokeStyle = phase === 0 ? "rgba(47,240,188,.28)" : "rgba(255,194,87,.34)";
+        ctx.lineWidth = Math.max(1, (window.devicePixelRatio || 1));
+        ctx.setLineDash(phase === 0 ? [] : [5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(x, pad.top);
+        ctx.lineTo(x, volumeTop + volumeH);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    });
+
     const slot = plotW / Math.max(candles.length, 24);
     const bodyW = Math.max(3, Math.min(slot * 0.64, 16 * (window.devicePixelRatio || 1)));
+    const maxVolume = Math.max(...candles.map((item) => Math.abs(item.close - item.open)), 0.0000001);
     candles.forEach((item, index) => {
       const x = xFor(index);
       const openY = yFor(item.open);
@@ -403,6 +435,9 @@
       const lowY = yFor(item.low);
       const isBuy = Number(item.close) >= Number(item.open);
       const color = isBuy ? "#17c784" : "#ea3943";
+      const volumeRatio = Math.max(0.08, Math.min(1, Math.abs(item.close - item.open) / maxVolume));
+      ctx.fillStyle = isBuy ? "rgba(23,199,132,.22)" : "rgba(234,57,67,.22)";
+      ctx.fillRect(x - bodyW / 2, volumeTop + volumeH * (1 - volumeRatio), bodyW, volumeH * volumeRatio);
       ctx.strokeStyle = color;
       ctx.fillStyle = color;
       ctx.lineWidth = Math.max(1, window.devicePixelRatio || 1);
@@ -412,7 +447,12 @@
       ctx.stroke();
       const top = Math.min(openY, closeY);
       const bottom = Math.max(openY, closeY);
+      if (index > candles.length - 8) {
+        ctx.shadowColor = isBuy ? "rgba(23,199,132,.22)" : "rgba(234,57,67,.22)";
+        ctx.shadowBlur = 10 * (window.devicePixelRatio || 1);
+      }
       ctx.fillRect(x - bodyW / 2, top, bodyW, Math.max(bottom - top, 2));
+      ctx.shadowBlur = 0;
     });
 
     const latest = candles[candles.length - 1];
@@ -430,6 +470,11 @@
     ctx.fillStyle = "#fff";
     ctx.font = `700 ${Math.max(12, width * 0.011)}px sans-serif`;
     ctx.fillText(priceText, width - pad.right + 15, latestY + 5);
+    ctx.fillStyle = "rgba(255,255,255,.72)";
+    ctx.font = `700 ${Math.max(12, width * 0.01)}px sans-serif`;
+    ctx.fillText(`${activeAsset} / ${activeInterval}`, pad.left, pad.top - 9);
+    ctx.fillStyle = "rgba(255,255,255,.42)";
+    ctx.fillText(labels.chartTiming.replace("{open}", openSeconds).replace("{wait}", totalSeconds - openSeconds), pad.left + Math.max(86, width * 0.09), pad.top - 9);
     if (systemLatestNode) systemLatestNode.textContent = priceText;
   }
 
@@ -551,6 +596,15 @@
     if (ticketStateNode) ticketStateNode.textContent = labels[boState] || boState || "";
     if (countdownNode) countdownNode.textContent = `${boRemaining}s`;
     if (ticketCountdownNode) ticketCountdownNode.textContent = `${boRemaining}s`;
+    if (sessionErrorNode && boState === "open") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("error") === "session_not_open") {
+        url.searchParams.delete("error");
+        window.history.replaceState({}, "", url.toString());
+      }
+      sessionErrorNode.remove();
+      sessionErrorNode = null;
+    }
     sideButtons.forEach((button) => {
       button.disabled = boState !== "open";
       button.classList.toggle("is-disabled", boState !== "open");
@@ -587,8 +641,8 @@
     }
   }, 1000);
   setInterval(pushRealtimeTick, 1000);
-  setInterval(refreshRoomState, 8000);
-  setInterval(loadSystemChart, 2000);
+  setInterval(refreshRoomState, 6000);
+  setInterval(loadSystemChart, 2500);
   window.addEventListener("resize", () => drawSystemChart());
 
   updateSymbolMeta(activeSymbol);

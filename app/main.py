@@ -213,6 +213,11 @@ app.add_middleware(SecurityFirewallMiddleware)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "app" / "static"), name="static")
 
 
+@app.get("/healthz/")
+def healthz() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 @app.on_event("startup")
 def startup_tasks() -> None:
     with SessionLocal() as db:

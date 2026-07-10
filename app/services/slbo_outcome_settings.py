@@ -45,7 +45,7 @@ def ensure_slbo_outcome_settings_table(db: Session) -> None:
             WHERE NOT EXISTS (SELECT 1 FROM slbo_outcome_settings WHERE id = 1)
             """
         ),
-        {"rate": DEFAULT_MEMBER_TARGET_SUCCESS_RATE},
+        {"rate": str(DEFAULT_MEMBER_TARGET_SUCCESS_RATE)},
     )
     db.commit()
 
@@ -103,7 +103,7 @@ def update_member_target_success_rate(
             """
         ),
         {
-            "rate": parsed,
+            "rate": str(parsed),
             "note": note.strip()[:500],
             "admin_user_id": admin_user_id,
             "updated_at": datetime.now(timezone.utc),

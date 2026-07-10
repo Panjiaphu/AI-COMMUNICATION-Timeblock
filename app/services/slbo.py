@@ -149,6 +149,25 @@ def _session_index_from_code(session_code: str | int | None, total_seconds: int)
     return int(raw) if raw.isdigit() else int(time.time()) // total_seconds
 
 
+def _bo_timing() -> tuple[int, int, int]:
+    settings = get_settings()
+    open_seconds = int(settings.bo_trade_open_seconds)
+    wait_seconds = int(settings.bo_result_wait_seconds)
+    return open_seconds + wait_seconds, open_seconds, wait_seconds
+
+
+def _bo_current_index(now: int | None = None) -> int:
+    total_seconds, _open_seconds, _wait_seconds = _bo_timing()
+    return int(now or time.time()) // total_seconds
+
+
+def _bo_session_can_finalize(index: int, now: int | None = None) -> bool:
+    total_seconds, _open_seconds, _wait_seconds = _bo_timing()
+    current_now = int(now or time.time())
+    current_index = current_now // total_seconds
+    return index < current_index
+
+
 def _bo_asset(asset_code: str) -> BoAsset:
     normalized = asset_code.strip().upper()[:16] or "BTC"
     return next((item for item in BO_ASSETS if item.code == normalized), BO_ASSETS[0])
@@ -171,6 +190,24 @@ def _market_price_for_asset(asset: BoAsset, market: dict | None) -> Decimal:
         if found:
             return _money(found.get("price") or asset.fallback_price, places=8)
     return _money(asset.fallback_price, places=8)
+
+
+def _bo_preview_price(asset_code: str, timestamp: int, market: dict | None = None) -> Decimal:
+    total_seconds, _open_seconds, _wait_seconds = _bo_timing()
+    asset = _bo_asset(asset_code)
+    index = timestamp // total_seconds
+    elapsed = max(0, timestamp - index * total_seconds)
+    base_price = _market_price_for_asset(asset, market)
+    session_seed = int(hashlib.sha256(f"bo-preview-anchor:S{index}:{asset.code}".encode("utf-8")).hexdigest(), 16)
+    anchor_shift = Decimal((session_seed >> 5) % 140 - 70) / Decimal("10000")
+    anchor = _money(base_price * (Decimal("1") + anchor_shift), places=8)
+    drift_seed = int(hashlib.sha256(f"bo-preview-drift:S{index}:{asset.code}".encode("utf-8")).hexdigest(), 16)
+    drift_direction = Decimal("1") if drift_seed % 2 == 0 else Decimal("-1")
+    drift_size = Decimal(2 + drift_seed % 11) / Decimal("100000")
+    drift = anchor * drift_direction * drift_size * Decimal(elapsed)
+    pulse_seed = int(hashlib.sha256(f"bo-preview-pulse:S{index}:{asset.code}:{elapsed}".encode("utf-8")).hexdigest(), 16)
+    pulse = anchor * Decimal(pulse_seed % 25 - 12) / Decimal("1000000")
+    return _money(anchor + drift + pulse, places=8)
 
 
 def _build_bo_session_result_data(index: int, asset_code: str, market: dict | None = None) -> dict:
@@ -256,12 +293,24 @@ def get_or_create_bo_session_result(
     return _bo_record_payload(record)
 
 
+def get_bo_session_result(db: Session, session_code: str | int | None = None, asset_code: str = "BTC") -> dict | None:
+    total_seconds, _open_seconds, _wait_seconds = _bo_timing()
+    index = _session_index_from_code(session_code, total_seconds)
+    asset = _bo_asset(asset_code)
+    record = (
+        db.query(BoSessionResult)
+        .filter(BoSessionResult.session_code == f"S{index}", BoSessionResult.asset == asset.code)
+        .first()
+    )
+    return _bo_record_payload(record) if record else None
+
+
 def get_recent_bo_session_results(db: Session, asset_code: str = "BTC", limit: int = 5, market: dict | None = None) -> list[dict]:
     settings = get_settings()
     total_seconds = settings.bo_trade_open_seconds + settings.bo_result_wait_seconds
     clock = bo_session_clock()
     current_index = _session_index_from_code(str(clock["session_code"]), total_seconds)
-    start_index = current_index if clock["state"] != "open" else current_index - 1
+    start_index = current_index - 1
     if start_index < 0:
         start_index = current_index
     market = market or get_bo_market_snapshot()
@@ -272,15 +321,21 @@ def get_recent_bo_session_results(db: Session, asset_code: str = "BTC", limit: i
 
 
 def _bo_price_at_timestamp(db: Session, asset_code: str, timestamp: int, market: dict | None = None) -> Decimal:
-    settings = get_settings()
-    total_seconds = settings.bo_trade_open_seconds + settings.bo_result_wait_seconds
+    total_seconds, open_seconds, _wait_seconds = _bo_timing()
+    now = int(time.time())
+    timestamp = min(timestamp, now)
     index = timestamp // total_seconds
     elapsed = max(0, min(total_seconds, timestamp - index * total_seconds))
-    result = get_or_create_bo_session_result(db, f"S{index}", asset_code, market)
+    result = get_bo_session_result(db, f"S{index}", asset_code)
+    if result is None and not _bo_session_can_finalize(index, now):
+        return _bo_preview_price(asset_code, timestamp, market)
+    result = result or get_or_create_bo_session_result(db, f"S{index}", asset_code, market)
     entry = _money(result["entry_price"], places=8)
     close = _money(result["result_price"], places=8)
     if elapsed <= 0:
         return entry
+    if elapsed < open_seconds and result.get("source") != "settled":
+        return _bo_preview_price(asset_code, timestamp, market)
     if elapsed >= total_seconds:
         return close
     progress = Decimal(elapsed) / Decimal(total_seconds)
@@ -308,7 +363,7 @@ def get_bo_system_candles(
     candles: list[dict] = []
     asset = _bo_asset(asset_code)
     for open_ts in range(start_ts, end_ts + 1, interval_seconds):
-        close_ts = open_ts + interval_seconds
+        close_ts = min(open_ts + interval_seconds, now)
         open_price = _bo_price_at_timestamp(db, asset.code, open_ts, market)
         close_price = _bo_price_at_timestamp(db, asset.code, close_ts, market)
         seed = int(hashlib.sha256(f"bo-candle:{asset.code}:{interval_key}:{open_ts}".encode("utf-8")).hexdigest(), 16)
@@ -821,6 +876,78 @@ def cancel_point_transfer(
     return transfer
 
 
+def settle_due_bo_orders(db: Session, market: dict | None = None) -> int:
+    _assert_sandbox()
+    total_seconds, _open_seconds, _wait_seconds = _bo_timing()
+    now = int(time.time())
+    current_index = now // total_seconds
+    market = market or get_bo_market_snapshot()
+    pending_orders = (
+        db.query(BoOrder)
+        .filter(BoOrder.status == GameRequestStatus.ACCEPTED)
+        .order_by(BoOrder.created_at.asc())
+        .limit(300)
+        .all()
+    )
+    settled_count = 0
+    for order in pending_orders:
+        order_index = _session_index_from_code(order.session_code, total_seconds)
+        if order_index > current_index or not _bo_session_can_finalize(order_index, now):
+            continue
+        wallet = ensure_wallet(db, order.user)
+        treasury = ensure_treasury(db)
+        session_result = get_or_create_bo_session_result(db, order.session_code, order.asset, market)
+        result_price = _money(session_result["result_price"], places=8)
+        won = session_result["result_side"] == order.side.value
+        stake = _money(order.stake_amount)
+        payout = (stake * _money(order.payout_ratio)).quantize(Decimal("0.0001"))
+        if won and (_money(treasury.available_balance) - payout) < _money(treasury.reserve_floor):
+            order.status = GameRequestStatus.REFUNDED
+            order.result_price = result_price
+            order.profit_amount = Decimal("0")
+            order.result_note = "treasury_guard_refund"
+            order.settled_at = datetime.now(timezone.utc)
+            _credit_wallet(
+                db,
+                wallet=wallet,
+                amount=stake,
+                entry_type=WalletLedgerType.BO_PAYOUT,
+                reference_type="bo_order",
+                reference_id=order.reference_code,
+                reason="BO stake refunded by treasury guard",
+            )
+            _debit_treasury(db, treasury, stake, "bo_refund", "bo_order", order.reference_code, "BO treasury guard refund")
+        elif won:
+            order.status = GameRequestStatus.WON
+            order.result_price = result_price
+            order.profit_amount = (payout - stake).quantize(Decimal("0.0001"))
+            order.result_note = "canonical_session_result"
+            order.settled_at = datetime.now(timezone.utc)
+            wallet.total_profit = _money(wallet.total_profit) + (payout - stake)
+            _credit_wallet(
+                db,
+                wallet=wallet,
+                amount=payout,
+                entry_type=WalletLedgerType.BO_PAYOUT,
+                reference_type="bo_order",
+                reference_id=order.reference_code,
+                reason="BO canonical payout",
+            )
+            _debit_treasury(db, treasury, payout, "bo_payout", "bo_order", order.reference_code, "BO canonical payout")
+        else:
+            order.status = GameRequestStatus.LOST
+            order.result_price = result_price
+            order.profit_amount = (-stake).quantize(Decimal("0.0001"))
+            order.result_note = "canonical_session_result"
+            order.settled_at = datetime.now(timezone.utc)
+            wallet.total_loss = _money(wallet.total_loss) + stake
+            maybe_create_loss_deposit_commissions(db, order.user)
+        settled_count += 1
+    if settled_count:
+        db.flush()
+    return settled_count
+
+
 def place_bo_order(
     db: Session,
     *,
@@ -849,15 +976,8 @@ def place_bo_order(
         raise ValueError("session_not_open")
 
     reference_code = _unique_code(db, BoOrder, "BO")
-    session_result = get_or_create_bo_session_result(db, str(clock["session_code"]), asset_code, market)
-    entry_price = _money(session_result["entry_price"], places=8)
-    result_price = _money(session_result["result_price"], places=8)
-    won = session_result["result_side"] == side.value
+    entry_price = _bo_price_at_timestamp(db, asset_code, int(time.time()), market)
     payout_ratio = _money(get_settings().bo_payout_ratio)
-    payout = (stake * payout_ratio).quantize(Decimal("0.0001"))
-    treasury_after_win = _money(treasury.available_balance) + stake - payout
-    if won and treasury_after_win < _money(treasury.reserve_floor):
-        raise ValueError("treasury_guard")
 
     _debit_wallet(
         db,
@@ -879,33 +999,16 @@ def place_bo_order(
         stake_amount=stake,
         payout_ratio=payout_ratio,
         entry_price=entry_price,
-        result_price=result_price,
-        status=GameRequestStatus.WON if won else GameRequestStatus.LOST,
-        profit_amount=(payout - stake if won else -stake).quantize(Decimal("0.0001")),
-        result_note="sandbox_settlement",
-        settled_at=datetime.now(timezone.utc),
+        result_price=entry_price,
+        status=GameRequestStatus.ACCEPTED,
+        profit_amount=Decimal("0"),
+        result_note="accepted_pending_canonical_result",
+        settled_at=None,
     )
     db.add(order)
 
-    if won:
-        wallet.total_profit = _money(wallet.total_profit) + (payout - stake)
-        _credit_wallet(
-            db,
-            wallet=wallet,
-            amount=payout,
-            entry_type=WalletLedgerType.BO_PAYOUT,
-            reference_type="bo_order",
-            reference_id=reference_code,
-            reason="BO sandbox payout",
-        )
-        _debit_treasury(db, treasury, payout, "bo_payout", "bo_order", reference_code, "BO sandbox payout")
-    else:
-        wallet.total_loss = _money(wallet.total_loss) + stake
-
     db.flush()
     _create_activity_commissions(db, user, stake, "bo_order", reference_code)
-    if not won:
-        maybe_create_loss_deposit_commissions(db, user)
     db.commit()
     db.refresh(order)
     return order

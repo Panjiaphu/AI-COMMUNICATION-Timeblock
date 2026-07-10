@@ -956,7 +956,7 @@ VI_OVERRIDES = {
     "home.proof.admin": "Admin Ops",
     "home.hero_status": "Sandbox active",
     "home.hero_rate": "SLB_POINT",
-    "home.ops.one": "BO: mở lệnh 30 giây, xử lý 15 giây",
+    "home.ops.one": "BO: mở lệnh 30 giây, xử lý 30 giây",
     "home.ops.two": "Siêu tốc: phiên 120 giây, 15 giây cuối xử lý",
     "home.ops.three": "Hoa hồng lỗ chỉ tạo khi cấp dưới đã lỗ hết tổng điểm nạp",
     "home.card.bo.title": "BO Trading",
@@ -1235,7 +1235,7 @@ ZH_OVERRIDES = {
     "home.proof.admin": "後台營運",
     "home.hero_status": "沙盒啟用",
     "home.hero_rate": "SLB_POINT",
-    "home.ops.one": "BO：開放 30 秒，處理 15 秒",
+    "home.ops.one": "BO：開放 30 秒，處理 30 秒",
     "home.ops.two": "極速：每期 120 秒，最後 15 秒處理",
     "home.ops.three": "下線完全虧損已核准入點後才建立虧損佣金",
     "home.card.bo.title": "BO Trading",
@@ -2123,7 +2123,8 @@ MESSAGES["en"].update(SLBO_FIX_EN)
 
 FINAL_SLBO_UX_VI = {
     "bo.title": "Phòng BO với chart hệ thống đồng bộ phiên",
-    "bo.subtitle": "Chart BO nội bộ dùng cùng nguồn dữ liệu với kết quả phiên để member nhìn thấy nến, countdown, lệnh MUA/BÁN và lịch sử gần nhất trong một giao diện rõ ràng.",
+    "bo.subtitle": "Chart BO nội bộ dùng cùng nguồn dữ liệu với kết quả phiên: 30 giây nhận lệnh, 30 giây xử lý kết quả, tự cập nhật countdown và lịch sử gần nhất.",
+    "home.ops.one": "BO: mở lệnh 30 giây, chờ kết quả 30 giây",
     "bo.interval": "Khung nến",
     "bo.candle_note": "Chart BO hệ thống - TradingView để tham khảo",
     "bo.system_chart": "Chart BO",
@@ -2151,7 +2152,8 @@ FINAL_SLBO_UX_VI = {
 
 FINAL_SLBO_UX_ZH = {
     "bo.title": "與期別同步的 BO 系統圖表",
-    "bo.subtitle": "BO 內建圖表與期別結果使用同一份資料來源，會員可在同一介面查看 K 線、倒數、買入/賣出與近期結果。",
+    "bo.subtitle": "BO 內建圖表與期別結果使用同一份資料來源：30 秒開放下單、30 秒處理結果，倒數與近期紀錄會自動更新。",
+    "home.ops.one": "BO：開放下單 30 秒，處理結果 30 秒",
     "bo.interval": "K 線週期",
     "bo.candle_note": "BO 系統圖表 - TradingView 僅供參考",
     "bo.system_chart": "BO 圖表",
@@ -2179,7 +2181,8 @@ FINAL_SLBO_UX_ZH = {
 
 FINAL_SLBO_UX_EN = {
     "bo.title": "BO room with a synced system chart",
-    "bo.subtitle": "The internal BO chart and session results use the same source of truth, so members see candles, countdown, BUY/SELL actions and recent results in one clear interface.",
+    "bo.subtitle": "The internal BO chart and session result use the same source of truth: 30 seconds for order entry, 30 seconds for result processing, with automatic countdown and history refresh.",
+    "home.ops.one": "BO: 30s order entry, 30s result processing",
     "bo.interval": "Candle interval",
     "bo.candle_note": "System BO chart - TradingView is reference only",
     "bo.system_chart": "BO Chart",
@@ -2204,6 +2207,10 @@ FINAL_SLBO_UX_EN = {
 MESSAGES["vi"].update(FINAL_SLBO_UX_VI)
 MESSAGES["zh-TW"].update(FINAL_SLBO_UX_ZH)
 MESSAGES["en"].update(FINAL_SLBO_UX_EN)
+
+MESSAGES["vi"].update({"bo.chart_timing": "Mở {open}s + chờ {wait}s"})
+MESSAGES["zh-TW"].update({"bo.chart_timing": "開放 {open} 秒 + 等待 {wait} 秒"})
+MESSAGES["en"].update({"bo.chart_timing": "Open {open}s + wait {wait}s"})
 
 
 def resolve_locale(request: Request) -> str:

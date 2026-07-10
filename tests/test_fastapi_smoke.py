@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from PIL import Image
@@ -17,10 +18,14 @@ from app.db.session import Base
 from app.db.session import SessionLocal
 from app.main import app
 from app.models import (
+    BoOrder,
+    BoSessionResult,
+    BoSide,
     ContentPost,
     ContentPostType,
     EmailNotification,
     EmailReply,
+    GameRequestStatus,
     InternalWallet,
     PointLedgerEntry,
     PointTransfer,
@@ -36,6 +41,7 @@ from app.models import (
     TransactionType,
     User,
 )
+from app.services import slbo as slbo_services
 from app.services.commercial import create_agent_key
 from app.services.email import record_email_reply
 from app.services import crypto_market
@@ -50,7 +56,9 @@ from app.services.slbo import (
     complete_point_transfer,
     create_wallet_request,
     get_recent_rapid_result_boards,
+    place_bo_order,
     record_member_loss,
+    settle_due_bo_orders,
     transfer_points,
 )
 from app.services.transactions import create_transaction
@@ -84,7 +92,7 @@ class FastApiSmokeTest(unittest.TestCase):
         self.assertIn("USDT / TWD", response.text)
         self.assertIn("zh-TW", response.text)
         self.assertIn("/bo?lang=zh-TW", response.text)
-        self.assertIn("/rapid?lang=zh-TW", response.text)
+        self.assertNotIn("/rapid?lang=zh-TW", response.text)
         self.assertIn("/member/transactions/send-home", response.text)
         self.assertIn("/member/transactions/buy-usdt", response.text)
         self.assertIn("/member/transactions/sell-usdt", response.text)
@@ -340,6 +348,84 @@ class FastApiSmokeTest(unittest.TestCase):
 
         self.assertTrue(all(status == 200 for status, _session_code, _count in results))
         self.assertTrue(all(count >= 5 for _status, _session_code, count in results))
+
+    def test_bo_canonical_result_settles_opposite_orders_once(self):
+        engine = create_engine("sqlite+pysqlite:///:memory:", connect_args={"check_same_thread": False})
+        Base.metadata.create_all(engine)
+        TestingSession = sessionmaker(bind=engine)
+        market = {
+            "assets": [
+                {
+                    "code": "BTC",
+                    "label": "BTC",
+                    "price": Decimal("60000"),
+                    "source": "test",
+                    "tradingview_symbol": "BINANCE:BTCUSDT",
+                }
+            ]
+        }
+        timing = get_settings().bo_trade_open_seconds + get_settings().bo_result_wait_seconds
+        with TestingSession() as db, patch.object(slbo_services, "get_bo_market_snapshot", return_value=market):
+            user = User(
+                email="bo-canonical@example.com",
+                password_hash="hash",
+                full_name="BO Canonical",
+                locale="vi",
+                is_active=True,
+                is_email_verified=True,
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+            for offset, result_side in enumerate(("buy", "sell"), start=100):
+                open_now = timing * offset
+                session_code = f"S{offset}"
+                with patch.object(slbo_services.time, "time", return_value=open_now):
+                    buy_order = place_bo_order(
+                        db,
+                        user=user,
+                        asset_code="BTC",
+                        side=BoSide.BUY,
+                        stake_amount=Decimal("100"),
+                    )
+                    sell_order = place_bo_order(
+                        db,
+                        user=user,
+                        asset_code="BTC",
+                        side=BoSide.SELL,
+                        stake_amount=Decimal("100"),
+                    )
+                self.assertEqual(GameRequestStatus.ACCEPTED, buy_order.status)
+                self.assertEqual(GameRequestStatus.ACCEPTED, sell_order.status)
+                record = (
+                    db.query(BoSessionResult)
+                    .filter(BoSessionResult.session_code == session_code, BoSessionResult.asset == "BTC")
+                    .one_or_none()
+                )
+                if record is None:
+                    record = BoSessionResult(session_code=session_code, session_index=offset, asset="BTC")
+                    db.add(record)
+                record.entry_price = Decimal("60000.00000000")
+                record.result_price = Decimal("60100.00000000") if result_side == "buy" else Decimal("59900.00000000")
+                record.result_side = result_side
+                record.change_percent = Decimal("0.1667") if result_side == "buy" else Decimal("-0.1667")
+                record.source = "test_canonical"
+                db.commit()
+
+                with patch.object(slbo_services.time, "time", return_value=open_now + timing + 1):
+                    settled = settle_due_bo_orders(db, market)
+                db.commit()
+                self.assertEqual(2, settled)
+                db.refresh(buy_order)
+                db.refresh(sell_order)
+                if result_side == "buy":
+                    self.assertEqual(GameRequestStatus.WON, buy_order.status)
+                    self.assertEqual(GameRequestStatus.LOST, sell_order.status)
+                else:
+                    self.assertEqual(GameRequestStatus.LOST, buy_order.status)
+                    self.assertEqual(GameRequestStatus.WON, sell_order.status)
+                self.assertNotEqual(buy_order.status, sell_order.status)
 
     def test_member_point_transfer_and_wallet_request_flow(self):
         suffix = os.getpid()
@@ -853,7 +939,7 @@ class FastApiSmokeTest(unittest.TestCase):
             self.assertEqual(len(created), 3)
             rows = db.query(ReferralCommission).order_by(ReferralCommission.level.asc()).all()
             self.assertEqual([row.level for row in rows], [1, 2, 3])
-            self.assertEqual([Decimal(row.amount) for row in rows], [Decimal("10.0000"), Decimal("20.0000"), Decimal("30.0000")])
+            self.assertEqual([Decimal(row.amount) for row in rows], [Decimal("2.0000"), Decimal("0.8000"), Decimal("0.3000")])
             self.assertEqual(rows[0].beneficiary.email, "level1@example.com")
             self.assertEqual(rows[1].beneficiary.email, "level2@example.com")
             self.assertEqual(rows[2].beneficiary.email, "level3@example.com")
@@ -920,7 +1006,7 @@ class FastApiSmokeTest(unittest.TestCase):
                 .order_by(ReferralCommission.level.asc())
                 .all()
             )
-            self.assertEqual([Decimal(row.amount) for row in rows], [Decimal("1.0000"), Decimal("2.0000"), Decimal("3.0000")])
+            self.assertEqual([Decimal(row.amount) for row in rows], [Decimal("6.0000"), Decimal("2.0000"), Decimal("1.0000")])
 
             duplicate = record_member_loss(db, user=source, amount=Decimal("1"), reference_id="extra")
             self.assertEqual(duplicate, [])

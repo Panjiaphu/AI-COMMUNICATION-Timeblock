@@ -4,7 +4,7 @@ import unittest
 
 from app.core.security import hash_password
 from app.db.session import SessionLocal
-from app.models import EmailNotification, InternalWallet, PointLedgerEntry, PointTransfer, User
+from app.models import EmailNotification, InternalWallet, PointLedgerEntry, PointTransfer, SandboxTransaction, User
 from app.services.referrals import ensure_user_referral_identity
 from app.services.slbo import approve_deposit
 from app.services.slbo_transfer_direct import transfer_points
@@ -16,6 +16,7 @@ class DirectPointTransferServiceTest(unittest.TestCase):
         db.query(PointTransfer).filter(PointTransfer.receiver_user_id == user_id).delete(synchronize_session=False)
         db.query(PointLedgerEntry).filter(PointLedgerEntry.user_id == user_id).delete(synchronize_session=False)
         db.query(EmailNotification).filter(EmailNotification.user_id == user_id).delete(synchronize_session=False)
+        db.query(SandboxTransaction).filter(SandboxTransaction.user_id == user_id).delete(synchronize_session=False)
         db.query(InternalWallet).filter(InternalWallet.user_id == user_id).delete(synchronize_session=False)
         user = db.get(User, user_id)
         if user:

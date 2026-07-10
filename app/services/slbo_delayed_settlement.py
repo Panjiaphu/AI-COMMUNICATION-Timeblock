@@ -66,15 +66,18 @@ def place_bo_order(db: Session, *, user, asset_code: str, side, stake_amount):
     return order
 
 
-def settle_due_bo_orders(db: Session) -> int:
-    normalize_pending_bo_order_entries(db)
+def settle_due_bo_orders(db: Session, market: dict | None = None) -> int:
+    normalize_pending_bo_order_entries(db, market=market)
     if _ORIGINAL_SETTLE_DUE_BO_ORDERS:
-        return int(_ORIGINAL_SETTLE_DUE_BO_ORDERS(db) or 0)
+        try:
+            return int(_ORIGINAL_SETTLE_DUE_BO_ORDERS(db, market) or 0)
+        except TypeError:
+            return int(_ORIGINAL_SETTLE_DUE_BO_ORDERS(db) or 0)
     return 0
 
 
 def get_recent_bo_session_results(db: Session, asset_code: str = "BTC", limit: int = 5, market: dict | None = None) -> list[dict]:
-    settle_due_bo_orders(db)
+    settle_due_bo_orders(db, market)
     return _ORIGINAL_GET_RECENT_BO_SESSION_RESULTS(db, asset_code, limit, market)
 
 

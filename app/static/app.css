@@ -938,7 +938,7 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
   .feature-card, .feature-inner { min-height: 260px; }
   .section-head, .welcome { flex-direction: column; }
   .inline-form, .service-admin-form { grid-template-columns: 1fr; }
-  main { width: min(100% - 20px, 1180px); }
+  main { width: min(1180px, calc(100% - 20px)); }
   .panel, .auth-card { padding: 20px; }
   .post-media-panel { position: static; }
   .form-section-title { align-items: flex-start; flex-direction: column; }
@@ -1122,22 +1122,47 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
 .tradingview-card { min-width: 0; }
 .tv-mini-wrap { min-height: 360px; overflow: hidden; border-radius: 20px; background: rgba(255,255,255,.04); }
 
-.bo-trading-page { display: grid; gap: 24px; padding-top: 24px; }
+.bo-trading-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  padding-top: 24px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+}
 .bo-trading-shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   align-items: stretch;
+  min-width: 0;
+  max-width: 100%;
 }
-.bo-trading-main { min-width: 0; display: grid; gap: 16px; }
+.bo-trading-main {
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  width: 100%;
+  margin: 0;
+}
 .bo-trading-top {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(170px, 220px) minmax(150px, 190px);
   gap: 14px;
   align-items: stretch;
+  min-width: 0;
+  max-width: 100%;
 }
-.bo-trading-top h1 { margin: 0 0 8px; font-size: clamp(30px, 4vw, 54px); line-height: 1.02; }
-.bo-trading-top p { margin: 0; color: var(--muted); max-width: 780px; }
+.bo-trading-top h1 {
+  margin: 0 0 8px;
+  font-size: clamp(30px, 4vw, 54px);
+  line-height: 1.02;
+  overflow-wrap: anywhere;
+}
+.bo-trading-top p { margin: 0; color: var(--muted); max-width: 780px; overflow-wrap: anywhere; }
 .bo-wallet-chip {
   border: 1px solid rgba(47,240,188,.26);
   border-radius: 22px;
@@ -1154,11 +1179,15 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
   grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   align-items: stretch;
+  min-width: 0;
+  max-width: 100%;
 }
 .bo-asset-tabs {
   display: grid;
   grid-template-columns: repeat(4, minmax(140px, 1fr));
   gap: 10px;
+  min-width: 0;
+  max-width: 100%;
 }
 .bo-interval-tabs {
   display: flex;
@@ -1186,6 +1215,8 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
   grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
   gap: 16px;
   align-items: stretch;
+  min-width: 0;
+  max-width: 100%;
 }
 .bo-chart-frame,
 .bo-order-ticket {
@@ -1193,9 +1224,20 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
   border-radius: 26px;
   background: rgba(18,18,22,.86);
   box-shadow: 0 30px 80px rgba(0,0,0,.36);
+  min-width: 0;
+  max-width: 100%;
 }
-.bo-chart-frame { overflow: hidden; min-height: 660px; }
+.bo-chart-frame {
+  overflow: hidden;
+  min-height: 660px;
+  background:
+    radial-gradient(circle at 16% 6%, rgba(47,240,188,.12), transparent 32%),
+    radial-gradient(circle at 92% 0%, rgba(22,167,255,.13), transparent 30%),
+    rgba(8,11,17,.94);
+}
 .bo-chart-head {
+  min-width: 0;
+  max-width: 100%;
   min-height: 70px;
   display: flex;
   align-items: center;
@@ -1204,8 +1246,8 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
   border-bottom: 1px solid var(--border);
   padding: 14px 16px;
 }
-.bo-chart-head span { color: var(--muted); display: block; margin-bottom: 3px; }
-.bo-chart-head strong { color: #fff; }
+.bo-chart-head span { color: var(--muted); display: block; margin-bottom: 3px; overflow-wrap: anywhere; }
+.bo-chart-head strong { color: #fff; overflow-wrap: anywhere; }
 .bo-tradingview-widget {
   position: relative;
   width: 100%;
@@ -1367,14 +1409,20 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
   display: grid;
   grid-template-rows: minmax(520px, 1fr) auto;
   min-height: 590px;
-  background: #080d14;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,0)),
+    #080d14;
 }
 .bo-system-canvas-wrap {
   position: relative;
   min-height: 520px;
+  min-width: 0;
+  max-width: 100%;
+  border-bottom: 1px solid rgba(255,255,255,.075);
 }
 #boSystemChart {
   width: 100%;
+  max-width: 100%;
   height: 100%;
   min-height: 520px;
   display: block;
@@ -1386,8 +1434,9 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
   left: 18px;
   border: 1px solid rgba(255,255,255,.12);
   border-radius: 16px;
-  background: rgba(10,14,22,.78);
+  background: rgba(6,11,18,.78);
   backdrop-filter: blur(14px);
+  box-shadow: 0 14px 34px rgba(0,0,0,.32);
   display: grid;
   gap: 4px;
   padding: 10px 12px;
@@ -2021,6 +2070,36 @@ th { color: var(--muted); font-size: 12px; font-weight: 850; letter-spacing: 0; 
 }
 
 @media (max-width: 620px) {
+  .bo-trading-page,
+  .bo-trading-shell,
+  .bo-trading-main,
+  .bo-trading-top,
+  .bo-market-toolbar,
+  .bo-asset-tabs,
+  .bo-interval-tabs,
+  .bo-chart-workspace,
+  .bo-chart-frame,
+  .bo-order-ticket,
+  .bo-system-chart-panel,
+  .bo-system-canvas-wrap {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .bo-trading-page { padding-top: 14px; overflow-x: hidden; }
+  .bo-trading-shell,
+  .bo-trading-main,
+  .bo-chart-workspace { gap: 12px; }
+  .bo-trading-top { gap: 10px; }
+  .bo-chart-head { padding: 12px; }
+  .asset-pill,
+  .trade-session-panel > div,
+  .bo-latest-result,
+  .bo-order-ticket input,
+  .bo-side-grid button {
+    min-width: 0;
+    max-width: 100%;
+  }
   .bo-asset-tabs,
   .bo-asset-row,
   .rapid-payout-grid { grid-template-columns: 1fr; }

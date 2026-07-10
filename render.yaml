@@ -46,7 +46,7 @@ services:
       - key: BO_TRADE_OPEN_SECONDS
         value: 30
       - key: BO_RESULT_WAIT_SECONDS
-        value: 15
+        value: 30
       - key: BO_PAYOUT_RATIO
         value: 1.95
       - key: RAPID_SESSION_SECONDS

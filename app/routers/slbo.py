@@ -46,6 +46,7 @@ from app.services.slbo import (
     rapid_session_clock,
     reject_wallet_request,
     sandbox_flags,
+    settle_due_bo_orders,
     transfer_points,
 )
 
@@ -165,6 +166,8 @@ def bo_room(request: Request, db: Session = Depends(get_db)):
     if user and wallet:
         grant_initial_member_points_if_needed(db, wallet=wallet, user=user)
         db.commit()
+    market = get_bo_market_snapshot()
+    settle_due_bo_orders(db, market)
     orders = (
         db.query(BoOrder)
         .filter(BoOrder.user_id == user.id)
@@ -174,7 +177,6 @@ def bo_room(request: Request, db: Session = Depends(get_db)):
         if user
         else []
     )
-    market = get_bo_market_snapshot()
     bo_recent_results = get_recent_bo_session_results(db, "BTC", 5, market)
     db.commit()
     return templates.TemplateResponse(
@@ -267,6 +269,7 @@ def slbo_room_state(request: Request, db: Session = Depends(get_db)):
     bo_clock = bo_session_clock()
     rapid_clock = rapid_session_clock()
     market = get_bo_market_snapshot()
+    settle_due_bo_orders(db, market)
     bo_results_by_asset = {
         item["code"]: [_bo_result_payload(result) for result in get_recent_bo_session_results(db, str(item["code"]), 5, market)]
         for item in market["assets"]
@@ -320,6 +323,7 @@ def slbo_bo_chart_api(
     limit: int = 140,
 ):
     market = get_bo_market_snapshot()
+    settle_due_bo_orders(db, market)
     chart = get_bo_system_candles(db, asset_code=asset, interval=interval, limit=limit, market=market)
     recent_results = get_recent_bo_session_results(db, chart["asset"], 5, market)
     latest = chart["candles"][-1] if chart["candles"] else None
@@ -331,6 +335,7 @@ def slbo_bo_chart_api(
             "interval": chart["interval"],
             "interval_seconds": chart["interval_seconds"],
             "updated_at": chart["updated_at"].isoformat(),
+            "clock": _session_payload(bo_session_clock()),
             "latest": _bo_candle_payload(latest) if latest else None,
             "candles": [_bo_candle_payload(item) for item in chart["candles"]],
             "recent_results": [_bo_result_payload(item) for item in recent_results],
