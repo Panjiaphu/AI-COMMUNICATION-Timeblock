@@ -12,8 +12,8 @@
       <span>{{ t("home.proof.admin") }}</span>
     </div>
     <div class="hero-actions">
-      <a class="button primary" href="/bo?lang={{ locale }}">{{ t("home.primary") }}</a>
-      <a class="button ghost" href="/member?lang={{ locale }}">{{ t("home.member_cta") }}</a>
+      <a class="button primary" href="#rate-board">{{ t("rates.manual") }}</a>
+      <a class="button ghost" href="/login?lang={{ locale }}">{{ t("nav.login") }}</a>
     </div>
   </div>
   <div class="hero-console motion-card">
@@ -38,7 +38,7 @@
   </div>
 </section>
 
-<section class="panel home-rate-board">
+<section class="panel home-rate-board" id="rate-board">
   <div class="section-head">
     <div>
       <h2>{{ t("rates.manual") }}</h2>
@@ -74,37 +74,39 @@
   </div>
 </section>
 
-<section class="grid three">
-  <a class="feature-card gradient-cyan slbo-link-card" href="/bo?lang={{ locale }}">
-    <div class="card-glow"></div>
-    <div class="feature-inner">
-      <span class="icon">{{ icons.icon("chart") }}</span>
-      <h2>{{ t("home.card.bo.title") }}</h2>
-      <p>{{ t("home.card.bo.desc") }}</p>
-      <strong class="card-cta">{{ t("nav.bo") }}</strong>
-    </div>
-  </a>
-  <a class="feature-card gradient-violet delay-2 slbo-link-card" href="/member?lang={{ locale }}">
-    <div class="card-glow"></div>
-    <div class="feature-inner">
-      <span class="icon">{{ icons.icon("affiliate") }}</span>
-      <h2>{{ t("home.card.member.title") }}</h2>
-      <p>{{ t("home.card.member.desc") }}</p>
-      <strong class="card-cta">{{ t("nav.member") }}</strong>
-    </div>
-  </a>
-</section>
+{% if settings.bo_public_enabled %}
+  <section class="grid three">
+    <a class="feature-card gradient-cyan slbo-link-card" href="/bo?lang={{ locale }}">
+      <div class="card-glow"></div>
+      <div class="feature-inner">
+        <span class="icon">{{ icons.icon("chart") }}</span>
+        <h2>{{ t("home.card.bo.title") }}</h2>
+        <p>{{ t("home.card.bo.desc") }}</p>
+        <strong class="card-cta">{{ t("nav.bo") }}</strong>
+      </div>
+    </a>
+    <a class="feature-card gradient-violet delay-2 slbo-link-card" href="/member?lang={{ locale }}">
+      <div class="card-glow"></div>
+      <div class="feature-inner">
+        <span class="icon">{{ icons.icon("affiliate") }}</span>
+        <h2>{{ t("home.card.member.title") }}</h2>
+        <p>{{ t("home.card.member.desc") }}</p>
+        <strong class="card-cta">{{ t("nav.member") }}</strong>
+      </div>
+    </a>
+  </section>
 
-<section class="panel slbo-notice">
-  <div>
-    <p class="eyebrow">{{ t("home.notice.title") }}</p>
-    <h2>{{ t("meta.product") }}</h2>
-    <p class="muted">{{ t("home.notice.body") }}</p>
-  </div>
-  <div class="ops-pill-list">
-    <span>{{ t("wallet.request.deposit") }}</span>
-    <span>{{ t("wallet.request.withdraw") }}</span>
-    <span>{{ t("wallet.transfer_title") }}</span>
-  </div>
-</section>
+  <section class="panel slbo-notice">
+    <div>
+      <p class="eyebrow">{{ t("home.notice.title") }}</p>
+      <h2>{{ t("meta.product") }}</h2>
+      <p class="muted">{{ t("home.notice.body") }}</p>
+    </div>
+    <div class="ops-pill-list">
+      <span>{{ t("wallet.request.deposit") }}</span>
+      <span>{{ t("wallet.request.withdraw") }}</span>
+      <span>{{ t("wallet.transfer_title") }}</span>
+    </div>
+  </section>
+{% endif %}
 {% endblock %}

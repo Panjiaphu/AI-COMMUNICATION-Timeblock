@@ -2212,6 +2212,55 @@ MESSAGES["vi"].update({"bo.chart_timing": "Mở {open}s + chờ {wait}s"})
 MESSAGES["zh-TW"].update({"bo.chart_timing": "開放 {open} 秒 + 等待 {wait} 秒"})
 MESSAGES["en"].update({"bo.chart_timing": "Open {open}s + wait {wait}s"})
 
+PUBLIC_RATE_HOME_VI = {
+    "home.kicker": "Bảng tỷ giá Đài Loan - Việt Nam",
+    "home.title": "Bảng tham khảo tỷ giá TWD/VND và USDT/TWD",
+    "home.subtitle": "Guilua hiển thị giá mua, giá bán và kênh liên hệ trong một giao diện bảo mật, rõ ràng cho khách hàng theo dõi trước khi gửi thông tin tư vấn.",
+    "home.primary": "Xem bảng tỷ giá",
+    "home.member_cta": "Đăng nhập",
+    "home.proof.secure": "Phiên đăng nhập bảo mật",
+    "home.proof.manual": "Tỷ giá từ bảng quản trị",
+    "home.proof.admin": "Admin cập nhật",
+    "home.hero_status": "Bảng giá hôm nay",
+    "home.ops.one": "Giá TWD/VND được tách riêng giá mua và giá bán",
+    "home.ops.two": "Giá USDT/TWD được cập nhật từ khu vực quản trị",
+    "home.ops.three": "Khách hàng có thể gửi thông tin để admin liên hệ tư vấn",
+}
+
+PUBLIC_RATE_HOME_ZH = {
+    "home.kicker": "台灣 - 越南匯率看板",
+    "home.title": "TWD/VND 與 USDT/TWD 參考匯率",
+    "home.subtitle": "Guilua 以清楚、安全的介面顯示買入價、賣出價與聯絡入口，方便客戶送出資料後由管理員聯繫。",
+    "home.primary": "查看匯率",
+    "home.member_cta": "登入",
+    "home.proof.secure": "安全登入",
+    "home.proof.manual": "管理後台匯率",
+    "home.proof.admin": "管理員更新",
+    "home.hero_status": "今日價格表",
+    "home.ops.one": "TWD/VND 買入價與賣出價分開顯示",
+    "home.ops.two": "USDT/TWD 從管理後台更新",
+    "home.ops.three": "客戶可送出資料，由管理員後續聯繫",
+}
+
+PUBLIC_RATE_HOME_EN = {
+    "home.kicker": "Taiwan - Vietnam rate board",
+    "home.title": "TWD/VND and USDT/TWD reference rates",
+    "home.subtitle": "Guilua shows buy rates, sell rates and contact entry points in a secure, clear interface so customers can submit information for admin follow-up.",
+    "home.primary": "View rates",
+    "home.member_cta": "Log in",
+    "home.proof.secure": "Secure login",
+    "home.proof.manual": "Admin-managed rates",
+    "home.proof.admin": "Admin updates",
+    "home.hero_status": "Today's rate board",
+    "home.ops.one": "TWD/VND buy and sell rates are displayed separately",
+    "home.ops.two": "USDT/TWD is updated from the admin dashboard",
+    "home.ops.three": "Customers can submit information for admin follow-up",
+}
+
+MESSAGES["vi"].update(PUBLIC_RATE_HOME_VI)
+MESSAGES["zh-TW"].update(PUBLIC_RATE_HOME_ZH)
+MESSAGES["en"].update(PUBLIC_RATE_HOME_EN)
+
 
 def resolve_locale(request: Request) -> str:
     settings = get_settings()

@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     admin_bootstrap_password: str | None = None
     member_registration_enabled: bool = True
     member_portal_enabled: bool = True
+    bo_public_enabled: bool = False
 
     app_mode: str = "sandbox"
     real_money_enabled: bool = False

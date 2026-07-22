@@ -161,6 +161,8 @@ def _platform_risk_summary(orders: list[BoOrder], entries: list[RapidEntry], tre
 
 @router.get("/bo")
 def bo_room(request: Request, db: Session = Depends(get_db)):
+    if not get_settings().bo_public_enabled:
+        return RedirectResponse(f"/?lang={resolve_locale(request)}", status_code=303)
     user = get_current_user(request, db)
     wallet = ensure_wallet(db, user) if user else None
     if user and wallet:
@@ -207,6 +209,8 @@ def create_bo_order(
     side: str = Form(...),
     stake_amount: str = Form(...),
 ):
+    if not get_settings().bo_public_enabled:
+        return RedirectResponse(f"/?lang={resolve_locale(request)}", status_code=303)
     verify_csrf(request, csrf_token)
     user = require_user(request, db)
     locale = resolve_locale(request)

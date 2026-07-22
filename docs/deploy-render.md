@@ -73,6 +73,7 @@ Do not use the Gmail login password. In Google Account, enable 2-Step Verificati
 ```text
 MEMBER_REGISTRATION_ENABLED=true
 MEMBER_PORTAL_ENABLED=true
+BO_PUBLIC_ENABLED=false
 APP_MODE=sandbox
 REAL_MONEY_ENABLED=false
 REAL_CRYPTO_WITHDRAW_ENABLED=false

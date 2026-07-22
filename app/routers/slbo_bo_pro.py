@@ -7,6 +7,7 @@ from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.i18n import resolve_locale
 from app.core.security import get_current_user, require_user, verify_csrf
 from app.core.templates import context, templates
@@ -160,6 +161,8 @@ def _rapid_entry_payload(entry: RapidEntry) -> dict:
 
 @router.get("/bo")
 def bo_room_pro(request: Request, db: Session = Depends(get_db)):
+    if not get_settings().bo_public_enabled:
+        return RedirectResponse(f"/?lang={resolve_locale(request)}", status_code=303)
     user = get_current_user(request, db)
     wallet = ensure_wallet(db, user) if user else None
     if user and wallet:
@@ -208,6 +211,8 @@ def create_bo_order_pro(
     side: str = Form(...),
     stake_amount: str = Form(...),
 ):
+    if not get_settings().bo_public_enabled:
+        return RedirectResponse(f"/?lang={resolve_locale(request)}", status_code=303)
     verify_csrf(request, csrf_token)
     user = require_user(request, db)
     locale = resolve_locale(request)

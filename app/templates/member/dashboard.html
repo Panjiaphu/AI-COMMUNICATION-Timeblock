@@ -78,11 +78,13 @@
           <strong>{{ t("wallet.member_title") }}</strong>
           <small>{{ t("wallet.member_desc") }}</small>
         </a>
-        <a class="action-card" href="/bo?lang={{ locale }}">
-          <span class="icon">{{ icons.icon("chart") }}</span>
-          <strong>{{ t("home.card.bo.title") }}</strong>
-          <small>{{ t("home.card.bo.desc") }}</small>
-        </a>
+        {% if settings.bo_public_enabled %}
+          <a class="action-card" href="/bo?lang={{ locale }}">
+            <span class="icon">{{ icons.icon("chart") }}</span>
+            <strong>{{ t("home.card.bo.title") }}</strong>
+            <small>{{ t("home.card.bo.desc") }}</small>
+          </a>
+        {% endif %}
       </div>
     </section>
 
