@@ -9,183 +9,25 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.13
-      - key: DEBUG
-        value: false
       - key: APP_ENV
         value: production
-      - key: USE_SQLITE
-        value: true
-      - key: SESSION_COOKIE_SECURE
-        value: true
-      - key: SESSION_REMEMBER_MAX_AGE_SECONDS
-        value: 2592000
-      - key: PASSWORD_RESET_TOKEN_MAX_AGE_SECONDS
-        value: 3600
-      - key: RUN_MIGRATIONS_DURING_BUILD
+      - key: DEBUG
         value: false
-      - key: ADMIN_NOTIFICATION_EMAIL
-        value: dautuquy888@gmail.com
-      - key: ADMIN_LINE_ID
-        value: "@827sxbki"
-      - key: ADMIN_BOOTSTRAP_ENABLED
-        value: false
-      - key: MEMBER_REGISTRATION_ENABLED
-        value: true
-      - key: MEMBER_PORTAL_ENABLED
-        value: true
-      - key: BO_PUBLIC_ENABLED
-        value: false
-      - key: APP_MODE
-        value: sandbox
-      - key: REAL_MONEY_ENABLED
-        value: false
-      - key: REAL_CRYPTO_WITHDRAW_ENABLED
-        value: false
-      - key: LIVE_SETTLEMENT_ENABLED
-        value: false
-      - key: SLBO_POINT_CURRENCY
-        value: SLB_POINT
-      - key: BO_TRADE_OPEN_SECONDS
-        value: 30
-      - key: BO_RESULT_WAIT_SECONDS
-        value: 30
-      - key: BO_PAYOUT_RATIO
-        value: 1.95
-      - key: RAPID_SESSION_SECONDS
-        value: 120
-      - key: RAPID_ENTRY_OPEN_SECONDS
-        value: 105
-      - key: RAPID_RESULT_WAIT_SECONDS
-        value: 15
-      - key: PLATFORM_TREASURY_INITIAL_BALANCE
-        value: 1000000
-      - key: PLATFORM_TREASURY_RESERVE_FLOOR
-        value: 0
-      - key: MEMBER_INITIAL_POINT_BALANCE
-        value: 1000
-      - key: AI_AGENT_API_ENABLED
-        value: true
-      - key: AI_AGENT_DEFAULT_POST_STATUS
-        value: draft
-      - key: AI_AGENT_ALLOW_AUTOPUBLISH
-        value: false
-      - key: UPLOAD_MAX_MB
-        value: 5
-      - key: UPLOAD_STORAGE_BACKEND
-        value: local
-      - key: UPLOAD_IMAGE_MAX_WIDTH
-        value: 1600
-      - key: UPLOAD_IMAGE_QUALITY
-        value: 82
       - key: PUBLIC_BASE_URL
         value: https://guilua.onrender.com
-      - key: SHOPEE_AFFILIATE_DISCLOSURE_ENABLED
-        value: true
-      - key: CRYPTO_MARKET_LIVE_ENABLED
-        value: true
-      - key: CRYPTO_MARKET_CACHE_SECONDS
-        value: 180
-      - key: CRYPTO_MARKET_TIMEOUT_SECONDS
-        value: 2.5
-      - key: COINGECKO_API_URL
-        value: https://api.coingecko.com/api/v3/simple/price
-      - key: BINANCE_API_URL
-        value: https://api.binance.com/api/v3/ticker/24hr
-      - key: SECURITY_DASHBOARD_ENABLED
-        value: true
-      - key: SECURITY_LOGGING_ENABLED
-        value: true
-      - key: SECURITY_FIREWALL_ENABLED
-        value: true
-      - key: SECURITY_AUTO_BLOCK_ENABLED
-        value: false
-      - key: SECURITY_LOG_RETENTION_DAYS
-        value: 30
-      - key: SECURITY_RATE_LIMIT_ENABLED
-        value: true
-      - key: SECURITY_RATE_LIMIT_WINDOW_SECONDS
-        value: 60
-      - key: SECURITY_RATE_LIMIT_MAX_REQUESTS
-        value: 120
-      - key: SECURITY_LOGIN_RATE_LIMIT_WINDOW_SECONDS
-        value: 300
-      - key: SECURITY_LOGIN_RATE_LIMIT_MAX_ATTEMPTS
-        value: 10
-      - key: SECURITY_ADMIN_RATE_LIMIT_MAX_REQUESTS
-        value: 80
-      - key: SECURITY_AGENT_API_RATE_LIMIT_MAX_REQUESTS
-        value: 60
-      - key: SECURITY_AUTO_BLOCK_THRESHOLD
-        value: 50
-      - key: SECURITY_AUTO_BLOCK_MINUTES
-        value: 60
-      - key: SECURITY_GEOIP_ENABLED
-        value: true
-      - key: SECURITY_GEOIP_PROVIDER
-        value: none
-      - key: SECURITY_GEOIP_CACHE_HOURS
-        value: 24
-      - key: SECURITY_TRUSTED_PROXY_HEADERS
-        value: true
-      - key: SECURITY_NOTIFY_ON_HIGH_RISK
-        value: true
-      - key: SECURITY_BLOCK_SUSPICIOUS_PAYLOADS
-        value: false
-      - key: SECURITY_LOG_SUSPICIOUS_PAYLOADS
-        value: true
-      - key: SECURITY_HONEYPOT_ENABLED
-        value: true
-      - key: SECURITY_ADMIN_IP_RESTRICTION_ENABLED
-        value: false
       - key: SECRET_KEY
         sync: false
-      - key: DATABASE_URL
+      - key: TIMEBLOCK_API_URL
         sync: false
-      - key: SMTP_HOST
-        value: smtp.gmail.com
-      - key: SMTP_PORT
-        value: 587
-      - key: SMTP_USERNAME
-        value: dautuquy888@gmail.com
-      - key: SMTP_PASSWORD
+      - key: TIMEBLOCK_API_KEY
         sync: false
-      - key: SMTP_FROM_EMAIL
-        value: dautuquy888@gmail.com
-      - key: SMTP_USE_TLS
-        value: true
-      - key: EMAIL_WEBHOOK_API_KEY
-        sync: false
-      - key: ADMIN_BOOTSTRAP_EMAIL
-        sync: false
-      - key: ADMIN_BOOTSTRAP_PASSWORD
-        sync: false
-      - key: COINGECKO_API_KEY
-        sync: false
-      - key: VPN_DOWNLOAD_URL
-        sync: false
-      - key: VPN_SETUP_GUIDE_URL
-        sync: false
-      - key: EXCHANGE_RATE_PROVIDER_URL
-        sync: false
-      - key: IP_SERVICE_PROVIDER_URL
-        sync: false
-      - key: IP_SERVICE_PROVIDER_API_KEY
-        sync: false
-      - key: IP_SERVICE_PROVIDER_TIMEOUT_SECONDS
-        value: 5
-      - key: SECURITY_GEOIP_API_URL
-        sync: false
-      - key: SECURITY_GEOIP_API_KEY
-        sync: false
-      - key: SECURITY_IP_ALLOWLIST
-        sync: false
-      - key: SECURITY_IP_BLOCKLIST
-        sync: false
-      - key: SECURITY_COUNTRY_ALLOWLIST
-        sync: false
-      - key: SECURITY_COUNTRY_BLOCKLIST
-        sync: false
-      - key: SECURITY_ALERT_EMAIL
-        sync: false
-      - key: SECURITY_ADMIN_IP_ALLOWLIST
-        sync: false
+      - key: ALLOWED_WEBSOCKET_ORIGINS
+        value: https://guilua.onrender.com
+      - key: CONNECTION_STALE_SECONDS
+        value: 120
+      - key: RECONNECT_TOKEN_SECONDS
+        value: 300
+      - key: ENDED_SESSION_CACHE_SECONDS
+        value: 600
+      - key: IDEMPOTENCY_CACHE_SECONDS
+        value: 1800
