@@ -133,7 +133,11 @@ def test_responsive_surface_and_interpreter_states(
         expect(page.locator("#panel-collapse")).to_be_focused()
         expect(page.locator("#panel-collapse")).to_have_attribute("aria-expanded", "true")
 
-        page.locator("#start-call").focus()
+        for _ in range(8):
+            page.keyboard.press("Tab")
+            if page.evaluate("document.activeElement?.id") == "start-call":
+                break
+        expect(page.locator("#start-call")).to_be_focused()
         outline = page.locator("#start-call").evaluate(
             "element => ({style: getComputedStyle(element).outlineStyle, width: getComputedStyle(element).outlineWidth})"
         )
