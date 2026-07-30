@@ -4,64 +4,57 @@ import sys
 from urllib.parse import urlparse
 
 
-def is_true(value):
+def is_true(value: str | None) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--phase", default="runtime", choices=["build", "runtime"])
-    args = parser.parse_args()
+    parser.parse_args()
 
     debug = is_true(os.getenv("DEBUG", "true"))
     app_env = os.getenv("APP_ENV", "development").strip().lower()
     is_production = app_env == "production" or not debug
-    use_sqlite = is_true(os.getenv("USE_SQLITE", "true"))
-    database_url = os.getenv("DATABASE_URL", "")
     secret_key = os.getenv("SECRET_KEY", "")
+    timeblock_api_url = os.getenv("TIMEBLOCK_API_URL", "")
+    errors: list[str] = []
+    warnings: list[str] = []
 
-    warnings = []
-    errors = []
+    if is_production and len(secret_key) < 32:
+        errors.append("SECRET_KEY must contain at least 32 characters in production.")
 
-    if not debug and not secret_key:
-        errors.append("SECRET_KEY must be set when DEBUG=false.")
+    if timeblock_api_url:
+        parsed = urlparse(timeblock_api_url)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            errors.append("TIMEBLOCK_API_URL must be a valid HTTP(S) URL.")
+    elif is_production:
+        warnings.append("TIMEBLOCK_API_URL is not configured; production session authorization is unavailable.")
 
-    if os.getenv("ADMIN_SEED_EMAIL") or os.getenv("ADMIN_SEED_PASSWORD"):
-        warnings.append("ADMIN_SEED_EMAIL/ADMIN_SEED_PASSWORD are ignored. Create admins with scripts/create_admin.py.")
-
-    if is_true(os.getenv("ADMIN_BOOTSTRAP_ENABLED", "false")):
-        bootstrap_email = os.getenv("ADMIN_BOOTSTRAP_EMAIL", "").strip()
-        bootstrap_password = os.getenv("ADMIN_BOOTSTRAP_PASSWORD", "")
-        if not bootstrap_email:
-            errors.append("ADMIN_BOOTSTRAP_EMAIL is required when ADMIN_BOOTSTRAP_ENABLED=true.")
-        if not bootstrap_password:
-            errors.append("ADMIN_BOOTSTRAP_PASSWORD is required when ADMIN_BOOTSTRAP_ENABLED=true.")
-        elif len(bootstrap_password) < 14:
-            errors.append("ADMIN_BOOTSTRAP_PASSWORD must be at least 14 characters.")
-
-    if not use_sqlite and not database_url:
-        errors.append("DATABASE_URL is required when USE_SQLITE=false.")
-
-    if database_url and not use_sqlite:
-        parsed = urlparse(database_url)
-        if not parsed.hostname:
-            errors.append("DATABASE_URL is set but does not include a database hostname.")
-
-    if database_url and use_sqlite:
-        warnings.append("DATABASE_URL is set but ignored because USE_SQLITE=true.")
-
-    if args.phase == "build" and not is_true(os.getenv("RUN_MIGRATIONS_DURING_BUILD", "false")):
-        warnings.append("Build will not run migrations. This avoids build failures from unavailable database hosts.")
+    legacy_variables = sorted(
+        key
+        for key in os.environ
+        if key.startswith(("BO_", "RAPID_", "SLBO_", "PLATFORM_TREASURY_", "CRYPTO_MARKET_", "COINGECKO_", "BINANCE_", "EXCHANGE_RATE_"))
+        or key in {
+            "MEMBER_INITIAL_POINT_BALANCE",
+            "MEMBER_REGISTRATION_ENABLED",
+            "MEMBER_PORTAL_ENABLED",
+            "REAL_MONEY_ENABLED",
+            "REAL_CRYPTO_WITHDRAW_ENABLED",
+            "LIVE_SETTLEMENT_ENABLED",
+        }
+    )
+    if legacy_variables:
+        warnings.append("Legacy variables are ignored and should be removed: " + ", ".join(legacy_variables))
 
     for warning in warnings:
         print(f"WARNING: {warning}")
-
     if errors:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
         return 1
 
-    print("Environment check passed.")
+    print("Environment check passed for Guilua Communication Runtime.")
     return 0
 
 
