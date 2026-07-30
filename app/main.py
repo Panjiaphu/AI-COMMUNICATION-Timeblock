@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
@@ -11,8 +10,9 @@ from app.communication.manager import RoomManager
 from app.communication.router import router as communication_router
 from app.core.config import BASE_DIR, Settings, get_settings
 from app.integrations.timeblock.client import TimeblockClient
+from app.telemetry.logging import configure_logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s %(message)s')
+configure_logging()
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
