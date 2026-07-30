@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Timeblock AI Communication</title>
+  <link rel="stylesheet" href="/static/communication.css">
+</head>
+<body class="call-page">
+  <main class="call-shell" data-call-shell>
+    <header class="call-header">
+      <a class="brand" href="/">Timeblock</a>
+      <div class="connection-state" data-connection-state><span></span> Chưa kết nối</div>
+      <div class="language-pair">
+        <label>Ngôn ngữ nguồn<select><option>Tiếng Việt</option><option>中文</option><option>English</option></select></label>
+        <span>→</span>
+        <label>Ngôn ngữ đích<select><option>中文</option><option>Tiếng Việt</option><option>English</option></select></label>
+      </div>
+    </header>
+
+    <section class="video-stage">
+      <article class="remote-participant">
+        <div class="participant-placeholder"><span>Người tham gia</span><small>Đang chờ kết nối</small></div>
+        <div class="participant-label">Remote participant</div>
+      </article>
+      <article class="local-participant">
+        <video data-local-video autoplay muted playsinline></video>
+        <div class="participant-placeholder local"><span>Bạn</span><small>Camera chưa bật</small></div>
+        <div class="participant-label">Bạn</div>
+      </article>
+
+      <aside class="interpreter-panel expanded" data-interpreter-panel>
+        <header>
+          <div><strong>AI Interpreter</strong><small data-interpreter-status>Sẵn sàng</small></div>
+          <div class="panel-actions">
+            <button type="button" data-panel-state="collapsed" aria-label="Thu gọn">−</button>
+            <button type="button" data-panel-state="expanded" aria-label="Mở rộng">+</button>
+            <button type="button" data-panel-state="hidden" aria-label="Ẩn">×</button>
+          </div>
+        </header>
+        <div class="caption-stream" aria-live="polite">
+          <p class="caption-source">Phụ đề nguồn sẽ hiển thị tại đây.</p>
+          <p class="caption-translation">Bản dịch trực tiếp sẽ hiển thị tại đây.</p>
+        </div>
+      </aside>
+    </section>
+
+    <div class="reconnect-banner" data-reconnect-banner hidden>Đang khôi phục kết nối…</div>
+    <div class="error-banner" data-error-banner hidden></div>
+
+    <footer class="call-controls">
+      <button type="button" class="control-button" data-toggle-mic aria-pressed="false">Mic</button>
+      <button type="button" class="control-button" data-toggle-camera aria-pressed="false">Camera</button>
+      <button type="button" class="control-button" data-show-interpreter>Phụ đề</button>
+      <button type="button" class="control-button end-call" data-end-call>Kết thúc</button>
+    </footer>
+  </main>
+  <script src="/static/communication.js" defer></script>
+</body>
+</html>
