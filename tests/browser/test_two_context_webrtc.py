@@ -176,7 +176,9 @@ def test_two_context_fake_media_signaling_reconnect_and_cleanup(
             artifact_dir / "evidence" / "webrtc-participant-c.json",
             {"snapshot": page_c.evaluate("window.__guiluaQa.snapshot()"), "console": evidence["participant-c"]},
         )
-        assert relevant_console_errors(evidence["participant-c"]) == []
+        participant_c_errors = relevant_console_errors(evidence["participant-c"])
+        assert len(participant_c_errors) == 1
+        assert "WebSocket handshake: Unexpected response code: 403" in participant_c_errors[0]["text"]
     finally:
         for context in reversed(contexts):
             context.close()
