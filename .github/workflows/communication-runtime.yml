@@ -17,5 +17,8 @@ jobs:
           cache: pip
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -r requirements-dev.txt
+      - run: python scripts/check_legacy_runtime_absence.py
       - run: python -m compileall app
       - run: PYTHONPATH=. pytest -q
+      - run: python scripts/check_env.py --phase build
+      - run: python -c "from app.main import create_app; app=create_app(); assert app.title == 'Guilua Communication Runtime'"
