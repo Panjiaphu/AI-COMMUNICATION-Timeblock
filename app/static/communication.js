@@ -24,6 +24,16 @@
   };
   function setStatus(next, label) { state.status = next; ui.pill.dataset.state = next; ui.label.textContent = label || next; ui.interpreterStatus.textContent = label || next; }
   function showError(message = '') { ui.error.textContent = message; }
+  function setPanelState(next) {
+    const expanded = next === 'expanded';
+    const hidden = next === 'hidden';
+    ui.panel.dataset.state = next;
+    ui.panel.setAttribute('aria-hidden', String(hidden));
+    ui.panelCollapse.setAttribute('aria-expanded', String(expanded));
+    ui.panelCollapse.setAttribute('aria-label', expanded ? 'Thu gọn bảng phiên dịch' : 'Mở rộng bảng phiên dịch');
+    ui.panelCollapse.textContent = expanded ? '−' : '+';
+    ui.panelRestore.hidden = !hidden;
+  }
   function wsUrl() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const query = new URLSearchParams({ token: sessionToken, participant_id: participantId, trace_id: crypto.randomUUID() });
@@ -75,18 +85,33 @@
     const socket = new WebSocket(wsUrl()); state.socket = socket;
     socket.addEventListener('open', () => setStatus('connecting', 'Connecting'));
     socket.addEventListener('message', (event) => handleMessage(event).catch((error) => showError(error.message)));
-    socket.addEventListener('close', () => { if (!state.ending) scheduleReconnect(); });
+    socket.addEventListener('close', (event) => {
+      if (state.ending) return;
+      if (!state.reconnectToken) {
+        setStatus('failed', 'Disconnected');
+        showError(event.reason || 'Kết nối đã đóng.');
+        return;
+      }
+      scheduleReconnect();
+    });
     socket.addEventListener('error', () => setStatus('degraded', 'WebSocket error'));
   }
   function scheduleReconnect() { if (state.ending || !state.reconnectToken) { setStatus('failed', 'Disconnected'); return; } state.reconnectAttempt += 1; if (state.reconnectAttempt > 6) { setStatus('failed', 'Reconnect failed'); return; } setStatus('reconnecting', `Reconnecting ${state.reconnectAttempt}/6`); const delay = Math.min(1000 * 2 ** (state.reconnectAttempt - 1), 15000); state.reconnectTimer = window.setTimeout(connectSocket, delay); }
   function closePeer() { if (state.peer) { state.peer.ontrack = null; state.peer.onicecandidate = null; state.peer.close(); state.peer = null; } state.pendingCandidates.length = 0; state.remoteStream?.getTracks().forEach((track) => track.stop()); ui.remoteVideo.srcObject = null; ui.remoteFrame.classList.remove('has-stream'); }
   function cleanup() { state.ending = true; clearTimeout(state.reconnectTimer); sendEvent('session.ended', {}); state.socket?.close(1000, 'call_ended'); state.socket = null; closePeer(); state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; ui.localVideo.srcObject = null; ui.microphone.disabled = true; ui.camera.disabled = true; ui.end.disabled = true; ui.start.disabled = false; setStatus('ended', 'Ended'); }
-  ui.start.addEventListener('click', async () => { showError(''); state.ending = false; ui.start.disabled = true; try { await ensureLocalMedia(); connectSocket(); } catch { ui.start.disabled = false; } });
+  ui.start.addEventListener('click', async () => {
+    showError(''); state.ending = false;
+    if (!sessionToken) { setStatus('failed', 'Cần phiên Timeblock'); showError('URL chưa có session token do Timeblock cấp.'); return; }
+    ui.start.disabled = true;
+    try { await ensureLocalMedia(); connectSocket(); } catch { ui.start.disabled = false; }
+  });
   ui.microphone.addEventListener('click', () => { const track = state.localStream?.getAudioTracks()[0]; if (!track) return; track.enabled = !track.enabled; ui.microphone.textContent = track.enabled ? 'Micro' : 'Đã tắt micro'; sendEvent(track.enabled ? 'media.unmuted' : 'media.muted', { enabled: track.enabled }); });
   ui.camera.addEventListener('click', () => { const track = state.localStream?.getVideoTracks()[0]; if (!track) return; track.enabled = !track.enabled; ui.camera.textContent = track.enabled ? 'Camera' : 'Đã tắt camera'; sendEvent(track.enabled ? 'media.camera_enabled' : 'media.camera_disabled', { enabled: track.enabled }); });
   ui.end.addEventListener('click', cleanup);
-  ui.panelCollapse.addEventListener('click', () => { const collapsed = ui.panel.dataset.state === 'collapsed'; ui.panel.dataset.state = collapsed ? 'expanded' : 'collapsed'; ui.panelCollapse.textContent = collapsed ? '−' : '+'; });
-  ui.panelHide.addEventListener('click', () => { ui.panel.dataset.state = 'hidden'; ui.panelRestore.hidden = false; });
-  ui.panelRestore.addEventListener('click', () => { ui.panel.dataset.state = 'expanded'; ui.panelRestore.hidden = true; });
-  window.addEventListener('beforeunload', cleanup, { once: true }); setStatus('idle', 'Idle');
+  ui.panelCollapse.addEventListener('click', () => setPanelState(ui.panel.dataset.state === 'collapsed' ? 'expanded' : 'collapsed'));
+  ui.panelHide.addEventListener('click', () => { setPanelState('hidden'); ui.panelRestore.focus(); });
+  ui.panelRestore.addEventListener('click', () => { setPanelState('expanded'); ui.panelCollapse.focus(); });
+  window.addEventListener('beforeunload', cleanup, { once: true });
+  setPanelState('expanded');
+  setStatus('idle', 'Idle');
 })();
