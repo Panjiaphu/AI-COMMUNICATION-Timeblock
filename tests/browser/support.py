@@ -26,6 +26,7 @@ QA_INSTRUMENTATION = r"""
         session_id: message.session_id || null,
         participant_id: message.participant_id || null,
         sequence_number: message.sequence_number ?? null,
+        connection_id: message.connection_id || null,
         timestamp: new Date().toISOString(),
       };
       if (message.reconnected !== undefined) summary.reconnected = Boolean(message.reconnected);
