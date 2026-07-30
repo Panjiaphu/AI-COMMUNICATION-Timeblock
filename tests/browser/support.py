@@ -13,7 +13,7 @@ FAKE_MEDIA_ARGS = [
 ]
 
 QA_INSTRUMENTATION = r"""
-() => {
+(() => {
   const denyMedia = __DENY_MEDIA__;
   const qa = { websockets: [], socketCloses: [], inbound: [], outbound: [], peers: [], peerHistory: [], remoteTrackIds: [], localTracks: [] };
   const summarize = (raw, direction) => {
@@ -100,7 +100,7 @@ QA_INSTRUMENTATION = r"""
       };
     },
   };
-}
+})()
 """
 
 
