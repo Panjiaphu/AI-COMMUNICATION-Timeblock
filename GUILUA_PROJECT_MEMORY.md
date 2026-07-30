@@ -5,119 +5,108 @@ Last verified update: 2026-07-30 (Asia/Taipei)
 ## Project identity
 
 - Repository: `Panjiaphu/guilua`
-- Baseline main SHA: `c6c83c60f190506afec21cfb750ee5acd5e27932`
-- Backup branch: `archive/legacy-point-platform-before-communication-runtime`
+- Baseline/current main SHA: `c6c83c60f190506afec21cfb750ee5acd5e27932`
+- Archive branch: `archive/legacy-point-platform-before-communication-runtime`
 - Working branch: `refactor/communication-runtime-foundation`
-- Render service: `srv-d93hlhtaeets73dohu0g`
-- Render region: Singapore
-- Production deployment: unchanged by this branch
+- Pull request: `#1` (open, draft, not merged)
+- Render service: `srv-d93hlhtaeets73dohu0g`, Singapore
+- Production deployment: unchanged and not verified through Render read access in this task
 
 ## Locked architecture
 
-Guilua is the ephemeral realtime communication runtime for Timeblock.
+Guilua is the ephemeral realtime communication runtime for Timeblock: one existing Render Standard Web Service, one instance, one Gunicorn/Uvicorn worker, HTTP and WebSocket on one public port, in-memory runtime state, and WebRTC P2P for initial 1:1 calls.
 
-Foundation constraints:
+Do not add Redis, Postgres, workers, cron, persistent disk, a second service, horizontal scaling, SFU/MCU, dedicated TURN, local Whisper/LLM, GPU, or media transcoding during the foundation phase. Timeblock owns durable identity, workspace, permission, entitlement, transcript, usage, billing, audit, and retention data.
 
-- one existing Render Standard Web Service;
-- one instance and one Gunicorn/Uvicorn worker;
-- HTTP and WebSocket on one public port;
-- in-memory room, connection, sequence, idempotency, and reconnect state;
-- WebRTC P2P for initial 1:1 media;
-- no Redis, new Postgres, background worker, cron, persistent disk, private service, second web service, horizontal scaling, SFU, dedicated TURN, local Whisper/LLM, GPU, or transcoding.
+## Implemented runtime foundation
 
-Timeblock owns identity, workspace, membership, permission, entitlement, quota, glossary master, durable transcript, official usage, billing, audit, and retention.
+- FastAPI app factory and lifespan-managed `RoomManager`.
+- `/`, `/communication`, `/healthz/`, and `/ws/communication/{session_id}`.
+- `RoomState`, `ParticipantState`, `ConnectionState`, and `ReconnectState`.
+- Settings-driven stale, reconnect, ended-room, and idempotency TTLs.
+- Event allowlist and typed payload validation.
+- Participant/connection/session binding, duplicate and out-of-order protection.
+- Per-connection in-memory rate limits.
+- Production origin fail-closed policy.
+- One-time reconnect token hashing, expiry, rotation, and participant replacement.
+- Targeted offer, answer, and ICE forwarding for a maximum of two participants.
+- Browser WebSocket, `RTCPeerConnection`, ICE queue, remote-stream assignment, bounded reconnect backoff, and cleanup paths.
+- Provisional typed Timeblock boundary: authorize, refresh, glossary, session result, and usage callbacks with idempotency keys.
 
-## Verified changes on the working branch
+## Legacy removal
 
-### Runtime foundation
+Removed active BO/SLBO, Rapid, rates, crypto dashboard, old admin/member/auth, wallets/points/transfers/treasury, referral/commission, Django `odds`, database models/session, legacy services, templates, tests, and static assets.
 
-- Replaced the old application entrypoint with FastAPI lifespan and in-memory cleanup.
-- Added `/`, `/communication`, `/healthz/`, and `/ws/communication/{session_id}`.
-- Added versioned event envelopes and room/connection state.
-- Added duplicate-event, out-of-order sequence, participant binding, origin, heartbeat, and stale-connection foundations.
-- Added an explicit `TimeblockClient` authorization and result-callback boundary.
-- Development mock authorization accepts only `development-session` when no Timeblock API is configured.
-- Added responsive Timeblock landing and communication call shell.
-- Added interpreter panel states `hidden`, `collapsed`, and `expanded`.
-- Added microphone/camera permission handling and media-track cleanup.
+On 2026-07-30, `app/core/security.py` was also removed. It was a database-backed legacy auth module containing SQLAlchemy `Session`, `SessionLocal`, `User`, local login/logout, member/admin guards, password reset, email verification, admin bootstrap, and admin seed logic. It had no Communication Runtime consumer and referenced already-removed modules.
 
-### Legacy runtime removal
-
-Removed router files for BO/SLBO, Rapid, member, point transfer, legacy auth, admin dashboards, member verification, rates/public content, content agent, and old webhooks.
-
-Removed the principal BO, Rapid, and crypto templates.
-
-Removed legacy application database models and SQLAlchemy session runtime.
-
-Removed core SLBO, delayed settlement, direct transfer, settlement guard, and exchange-rate services.
-
-Removed SQLAlchemy, Alembic, PostgreSQL, Django, Pillow, QR, password, and multipart dependencies from the active runtime requirements.
-
-### Render
-
-- Retained one Standard web service.
-- Start command now explicitly uses one Gunicorn/Uvicorn worker.
-- Build and startup no longer execute Alembic or database migration logic.
-- Render blueprint contains only Communication Runtime and Timeblock settings.
+Historical Alembic files remain only as schema evidence and are not imported or executed by the runtime. Production tables have not been dropped.
 
 ## Validation evidence
 
-A reconstructed snapshot of the authored runtime was validated in the available container because direct GitHub clone was blocked by DNS.
+### Historical reconstructed snapshot
 
-Commands:
+`RECONSTRUCTED_SNAPSHOT_ONLY`: earlier local validation passed, but it is not the authoritative branch-ready evidence.
 
-```text
-python -m compileall app
-PYTHONPATH=. pytest -q
-```
+### Previous remote failures
 
-Results:
+- Run `30551878607`: full pytest collection failed because the legacy Django `odds` application remained.
+- Run `30555948795`, job `90916310474`: legacy absence gate failed on `from sqlalchemy` in `app/core/security.py`; later steps were skipped.
 
-- compileall: passed
-- pytest: 4 passed
+### Remote code-head validation
 
-Covered: health, new UI, legacy 404 routes, WebSocket authorization, heartbeat acknowledgement, duplicate-event rejection.
+Code head: `5031e02119cca5d2cd0a16fb7d7f2f014f0e46b3`
 
-Limitation: this validates the new runtime files, not every unmodified historical file still present in the remote repository.
+GitHub Actions run `30556647794`, job `90918702803`:
 
-## Production database impact
+- legacy absence gate: passed;
+- `python -m compileall app`: passed;
+- `PYTHONPATH=. pytest -q`: `7 passed, 1 warning in 0.49s`;
+- `python scripts/check_env.py --phase build`: passed;
+- application import smoke: passed;
+- workflow conclusion: `success`.
 
-No production database connection, migration, table drop, enum drop, or data mutation was performed.
+The warning is a Starlette/FastAPI TestClient deprecation warning and did not fail the workflow.
 
-Historical Alembic migrations remain as schema evidence. Destructive retirement requires a verified backup and separate approved migration. See `docs/legacy-database-retirement.md`.
+## Browser and WebRTC QA
 
-## Known incomplete cleanup
+- Browser plugin: not available in this session.
+- Playwright Python package exists, but no Chromium executable is installed in the runtime.
+- No browser dependency was installed because the closure instructions prohibit adding new browser dependencies without approval.
+- Rendered browser QA: `NOT AVAILABLE`.
+- Automated two-context WebRTC smoke: `NOT AVAILABLE`.
+- Real-device WebRTC, strict NAT, TURN, and production-call QA: not verified.
 
-Repository-wide physical deletion is not complete yet. Inactive historical files may still remain under:
+## Production and database impact
 
-- `app/services/` legacy SLBO/referral/commercial/security helpers;
-- `app/templates/admin/`, `app/templates/member/`, and `app/templates/auth/`;
-- legacy static BO assets;
-- historical Alembic migrations;
-- the old `odds/` Django application;
-- old deployment/helper scripts and documentation not imported by the runtime.
+- Production database changed: false.
+- Destructive DDL run: false.
+- Alembic run: false.
+- Render deployed: false.
+- Render plan changed: false.
+- Production Render deployed SHA and health: not verified due lack of read-only Render connector/access.
 
-These files are not registered or imported by `app.main`, but they must be classified and deleted or retained as archive evidence before declaring the repository fully clean.
+## Remaining risks
 
-## Risks and unknowns
-
-- Timeblock authorization and result callback paths are provisional until the real contract is supplied.
-- Speech-to-text, translation, captions, and TTS provider implementations are not added yet.
-- A Render restart loses in-memory room state.
+- Timeblock endpoints remain provisional until the real contract is supplied.
+- In-memory sessions are lost on Render restart.
 - P2P can fail on strict NAT without TURN.
-- Browser end-to-end WebRTC signaling has not yet been exercised between two real devices.
-- Production Render environment and deployed SHA have not been changed or verified through SSH in this task.
+- Browser interaction and two-context WebRTC still require a browser-capable environment.
+- STT, translation provider, captions pipeline, and TTS are outside this closure round.
 
 ## Decision log
 
 ### 2026-07-30 — Safe backup
 
-Created an archive branch at the original main SHA because the available GitHub connector does not expose tag creation.
+Archive branch retained at the original main SHA because tag creation was not exposed by the connector.
 
-### 2026-07-30 — Foundation refactor
+### 2026-07-30 — Non-destructive cleanup
 
-Removed all legacy router registration and import-time database behavior before physical deletion of production schema.
+Application code was removed without accessing or mutating the production database. Destructive retirement remains a separate backup-gated migration.
 
-### 2026-07-30 — Non-destructive database policy
+### 2026-07-30 — Final legacy security residue
 
-Kept historical migrations and production tables untouched. Destructive cleanup is deferred to a separate backup-gated migration.
+Deleted `app/core/security.py` rather than allowlisting it or restoring SQLAlchemy/passlib/itsdangerous. Timeblock remains the identity and authorization boundary.
+
+### 2026-07-30 — CI closure evidence
+
+GitHub Actions run `30556647794` validated the code head successfully. This memory update is documentation-only and triggers a final exact-head workflow before PR status is reported.
