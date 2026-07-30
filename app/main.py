@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from app.communication.manager import room_manager
 from app.communication.router import router as communication_router
 from app.core.config import BASE_DIR, get_settings
+from app.integrations.timeblock import TimeblockClient
 
 
 @asynccontextmanager
@@ -30,7 +31,8 @@ async def _cleanup_loop() -> None:
 
 settings = get_settings()
 app = FastAPI(title="Guilua Communication Runtime", debug=settings.debug, lifespan=lifespan)
-app.state.app_env = settings.app_env
+app.state.settings = settings
+app.state.timeblock_client = TimeblockClient(settings)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "app" / "static"), name="static")
 app.include_router(communication_router)
 
