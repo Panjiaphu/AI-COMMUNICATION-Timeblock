@@ -6,54 +6,23 @@
   <title>Timeblock AI Communication</title>
   <link rel="stylesheet" href="/static/communication.css">
 </head>
-<body class="call-page">
-  <main class="call-shell" data-call-shell>
+<body class="call-body">
+  <main class="call-shell" id="call-shell">
     <header class="call-header">
-      <a class="brand" href="/">Timeblock</a>
-      <div class="connection-state" data-connection-state><span></span> Chưa kết nối</div>
-      <div class="language-pair">
-        <label>Ngôn ngữ nguồn<select><option>Tiếng Việt</option><option>中文</option><option>English</option></select></label>
-        <span>→</span>
-        <label>Ngôn ngữ đích<select><option>中文</option><option>Tiếng Việt</option><option>English</option></select></label>
-      </div>
+      <div><p class="eyebrow">TIMEBLOCK AI COMMUNICATION</p><h1>Phiên liên lạc</h1></div>
+      <div class="connection-pill" id="connection-pill" data-state="idle" role="status" aria-live="polite"><span class="status-dot"></span><span id="connection-label">Idle</span></div>
     </header>
-
-    <section class="video-stage">
-      <article class="remote-participant">
-        <div class="participant-placeholder"><span>Người tham gia</span><small>Đang chờ kết nối</small></div>
-        <div class="participant-label">Remote participant</div>
-      </article>
-      <article class="local-participant">
-        <video data-local-video autoplay muted playsinline></video>
-        <div class="participant-placeholder local"><span>Bạn</span><small>Camera chưa bật</small></div>
-        <div class="participant-label">Bạn</div>
-      </article>
-
-      <aside class="interpreter-panel expanded" data-interpreter-panel>
-        <header>
-          <div><strong>AI Interpreter</strong><small data-interpreter-status>Sẵn sàng</small></div>
-          <div class="panel-actions">
-            <button type="button" data-panel-state="collapsed" aria-label="Thu gọn">−</button>
-            <button type="button" data-panel-state="expanded" aria-label="Mở rộng">+</button>
-            <button type="button" data-panel-state="hidden" aria-label="Ẩn">×</button>
-          </div>
-        </header>
-        <div class="caption-stream" aria-live="polite">
-          <p class="caption-source">Phụ đề nguồn sẽ hiển thị tại đây.</p>
-          <p class="caption-translation">Bản dịch trực tiếp sẽ hiển thị tại đây.</p>
-        </div>
-      </aside>
+    <section class="video-stage" aria-label="Khu vực cuộc gọi">
+      <article class="remote-frame"><video id="remote-video" autoplay playsinline></video><div class="video-placeholder" id="remote-placeholder"><span>Remote participant</span><small>Luồng từ xa sẽ xuất hiện sau khi signaling hoàn tất.</small></div><div class="caption-layer" aria-live="polite"><p id="translated-caption">Bản dịch sẽ hiển thị tại đây.</p></div></article>
+      <article class="local-frame"><video id="local-video" autoplay playsinline muted></video><span>Bạn</span></article>
     </section>
-
-    <div class="reconnect-banner" data-reconnect-banner hidden>Đang khôi phục kết nối…</div>
-    <div class="error-banner" data-error-banner hidden></div>
-
-    <footer class="call-controls">
-      <button type="button" class="control-button" data-toggle-mic aria-pressed="false">Mic</button>
-      <button type="button" class="control-button" data-toggle-camera aria-pressed="false">Camera</button>
-      <button type="button" class="control-button" data-show-interpreter>Phụ đề</button>
-      <button type="button" class="control-button end-call" data-end-call>Kết thúc</button>
-    </footer>
+    <aside class="interpreter-panel" id="interpreter-panel" data-state="expanded">
+      <div class="panel-header"><div><strong>AI Interpreter</strong><small id="interpreter-status">Chưa kết nối</small></div><div class="panel-actions"><button type="button" id="panel-collapse" aria-label="Thu gọn bảng phiên dịch">−</button><button type="button" id="panel-hide" aria-label="Ẩn bảng phiên dịch">×</button></div></div>
+      <div class="panel-content"><div class="language-row"><label>Nguồn<select id="source-language"><option value="vi">Tiếng Việt</option><option value="zh-TW">繁體中文</option><option value="en">English</option></select></label><span>→</span><label>Đích<select id="target-language"><option value="zh-TW">繁體中文</option><option value="vi">Tiếng Việt</option><option value="en">English</option></select></label></div><div class="transcript-box"><small>Nội dung nguồn</small><p id="source-caption">Chưa có nội dung.</p></div></div>
+    </aside>
+    <button type="button" class="panel-restore" id="panel-restore" hidden>Hiện AI Interpreter</button>
+    <nav class="call-controls" aria-label="Điều khiển cuộc gọi"><button type="button" id="start-call" class="control primary">Bắt đầu</button><button type="button" id="microphone-toggle" class="control" disabled>Micro</button><button type="button" id="camera-toggle" class="control" disabled>Camera</button><button type="button" id="end-call" class="control danger" disabled>Kết thúc</button></nav>
+    <p class="call-error" id="call-error" role="alert" aria-live="assertive"></p>
   </main>
   <script src="/static/communication.js" defer></script>
 </body>
