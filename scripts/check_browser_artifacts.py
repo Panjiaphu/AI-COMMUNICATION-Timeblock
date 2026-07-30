@@ -9,10 +9,13 @@ FORBIDDEN_PATTERNS = {
     "reconnect token field": re.compile(r'"reconnect_token"\s*:', re.IGNORECASE),
     "SDP field": re.compile(r'"sdp"\s*:', re.IGNORECASE),
     "ICE candidate field": re.compile(r'"candidate"\s*:', re.IGNORECASE),
-    "authorization bearer": re.compile(r"authorization\s*[:=]\s*bearer\s+[^\s]+", re.IGNORECASE),
-    "API key": re.compile(r"api[_-]?key\s*[:=]\s*[^\s,;]+", re.IGNORECASE),
-    "password": re.compile(r"password\s*[:=]\s*[^\s,;]+", re.IGNORECASE),
-    "non-development query token": re.compile(r"token=(?!development-session(?:[&\s\"']|$))[^&\s\"']+", re.IGNORECASE),
+    "authorization bearer": re.compile(r"authorization\s*[:=]\s*bearer\s+(?!\[REDACTED\])[^\s]+", re.IGNORECASE),
+    "API key": re.compile(r"api[_-]?key\s*[:=]\s*(?!\[REDACTED\])[^\s,;]+", re.IGNORECASE),
+    "password": re.compile(r"password\s*[:=]\s*(?!\[REDACTED\])[^\s,;]+", re.IGNORECASE),
+    "raw query token": re.compile(
+        r"(?:^|[?&])(?:reconnect_)?token=(?!development-session(?:[&\s\"']|$)|\[REDACTED\](?:[&\s\"']|$))[^&\s\"']+",
+        re.IGNORECASE,
+    ),
 }
 
 
