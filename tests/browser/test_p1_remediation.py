@@ -14,6 +14,9 @@ from playwright.sync_api import Page, expect
 from tests.browser.support import create_context, install_instrumentation, observe_page, relevant_console_errors, write_json
 
 
+EXPECTED_RECONNECT_REJECTION_COUNT = 5
+
+
 def _url(base_url: str, session: str, participant: str) -> str:
     return f'{base_url}/communication?session={session}&participant={participant}&token=development-session'
 
@@ -25,6 +28,18 @@ def _wait_remote(page: Page) -> None:
         && s.remote_video_tracks.filter(t => t.kind === 'audio' && t.ready_state === 'live').length === 1
         && s.remote_video_tracks.filter(t => t.kind === 'video' && t.ready_state === 'live').length === 1;
     }""", timeout=30000)
+
+
+def _is_expected_reconnect_rejection(entry: dict[str, str]) -> bool:
+    text = entry.get('text', '')
+    return (
+        entry.get('type') == 'error'
+        and 'WebSocket connection to' in text
+        and '/ws/communication/reconnect-exhaustion' in text
+        and 'Unexpected response code: 403' in text
+        and 'token=[REDACTED]' in text
+        and 'reconnect_token=[REDACTED]' in text
+    )
 
 
 def test_reconnect_exhaustion_terminal_cleanup_and_restart(chromium_browser, base_url: str, artifact_dir: Path):
@@ -65,8 +80,29 @@ def test_reconnect_exhaustion_terminal_cleanup_and_restart(chromium_browser, bas
         assert 'reconnect_token=' not in page.evaluate('window.__guiluaQa.latestSocketUrl()')
         restarted = page.evaluate('window.__guiluaQa.snapshot()')
         page.locator('#end-call').click()
-        write_json(artifact_dir / 'evidence' / 'reconnect-exhaustion.json', {'terminal': snapshot, 'restart': restarted, 'console': evidence, 'physical_device': False, 'fake_media': True})
-        assert relevant_console_errors(evidence) == []
+
+        errors = relevant_console_errors(evidence)
+        expected_reconnect_rejections = [
+            entry for entry in errors if _is_expected_reconnect_rejection(entry)
+        ]
+        unexpected_errors = [
+            entry for entry in errors if not _is_expected_reconnect_rejection(entry)
+        ]
+        assert len(expected_reconnect_rejections) == EXPECTED_RECONNECT_REJECTION_COUNT
+        assert unexpected_errors == []
+
+        write_json(
+            artifact_dir / 'evidence' / 'reconnect-exhaustion.json',
+            {
+                'terminal': snapshot,
+                'restart': restarted,
+                'console': evidence,
+                'expected_reconnect_rejection_count': len(expected_reconnect_rejections),
+                'unexpected_error_count': len(unexpected_errors),
+                'physical_device': False,
+                'fake_media': True,
+            },
+        )
     finally:
         context.close()
 

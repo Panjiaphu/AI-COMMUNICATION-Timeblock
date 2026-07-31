@@ -1,16 +1,35 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from playwright.sync_api import Browser, BrowserContext, Page
+if TYPE_CHECKING:
+    from playwright.sync_api import Browser, BrowserContext, Page
+else:
+    Browser = BrowserContext = Page = Any
 
 FAKE_MEDIA_ARGS = [
     "--use-fake-ui-for-media-stream",
     "--use-fake-device-for-media-stream",
     "--autoplay-policy=no-user-gesture-required",
 ]
+
+_BROWSER_SECRET_QUERY_VALUE = re.compile(
+    r"(?P<prefix>(?<![\w-])(?:token|session_token|reconnect_token)=)[^&\s\"']*",
+    re.IGNORECASE,
+)
+
+
+def sanitize_browser_evidence_text(text: str) -> str:
+    """Redact browser URL token values while preserving diagnostic context."""
+
+    return _BROWSER_SECRET_QUERY_VALUE.sub(
+        lambda match: f"{match.group('prefix')}[REDACTED]",
+        text,
+    )
+
 
 QA_INSTRUMENTATION = r"""
 (() => {
@@ -170,10 +189,23 @@ def create_context(browser: Browser, *, base_url: str, viewport: dict[str, int],
     return context
 
 
+def _capture_entry(entry_type: str, text: str) -> dict[str, str]:
+    sanitized = sanitize_browser_evidence_text(text)
+    return {"type": entry_type, "text": sanitized[:1000]}
+
+
 def observe_page(page: Page) -> dict[str, list[dict[str, str]]]:
     evidence: dict[str, list[dict[str, str]]] = {"console": [], "page_errors": []}
-    page.on("console", lambda message: evidence["console"].append({"type": message.type, "text": message.text[:1000]}))
-    page.on("pageerror", lambda error: evidence["page_errors"].append({"type": type(error).__name__, "text": str(error)[:1000]}))
+    page.on(
+        "console",
+        lambda message: evidence["console"].append(_capture_entry(message.type, message.text)),
+    )
+    page.on(
+        "pageerror",
+        lambda error: evidence["page_errors"].append(
+            _capture_entry(type(error).__name__, str(error))
+        ),
+    )
     return evidence
 
 

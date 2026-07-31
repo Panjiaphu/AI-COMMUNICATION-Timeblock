@@ -13,6 +13,7 @@ from scripts.check_browser_artifacts import (
     REQUIRED_TRACE_FILES,
     main,
 )
+from tests.browser.support import sanitize_browser_evidence_text
 
 
 def _matches(text: str) -> set[str]:
@@ -74,6 +75,43 @@ def _run(root: Path, monkeypatch: pytest.MonkeyPatch, deployment: str | None = N
     return main()
 
 
+def test_browser_evidence_sanitizer_redacts_quoted_websocket_url():
+    raw = (
+        "WebSocket connection to "
+        "'ws://127.0.0.1:8000/ws/communication/reconnect-exhaustion"
+        "?token=development-session&participant_id=participant-a"
+        "&trace_id=trace-1&reconnect_token=raw-reconnect-secret' failed: "
+        "Error during WebSocket handshake: Unexpected response code: 403"
+    )
+
+    sanitized = sanitize_browser_evidence_text(raw)
+
+    assert "token=[REDACTED]" in sanitized
+    assert "reconnect_token=[REDACTED]" in sanitized
+    assert "development-session" not in sanitized
+    assert "raw-reconnect-secret" not in sanitized
+    assert "/ws/communication/reconnect-exhaustion" in sanitized
+    assert "participant_id=participant-a" in sanitized
+    assert "Unexpected response code: 403" in sanitized
+
+
+def test_browser_evidence_sanitizer_handles_alternate_parameter_order():
+    raw = (
+        "wss://example.invalid/ws/communication/reconnect-exhaustion"
+        "?participant_id=participant-a&reconnect_token=another-secret"
+        "&session_token=session-secret&token=last-secret"
+    )
+
+    sanitized = sanitize_browser_evidence_text(raw)
+
+    assert sanitized.count("[REDACTED]") == 3
+    assert "another-secret" not in sanitized
+    assert "session-secret" not in sanitized
+    assert "last-secret" not in sanitized
+    assert "participant_id=participant-a" in sanitized
+    assert _matches(sanitized) == set()
+
+
 def test_token_patterns_allow_only_development_or_redacted_values():
     for safe in (
         "?token=development-session",
@@ -88,6 +126,60 @@ def test_token_patterns_allow_only_development_or_redacted_values():
     assert "raw reconnect query token" in _matches(f"?reconnect_token={sample}")
     assert "raw session token assignment" in _matches(f"session_token={sample}")
     assert "raw reconnect token assignment" in _matches(f"reconnect_token={sample}")
+
+
+def test_gate_accepts_redacted_browser_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    root = tmp_path / "browser"
+    root.mkdir()
+    _seed(root, _json_line())
+    (root / "evidence" / "reconnect-exhaustion.json").write_text(
+        json.dumps(
+            {
+                "console": {
+                    "type": "error",
+                    "text": (
+                        "WebSocket connection to "
+                        "'ws://127.0.0.1:8000/ws/communication/reconnect-exhaustion"
+                        "?token=[REDACTED]&participant_id=participant-a"
+                        "&reconnect_token=[REDACTED]' failed: Error during WebSocket "
+                        "handshake: Unexpected response code: 403"
+                    ),
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert _run(root, monkeypatch, "a" * 40) == 0
+
+
+def test_gate_rejects_raw_browser_evidence_tokens(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+):
+    root = tmp_path / "browser"
+    root.mkdir()
+    _seed(root, _json_line())
+    (root / "evidence" / "reconnect-exhaustion.json").write_text(
+        json.dumps(
+            {
+                "text": (
+                    "ws://127.0.0.1:8000/ws/communication/reconnect-exhaustion"
+                    "?token=raw-session-secret&reconnect_token=raw-reconnect-secret"
+                )
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert _run(root, monkeypatch) == 1
+    output = capsys.readouterr().out
+    assert "raw session query token" in output
+    assert "raw reconnect" in output
 
 
 def test_gate_accepts_exact_identity_and_json_log(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

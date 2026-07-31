@@ -21,7 +21,7 @@ Do not add Redis, Postgres, workers, cron, persistent disk, a second service, ho
 
 ## Implemented runtime foundation
 
-- FastAPI app factory and lifespan-managed `RoomManager`.
+- FastAPI app factory and lifespan-managed in-memory `RoomManager`.
 - `/`, `/communication`, `/healthz/`, and `/ws/communication/{session_id}`.
 - `RoomState`, `ParticipantState`, `ConnectionState`, and `ReconnectState`.
 - Settings-driven stale, reconnect, ended-room, and idempotency TTLs.
@@ -166,13 +166,21 @@ The pre-remediation runs `30607539178` and `30607539138`, and artifact `87841747
 
 Contract V1 remains blocked. External review by a reviewer other than `Panjiaphu` remains required. Unified UI implementation remains unauthorized. No merge, deployment, Render operation, production database access, migration, or DDL was performed.
 
+### 2026-07-31 — Exact browser failure diagnosis and reclosure correction
+
+Exact Browser QA run `30635372352`, job `91171514309`, failed only `tests/browser/test_p1_remediation.py::test_reconnect_exhaustion_terminal_cleanup_and_restart`: `13 passed, 1 failed`. All reconnect-exhaustion terminal cleanup, zero-active-timer, no-seventh-socket, control-reset, fresh-Start, and no-old-reconnect-token assertions passed before the final console assertion. The remaining evidence contained five intentional WebSocket handshake rejections with HTTP 403 on `/ws/communication/reconnect-exhaustion`.
+
+The failure is classified as `TEST_EXPECTATION_FAILURE + BROWSER_EVIDENCE_PRIVACY_FAILURE`: the test required zero browser errors even though the reconnect-exhaustion scenario intentionally produces rejected reconnect handshakes, and browser console capture stored full URLs containing raw session and reconnect tokens in JUnit and `reconnect-exhaustion.json`. Runtime CI had already passed. This correction is limited to browser evidence sanitization, narrow expected-403 classification, privacy regression tests, and this memory entry; runtime, protocol, product UI, Contract V1, infrastructure, database, Render, and production behavior remain unchanged.
+
+Contract V1 remains blocked, external foundation review remains pending, and Unified UI remains unauthorized. No merge, deployment, Render action, production database access, migration, or DDL was performed. New exact-head Runtime and Browser QA evidence is pending and must not be assumed successful.
+
 ## Current review state
 
 P1 remediation is implemented on an isolated staging branch and remains subject to staging source review plus new exact-head Runtime and Browser QA. PR #1 must remain draft. The remediation does not constitute independent approval.
 
 ## Next action
 
-Complete staging source review, create one squashed remediation commit with parent `201c7b1e291ca4f80aab6b7c95983ba7c9b09ee4`, fast-forward the foundation branch with `force=false`, and obtain exact-head CI evidence. If both workflows pass, request external foundation review.
+Complete staging source review, create one clean browser correction commit with parent `c777a5eaa3ec3337623b44840b97c358021d1e27`, fast-forward the foundation branch with `force=false`, and obtain exact-head Runtime, Browser QA, artifact identity, and privacy evidence. If all gates pass, request external foundation review.
 
 ```text
 DO NOT MERGE
