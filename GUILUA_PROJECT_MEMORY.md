@@ -4,103 +4,175 @@ Last verified update: 2026-07-31 (Asia/Taipei)
 
 ## Project identity
 
-- Canonical repository: `Panjiaphu/AI-COMMUNICATION-Timeblock`.
-- Legacy alias: `Panjiaphu/guilua`.
-- Baseline/current main SHA: `c6c83c60f190506afec21cfb750ee5acd5e27932`.
-- Foundation branch: `refactor/communication-runtime-foundation`.
-- Pull request: `#1`, open, draft, mergeable, not merged.
-- P1 remediation starting head: `201c7b1e291ca4f80aab6b7c95983ba7c9b09ee4`.
-- Technical self-audit review ID: `4828674968`.
-- Render service: `srv-d93hlhtaeets73dohu0g`, Singapore.
+- Repository: `Panjiaphu/guilua`
+- Baseline/current main SHA: `c6c83c60f190506afec21cfb750ee5acd5e27932`
+- Archive branch: `archive/legacy-point-platform-before-communication-runtime` at the same baseline
+- Working branch: `refactor/communication-runtime-foundation`
+- Validated Communication Runtime code head: `f07f80ceb4d5cc972ed7dd855413f1e49e334fa1`
+- Pull request: `#1` (open, draft, mergeable, not merged)
+- Render service: `srv-d93hlhtaeets73dohu0g`, Singapore
+- Production deployment: unchanged; deployed SHA and health were not verified through Render read access in this closure
 
 ## Locked architecture
 
-Guilua is the ephemeral realtime Communication Runtime for Timeblock. Timeblock remains the identity, workspace, authorization, entitlement, glossary, durable result, usage, billing, audit, and retention authority.
+Guilua is the ephemeral realtime communication runtime for Timeblock: one existing Render Standard Web Service, one instance, one Gunicorn/Uvicorn worker, HTTP and WebSocket on one public port, in-memory runtime state, and WebRTC P2P for initial 1:1 calls.
 
-Preserve one existing Render Standard Web Service, one instance, one Gunicorn/Uvicorn worker, HTTP and WebSocket on one public port, in-memory runtime state, and WebRTC P2P for initial 1:1 calls. Do not add Redis, Postgres, workers, cron, persistent disk, a second service, horizontal scaling, SFU/MCU, dedicated TURN, local AI, GPU, or media transcoding in the foundation phase.
+Do not add Redis, Postgres, workers, cron, persistent disk, a second service, horizontal scaling, SFU/MCU, dedicated TURN, local Whisper/LLM, GPU, or media transcoding during the foundation phase. Timeblock owns durable identity, workspace, permission, entitlement, transcript, usage, billing, audit, and retention data.
 
-## Foundation history
+## Implemented runtime foundation
 
-The foundation removed active BO/SLBO, Rapid, rates, crypto dashboard, old admin/member/auth, wallets, points, transfers, treasury, referral, commission, Django odds, database models/session, legacy services, templates, tests, and static assets without dropping production tables.
+- FastAPI app factory and lifespan-managed `RoomManager`.
+- `/`, `/communication`, `/healthz/`, and `/ws/communication/{session_id}`.
+- `RoomState`, `ParticipantState`, `ConnectionState`, and `ReconnectState`.
+- Settings-driven stale, reconnect, ended-room, and idempotency TTLs.
+- Event allowlist and typed payload validation.
+- Participant/connection/session binding, duplicate and out-of-order protection.
+- Per-connection in-memory rate limits.
+- Production origin fail-closed policy.
+- One-time reconnect token hashing, expiry, rotation, and participant replacement.
+- Targeted offer, answer, and ICE forwarding for a maximum of two participants.
+- Browser WebSocket, `RTCPeerConnection`, ICE queue, remote-stream assignment, bounded reconnect backoff, and cleanup paths.
+- Provisional typed Timeblock boundary: authorize, refresh, glossary, session result, and usage callbacks with idempotency keys.
 
-The pre-remediation exact-head evidence for `201c7b1e291ca4f80aab6b7c95983ba7c9b09ee4` is historical after source changes:
+## Legacy removal
 
-- Runtime run/job: `30607539178 / 91082917263`, success.
-- Browser run/job: `30607539138 / 91082917754`, success.
-- Artifact: `8784174718`.
-- Digest: `sha256:f96b2deca1362705f05df2db9261bd3776f2d4e9e2e0e09f68192baf84b21501`.
-- JUnit: 12 tests, 0 failures/errors/skips.
-- Hosted Chromium/WebKit with fake media; physical device false.
+Removed active BO/SLBO, Rapid, rates, crypto dashboard, old admin/member/auth, wallets/points/transfers/treasury, referral/commission, Django `odds`, database models/session, legacy services, templates, tests, and static assets.
 
-These runs are `HISTORICAL — NOT NEW-HEAD EVIDENCE`.
+`app/core/security.py` was removed because it was a database-backed legacy auth module with no Communication Runtime consumer. Historical Alembic files remain only as schema evidence and are not imported or executed by the runtime. Production tables have not been dropped.
 
-## 2026-07-31 P1 technical self-audit
+## Browser, WebRTC, and logging closure
 
-Review `4828674968` identified four P1 findings:
+Validated code commits:
 
-1. Development authorization fallback could run under production-classified `DEBUG=false` settings.
-2. Timeblock authorize/refresh responses were not rebound to requested session and participant identity.
-3. Reconnect exhaustion changed only visual status and left media/peer/socket state active.
-4. One-sided `session.ended` did not terminally clean the remaining participant.
+- `e3df7501a100f8990951c5bae4633fd202db7eec` — responsive geometry, rejected-authorization media cleanup, reconnect peer reset, structured Gunicorn logs, exact-head artifact identity, privacy/completeness gates, and expanded browser evidence.
+- `f07f80ceb4d5cc972ed7dd855413f1e49e334fa1` — reconnect browser test now waits for protocol evidence `session.authorized(reconnected=true)` instead of requiring the transient `Reconnected` label.
 
-## P1 remediation behavior
+Closure behavior now includes:
 
-The remediation commit is pending exact-head CI and must not be described as verified until both workflows finish.
+- responsive desktop, tablet, mobile portrait, and mobile landscape geometry assertions;
+- interpreter `expanded`, `collapsed`, and `hidden` interaction checks;
+- caption, interpreter, local-preview, and call-control non-overlap checks;
+- initial WebSocket authorization rejection stops local tracks, closes peers, clears timers, and resets controls;
+- reconnect closes the stale peer, rotates connection/reconnect state, renegotiates offer/answer/ICE, and restores decoded remote audio/video;
+- third participant is rejected without disrupting the existing call and its local media is stopped;
+- end-call cleanup closes WebSockets and peers and ends local/remote tracks;
+- application, Uvicorn, and Gunicorn lifecycle logs use one allowlisted JSON object per line;
+- WebSocket request targets are sanitized and raw session/reconnect tokens, SDP, and ICE candidates are excluded from artifacts;
+- browser artifacts are accepted only when checked-out SHA, deployment version, and expected PR head are identical.
 
-- Added explicit `ALLOW_DEVELOPMENT_SESSION_FALLBACK`, default false.
-- Fallback requires non-production classification, development/test environment, explicit opt-in, and absent Timeblock API URL.
-- Production-classified settings reject fallback opt-in.
-- Timeblock authorization responses fail closed with `authorization_boundary_mismatch` when session or participant differs from the request.
-- Existing RoomManager room/workspace boundary checks remain authoritative on reconnect.
-- Reconnect exhaustion now uses terminal cleanup: no seventh retry, socket/peer/timers/tracks cleared, controls recovered, Start re-enabled.
-- Server broadcasts a server-owned `session.ended` event before sender disconnect.
-- Remote participant performs terminal cleanup without echoing `session.ended`.
+## Exact-head validation evidence
 
-## Files in remediation scope
+### Communication Runtime workflow
 
-- `app/core/config.py`
-- `app/integrations/timeblock/client.py`
-- `app/communication/router.py`
-- `app/static/communication.js`
-- `scripts/check_env.py`
-- `scripts/check_browser_artifacts.py`
-- `.env.example`
-- `.env.render.example`
-- `.github/workflows/communication-browser-qa.yml`
-- `tests/test_communication_runtime.py`
-- `tests/test_p1_remediation.py`
-- `tests/browser/support.py`
-- `tests/browser/test_p1_remediation.py`
-- `GUILUA_PROJECT_MEMORY.md`
+- Commit: `f07f80ceb4d5cc972ed7dd855413f1e49e334fa1`
+- GitHub Actions run: `30607269845`
+- Job: `91082076396`
+- Conclusion: `success`
+- Legacy absence gate: passed
+- `python -m compileall app`: passed
+- `PYTHONPATH=. pytest -q`: `17 passed, 2 skipped, 1 warning in 0.70s`
+- Build environment check: passed
+- Application import smoke: passed
+- Warning: FastAPI/Starlette TestClient deprecation warning; it did not fail the workflow
 
-## Remediation tests
+### Communication Browser QA workflow
 
-Runtime/default suite adds coverage for explicit fallback, production-classified fallback rejection, session/participant response mismatch, room/workspace mismatch on refresh, no residual manager state after rejected authorization, terminal event delivery, ended-room join rejection, and leave-versus-end behavior.
+- Commit: `f07f80ceb4d5cc972ed7dd855413f1e49e334fa1`
+- GitHub Actions run: `30607270158`
+- Job: `91082077398`
+- Conclusion: `success`
+- Exact checkout identity gate: passed
+- Browser test JUnit: `12 tests`, `0 failures`, `0 errors`, `0 skipped`
+- Playwright: `1.61.0`
+- Chromium: `149.0.7827.55`
+- WebKit: `26.5`
+- Physical device: false
+- Fake media: true
+- Artifact privacy and completeness gate: passed
+- Artifact upload: passed
 
-Browser suite adds deterministic reconnect exhaustion cleanup/restart evidence and one-sided remote hangup cleanup evidence while retaining existing responsive geometry, interpreter states, successful reconnect, third-participant rejection, media permission, logging, and privacy gates.
+Artifact:
 
-## Current gates
+- ID: `8784077659`
+- Name: `communication-browser-qa-f07f80ceb4d5cc972ed7dd855413f1e49e334fa1`
+- GitHub artifact digest: `sha256:4a4918c95b07196b88303d223e4f6b1adefa08842449cf21a1bb17262c371907`
+- Retention expiry: 2026-08-14
 
-- P1 remediation source: `IMPLEMENTED — CI PENDING`.
-- New exact-head Runtime CI: `PENDING`.
-- New exact-head Browser QA: `PENDING`.
-- Contract V1: `BLOCKED`.
-- External independent review: `REQUIRED`.
-- Unified UI implementation: `NOT AUTHORIZED`.
-- Physical-device QA: `NOT VERIFIED`.
-- Production deployment: `NOT AUTHORIZED`.
+Direct artifact inspection verified:
+
+- `build-identity.json` records expected PR head, checked-out SHA, and deployment version as `f07f80ceb4d5cc972ed7dd855413f1e49e334fa1`;
+- all eight required viewport evidence files report no horizontal overflow, every required box inside the viewport, and every tested intersection as false;
+- Chromium and WebKit mobile screenshots render the communication surface without visible control/caption/interpreter overlap;
+- fake-media permission grant, synthetic permission denial, two-context offer/answer/ICE, reconnect recovery, third-participant rejection, and final cleanup evidence are present;
+- reconnect evidence contains one active non-closed peer per participant, one live remote audio track, one live remote video track, decoded video dimensions, hidden placeholder, no duplicate remote track IDs, zero active reconnect timers, and one reconnect-token rotation for the reconnecting participant;
+- rejected third-participant evidence contains two ended local tracks, no active peer, no local video tracks, and no active timer;
+- `server.log` contains 31 non-empty lines, all valid allowlisted JSON objects, zero plaintext lines, zero privacy-pattern violations, and redacted WebSocket query tokens.
 
 ## Production and database impact
 
-- Render deployed or restarted: false.
-- Render environment changed: false.
-- Production database accessed or changed: false.
-- Migrations or DDL run: false.
-- Infrastructure model changed: false.
+- Production database changed: false
+- Destructive DDL run: false
+- Alembic run: false
+- Render deployed or restarted: false
+- Render plan changed: false
+- Render environment variables changed: false
+- Production Render deployed SHA, health, and real traffic: not verified
+
+## Remaining risks and unknowns
+
+- Timeblock endpoint paths and schemas remain `PROVISIONAL_CONTRACT` until supplied or approved by the Timeblock control-plane team.
+- In-memory sessions are lost on Render restart.
+- WebRTC P2P can fail on strict NAT without TURN.
+- Automated QA used hosted Chromium/WebKit with fake media, not physical devices.
+- Real-device WebRTC, strict-NAT/TURN, long-call behavior, network handoff, screen lock, and production-call traffic remain unverified.
+- STT, translation provider, captions pipeline, glossary fallback, TTS, durable result callbacks, and usage retry orchestration are outside this foundation closure.
+
+## Decision log
+
+### 2026-07-30 — Safe backup
+
+Archive branch retained at the original main SHA because tag creation was not exposed by the connector.
+
+### 2026-07-30 — Non-destructive cleanup
+
+Application code was removed without accessing or mutating the production database. Destructive retirement remains a separate backup-gated migration.
+
+### 2026-07-30 — Final legacy security residue
+
+Deleted `app/core/security.py` rather than allowlisting it or restoring SQLAlchemy/passlib/itsdangerous. Timeblock remains the identity and authorization boundary.
+
+### 2026-07-31 — Browser and WebRTC evidence gate
+
+Added exact-head browser QA with required responsive screenshots, traces, JUnit, reconnect evidence, third-participant cleanup, and privacy-safe structured logs. Workflow success alone is insufficient; artifact completeness and identity must also pass.
+
+### 2026-07-31 — Reconnect assertion semantics
+
+Reconnect completion is proven by `session.authorized` with `reconnected=true`, connection/reconnect-token rotation, participant notification, renewed offer/answer/ICE, and usable decoded remote media. The transient UI label is not treated as the protocol source of truth.
+
+### 2026-07-31 — P1 foundation remediation staged
+
+Technical self-audit review `4828674968` identified four P1 findings at starting head `201c7b1e291ca4f80aab6b7c95983ba7c9b09ee4`:
+
+1. development-session fallback could run under production-classified settings;
+2. Timeblock authorize/refresh responses were not rebound to the requested session and participant;
+3. reconnect exhaustion left local media and runtime state active;
+4. one-sided `session.ended` did not terminally clean the remaining participant.
+
+The staged remediation adds an explicit production-safe fallback gate, authority-response identity binding, terminal reconnect-exhaustion cleanup, and server-owned one-sided hangup propagation with remote cleanup. Runtime tests cover fallback classification, boundary mismatch, room/workspace reconnect mismatch, rejected-state cleanup, terminal event delivery, and leave-versus-end behavior. Browser tests add deterministic reconnect-exhaustion and one-sided-hangup evidence.
+
+Files changed are limited to runtime configuration/integration/router/frontend cleanup, environment examples, browser workflow/evidence gates, focused tests, and this memory. No Timeblock provisional paths, signaling schemas, participant limit, infrastructure, database behavior, landing-page design, or Contract V1 implementation are changed.
+
+The pre-remediation runs `30607539178` and `30607539138`, and artifact `8784174718`, are historical and are not evidence for the new head. New exact-head Runtime and Browser QA identifiers remain pending until the foundation branch is updated and workflows finish.
+
+Contract V1 remains blocked. External review by a reviewer other than `Panjiaphu` remains required. Unified UI implementation remains unauthorized. No merge, deployment, Render operation, production database access, migration, or DDL was performed.
+
+## Current review state
+
+P1 remediation is implemented on an isolated staging branch and remains subject to staging source review plus new exact-head Runtime and Browser QA. PR #1 must remain draft. The remediation does not constitute independent approval.
 
 ## Next action
 
-Complete exact-head Runtime and Browser QA on the remediation head. If both pass, request an external reviewer other than `Panjiaphu` to review that exact head. Contract V1 freeze remains a separate later task.
+Complete staging source review, create one squashed remediation commit with parent `201c7b1e291ca4f80aab6b7c95983ba7c9b09ee4`, fast-forward the foundation branch with `force=false`, and obtain exact-head CI evidence. If both workflows pass, request external foundation review.
 
 ```text
 DO NOT MERGE
