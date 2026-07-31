@@ -37,14 +37,7 @@ def server_event(event_name: str, session_id: str, connection_id: str, trace_id:
     }
 
 
-async def send_error(
-    websocket: WebSocket,
-    *,
-    code: str,
-    session_id: str,
-    connection_id: str,
-    trace_id: str,
-) -> None:
+async def send_error(websocket: WebSocket, *, code: str, session_id: str, connection_id: str, trace_id: str) -> None:
     await websocket.send_json(server_event('error', session_id, connection_id, trace_id, code=code))
 
 
@@ -108,10 +101,7 @@ async def communication_socket(websocket: WebSocket, session_id: str) -> None:
     )
     await websocket.send_json(
         server_event(
-            'session.authorized',
-            session_id,
-            connection.connection_id,
-            trace_id,
+            'session.authorized', session_id, connection.connection_id, trace_id,
             participant_id=authorized.participant_id,
             reconnect_token=result.reconnect_token,
             reconnected=result.reconnected,
@@ -122,9 +112,7 @@ async def communication_socket(websocket: WebSocket, session_id: str) -> None:
         session_id,
         server_event(
             'participant.reconnected' if result.reconnected else 'participant.joined',
-            session_id,
-            connection.connection_id,
-            trace_id,
+            session_id, connection.connection_id, trace_id,
             participant_id=authorized.participant_id,
         ),
         exclude_connection_id=connection.connection_id,
@@ -142,11 +130,7 @@ async def communication_socket(websocket: WebSocket, session_id: str) -> None:
             except (json.JSONDecodeError, ValidationError):
                 await send_error(websocket, code='invalid_event', session_id=session_id, connection_id=connection.connection_id, trace_id=trace_id)
                 continue
-            if (
-                event.session_id != session_id
-                or event.connection_id != connection.connection_id
-                or event.participant_id != authorized.participant_id
-            ):
+            if event.session_id != session_id or event.connection_id != connection.connection_id or event.participant_id != authorized.participant_id:
                 await send_error(websocket, code='event_binding_failed', session_id=session_id, connection_id=connection.connection_id, trace_id=trace_id)
                 continue
             accepted, error = await manager.handle_event(event)
@@ -160,16 +144,18 @@ async def communication_socket(websocket: WebSocket, session_id: str) -> None:
             if event.event_name in {EventName.SIGNALING_OFFER, EventName.SIGNALING_ANSWER, EventName.SIGNALING_ICE}:
                 payload = event.typed_payload()
                 try:
-                    await manager.send_to_participant(
-                        session_id,
-                        authorized.participant_id,
-                        payload.target_participant_id,
-                        event.model_dump(mode='json'),
-                    )
+                    await manager.send_to_participant(session_id, authorized.participant_id, payload.target_participant_id, event.model_dump(mode='json'))
                 except RoomManagerError as exc:
                     await send_error(websocket, code=exc.code, session_id=session_id, connection_id=connection.connection_id, trace_id=trace_id)
                 continue
-            if event.event_name in {EventName.SESSION_LEAVE, EventName.SESSION_ENDED}:
+            if event.event_name == EventName.SESSION_ENDED:
+                await manager.broadcast(
+                    session_id,
+                    server_event('session.ended', session_id, connection.connection_id, trace_id, participant_id=authorized.participant_id),
+                    exclude_connection_id=connection.connection_id,
+                )
+                break
+            if event.event_name == EventName.SESSION_LEAVE:
                 break
             await manager.broadcast(session_id, event.model_dump(mode='json'), connection.connection_id)
     except WebSocketDisconnect:

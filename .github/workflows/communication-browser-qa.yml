@@ -30,6 +30,7 @@ jobs:
       APP_ENV: development
       DEBUG: "true"
       SECRET_KEY: browser-qa-non-production-secret-with-adequate-length
+      ALLOW_DEVELOPMENT_SESSION_FALLBACK: "true"
       ALLOWED_WEBSOCKET_ORIGINS: http://127.0.0.1:8000
       ALLOW_MISSING_WEBSOCKET_ORIGIN: "false"
       DEPLOYMENT_VERSION: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -66,7 +67,6 @@ jobs:
           import json
           import os
           from pathlib import Path
-
           payload = {
               "expected_pr_head": os.environ["EXPECTED_PR_HEAD"],
               "checked_out_sha": os.environ["CHECKED_OUT_SHA"],
@@ -74,9 +74,7 @@ jobs:
               "github_event_name": os.environ["GITHUB_EVENT_NAME_VALUE"],
               "workflow_run_id": os.environ["WORKFLOW_RUN_ID_VALUE"],
           }
-          Path("artifacts/browser/build-identity.json").write_text(
-              json.dumps(payload, indent=2), encoding="utf-8"
-          )
+          Path("artifacts/browser/build-identity.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
           PY
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -r requirements-dev.txt
@@ -108,7 +106,6 @@ jobs:
           import json
           import time
           import urllib.request
-
           expected = {"status": "ok", "service": "guilua-communication-runtime"}
           deadline = time.monotonic() + 30
           last_error = None

@@ -25,14 +25,11 @@
   function setStatus(next, label) { state.status = next; ui.pill.dataset.state = next; ui.label.textContent = label || next; ui.interpreterStatus.textContent = label || next; }
   function showError(message = '') { ui.error.textContent = message; }
   function setPanelState(next) {
-    const expanded = next === 'expanded';
-    const hidden = next === 'hidden';
-    ui.panel.dataset.state = next;
-    ui.panel.setAttribute('aria-hidden', String(hidden));
+    const expanded = next === 'expanded'; const hidden = next === 'hidden';
+    ui.panel.dataset.state = next; ui.panel.setAttribute('aria-hidden', String(hidden));
     ui.panelCollapse.setAttribute('aria-expanded', String(expanded));
     ui.panelCollapse.setAttribute('aria-label', expanded ? 'Thu gọn bảng phiên dịch' : 'Mở rộng bảng phiên dịch');
-    ui.panelCollapse.textContent = expanded ? '−' : '+';
-    ui.panelRestore.hidden = !hidden;
+    ui.panelCollapse.textContent = expanded ? '−' : '+'; ui.panelRestore.hidden = !hidden;
   }
   function wsUrl() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -53,12 +50,30 @@
       ui.localVideo.srcObject = state.localStream; ui.microphone.disabled = false; ui.camera.disabled = false; return state.localStream;
     } catch (error) { showError(`Không thể truy cập micro/camera: ${error.name}`); setStatus('degraded', 'Thiếu quyền media'); throw error; }
   }
-  function stopLocalMedia() { state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; ui.localVideo.srcObject = null; ui.microphone.disabled = true; ui.camera.disabled = true; ui.microphone.textContent = 'Micro'; ui.camera.textContent = 'Camera'; }
-  function resetFailedStart(message) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; state.socket = null; state.connectionId = null; state.reconnectToken = null; state.reconnectAttempt = 0; state.sequence = 0; state.remoteParticipantId = null; closePeer(); stopLocalMedia(); ui.end.disabled = true; ui.start.disabled = false; setStatus('failed', 'Disconnected'); showError(message || 'Kết nối đã đóng.'); }
+  function stopLocalMedia() {
+    state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; ui.localVideo.srcObject = null;
+    ui.microphone.disabled = true; ui.camera.disabled = true; ui.microphone.textContent = 'Micro'; ui.camera.textContent = 'Camera';
+  }
+  function closePeer() {
+    if (state.peer) { state.peer.ontrack = null; state.peer.onicecandidate = null; state.peer.close(); state.peer = null; }
+    state.pendingCandidates.length = 0; state.remoteStream?.getTracks().forEach((track) => track.stop());
+    state.remoteStream = new MediaStream(); ui.remoteVideo.srcObject = null; ui.remoteFrame.classList.remove('has-stream');
+  }
+  function terminalCleanup({ notifyServer = false, status = 'ended', label = 'Ended', message = '' } = {}) {
+    state.ending = true;
+    clearTimeout(state.reconnectTimer); state.reconnectTimer = null;
+    if (notifyServer) sendEvent('session.ended', {});
+    const socket = state.socket; state.socket = null;
+    if (socket && socket.readyState < WebSocket.CLOSING) socket.close(1000, notifyServer ? 'call_ended' : 'terminal_cleanup');
+    closePeer(); stopLocalMedia();
+    state.connectionId = null; state.reconnectToken = null; state.reconnectAttempt = 0; state.sequence = 0; state.remoteParticipantId = null;
+    ui.end.disabled = true; ui.start.disabled = false; setStatus(status, label); showError(message);
+  }
+  function resetFailedStart(message) { terminalCleanup({ status: 'failed', label: 'Disconnected', message: message || 'Kết nối đã đóng.' }); }
   function createPeer() {
     if (state.peer && state.peer.connectionState !== 'closed') return state.peer;
-    const peer = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-    state.peer = peer; state.remoteStream = new MediaStream(); ui.remoteVideo.srcObject = state.remoteStream;
+    const peer = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }); state.peer = peer;
+    state.remoteStream = new MediaStream(); ui.remoteVideo.srcObject = state.remoteStream;
     if (state.localStream) for (const track of state.localStream.getTracks()) peer.addTrack(track, state.localStream);
     peer.addEventListener('track', (event) => { for (const track of event.streams[0]?.getTracks() || [event.track]) if (!state.remoteStream.getTrackById(track.id)) state.remoteStream.addTrack(track); ui.remoteFrame.classList.add('has-stream'); });
     peer.addEventListener('icecandidate', (event) => { if (!event.candidate || !state.remoteParticipantId) return; sendEvent('signaling.ice_candidate', { target_participant_id: state.remoteParticipantId, candidate: event.candidate.candidate, sdp_mid: event.candidate.sdpMid, sdp_mline_index: event.candidate.sdpMLineIndex, username_fragment: event.candidate.usernameFragment }); });
@@ -76,6 +91,7 @@
   async function handleMessage(event) {
     const message = JSON.parse(event.data);
     if (message.event_name === 'error') { showError(message.code || 'Runtime error'); return; }
+    if (message.event_name === 'session.ended') { terminalCleanup({ notifyServer: false, status: 'ended', label: 'Ended' }); return; }
     if (message.event_name === 'session.authorized') { if (message.reconnected) closePeer(); state.connectionId = message.connection_id; state.reconnectToken = message.reconnect_token; state.sequence = 0; state.reconnectAttempt = 0; setStatus('connected', message.reconnected ? 'Reconnected' : 'Connected'); ui.end.disabled = false; const participants = message.snapshot?.participants || []; state.remoteParticipantId = participants.find((id) => id !== participantId) || null; if (state.remoteParticipantId && participantId.localeCompare(state.remoteParticipantId) < 0) await makeOffer(); return; }
     if (['participant.joined', 'participant.reconnected'].includes(message.event_name)) { state.remoteParticipantId = message.participant_id; if (participantId.localeCompare(state.remoteParticipantId) < 0) await makeOffer(); return; }
     if (message.event_name === 'participant.left') { state.remoteParticipantId = null; closePeer(); setStatus('degraded', 'Participant disconnected'); return; }
@@ -87,19 +103,17 @@
     const socket = new WebSocket(wsUrl()); state.socket = socket;
     socket.addEventListener('open', () => setStatus('connecting', 'Connecting'));
     socket.addEventListener('message', (event) => handleMessage(event).catch((error) => showError(error.message)));
-    socket.addEventListener('close', (event) => {
-      if (state.ending) return;
-      if (!state.reconnectToken) {
-        resetFailedStart(event.reason);
-        return;
-      }
-      scheduleReconnect();
-    });
+    socket.addEventListener('close', (event) => { if (state.ending) return; if (!state.reconnectToken) { resetFailedStart(event.reason); return; } scheduleReconnect(); });
     socket.addEventListener('error', () => setStatus('degraded', 'WebSocket error'));
   }
-  function scheduleReconnect() { if (state.ending || !state.reconnectToken) { setStatus('failed', 'Disconnected'); return; } state.reconnectAttempt += 1; if (state.reconnectAttempt > 6) { setStatus('failed', 'Reconnect failed'); return; } setStatus('reconnecting', `Reconnecting ${state.reconnectAttempt}/6`); const delay = Math.min(1000 * 2 ** (state.reconnectAttempt - 1), 15000); state.reconnectTimer = window.setTimeout(connectSocket, delay); }
-  function closePeer() { if (state.peer) { state.peer.ontrack = null; state.peer.onicecandidate = null; state.peer.close(); state.peer = null; } state.pendingCandidates.length = 0; state.remoteStream?.getTracks().forEach((track) => track.stop()); ui.remoteVideo.srcObject = null; ui.remoteFrame.classList.remove('has-stream'); }
-  function cleanup() { state.ending = true; clearTimeout(state.reconnectTimer); state.reconnectTimer = null; sendEvent('session.ended', {}); state.socket?.close(1000, 'call_ended'); state.socket = null; closePeer(); stopLocalMedia(); state.connectionId = null; state.reconnectToken = null; state.reconnectAttempt = 0; state.sequence = 0; state.remoteParticipantId = null; ui.end.disabled = true; ui.start.disabled = false; setStatus('ended', 'Ended'); }
+  function scheduleReconnect() {
+    if (state.ending || !state.reconnectToken) { terminalCleanup({ status: 'failed', label: 'Disconnected', message: 'Không thể khôi phục kết nối.' }); return; }
+    state.reconnectAttempt += 1;
+    if (state.reconnectAttempt > 6) { terminalCleanup({ status: 'failed', label: 'Reconnect failed', message: 'Không thể khôi phục kết nối sau 6 lần thử.' }); return; }
+    setStatus('reconnecting', `Reconnecting ${state.reconnectAttempt}/6`);
+    const delay = Math.min(1000 * 2 ** (state.reconnectAttempt - 1), 15000); state.reconnectTimer = window.setTimeout(connectSocket, delay);
+  }
+  function cleanup() { terminalCleanup({ notifyServer: true, status: 'ended', label: 'Ended' }); }
   ui.start.addEventListener('click', async () => {
     showError(''); state.ending = false;
     if (!sessionToken) { setStatus('failed', 'Cần phiên Timeblock'); showError('URL chưa có session token do Timeblock cấp.'); return; }
@@ -113,6 +127,5 @@
   ui.panelHide.addEventListener('click', () => { setPanelState('hidden'); ui.panelRestore.focus(); });
   ui.panelRestore.addEventListener('click', () => { setPanelState('expanded'); ui.panelCollapse.focus(); });
   window.addEventListener('beforeunload', cleanup, { once: true });
-  setPanelState('expanded');
-  setStatus('idle', 'Idle');
+  setPanelState('expanded'); setStatus('idle', 'Idle');
 })();

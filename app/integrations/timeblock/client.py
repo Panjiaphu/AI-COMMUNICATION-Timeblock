@@ -36,8 +36,15 @@ class TimeblockClient:
             raise TimeblockIntegrationError('timeblock_request_failed') from exc
         return response.json() if response.content else {}
 
+    @staticmethod
+    def _bind_authorized_session(data: dict, session_id: str, participant_id: str) -> AuthorizedSession:
+        authorized = AuthorizedSession.model_validate(data)
+        if authorized.session_id != session_id or authorized.participant_id != participant_id:
+            raise TimeblockIntegrationError('authorization_boundary_mismatch')
+        return authorized
+
     async def authorize_session(self, session_id: str, session_token: str, participant_id: str) -> AuthorizedSession:
-        if self.settings.app_env in {'development', 'test'} and not self.settings.timeblock_api_url:
+        if self.settings.development_session_fallback_enabled:
             if session_token != 'development-session':
                 raise TimeblockIntegrationError('invalid_development_session')
             return AuthorizedSession(
@@ -46,30 +53,26 @@ class TimeblockClient:
                 workspace_id='development',
                 participant_id=participant_id,
             )
-        if not self.settings.timeblock_api_url or not self.settings.timeblock_api_key:
-            raise TimeblockIntegrationError('timeblock_not_configured')
-        # PROVISIONAL_CONTRACT: replace path only after the Timeblock API contract is approved.
         data = await self._post(
             f'/api/communication/sessions/{session_id}/authorize',
             {'participant_id': participant_id, 'session_token': session_token},
         )
-        return AuthorizedSession.model_validate(data)
+        return self._bind_authorized_session(data, session_id, participant_id)
 
     async def refresh_session(self, session_id: str, session_token: str, participant_id: str) -> AuthorizedSession:
-        if self.settings.app_env in {'development', 'test'} and not self.settings.timeblock_api_url:
+        if self.settings.development_session_fallback_enabled:
             return await self.authorize_session(session_id, session_token, participant_id)
-        # PROVISIONAL_CONTRACT: reconnect authorization remains fail-closed until Timeblock confirms the path.
         data = await self._post(
             f'/api/communication/sessions/{session_id}/refresh',
             {'participant_id': participant_id, 'session_token': session_token},
         )
-        return AuthorizedSession.model_validate(data)
+        return self._bind_authorized_session(data, session_id, participant_id)
 
     async def fetch_glossary(self, workspace_id: str, version: str | None = None) -> dict:
         return await self._post('/api/communication/glossary', {'workspace_id': workspace_id, 'version': version})
 
     async def submit_session_result(self, payload: dict, idempotency_key: str | None = None) -> None:
-        if self.settings.app_env in {'development', 'test'} and not self.settings.timeblock_api_url:
+        if self.settings.development_session_fallback_enabled:
             return
         await self._post(
             '/api/communication/session-results',
@@ -78,7 +81,7 @@ class TimeblockClient:
         )
 
     async def submit_usage(self, events: list[dict], idempotency_key: str | None = None) -> None:
-        if self.settings.app_env in {'development', 'test'} and not self.settings.timeblock_api_url:
+        if self.settings.development_session_fallback_enabled:
             return
         await self._post(
             '/api/communication/usage',

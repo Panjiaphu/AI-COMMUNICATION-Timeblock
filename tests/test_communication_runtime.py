@@ -16,6 +16,7 @@ def settings(**overrides) -> Settings:
     values = {
         'app_env': 'test', 'debug': True,
         'secret_key': 'test-secret-that-is-not-default-and-is-long',
+        'allow_development_session_fallback': True,
         'allowed_websocket_origins': 'http://testserver,http://localhost:8000',
         'allow_missing_websocket_origin': True,
         'event_rate_limit_count': 50, 'signaling_rate_limit_count': 20, 'heartbeat_rate_limit_count': 10,
@@ -59,7 +60,7 @@ def test_websocket_authorization_and_origin_policy():
             with client.websocket_connect(ws_path(token='wrong')): pass
         with pytest.raises(WebSocketDisconnect):
             with client.websocket_connect(ws_path(), headers={'origin': 'https://evil.example'}): pass
-    production = client_for(app_env='production', debug=False, allow_missing_websocket_origin=False)
+    production = client_for(app_env='production', debug=False, allow_development_session_fallback=False)
     with production:
         with pytest.raises(WebSocketDisconnect):
             with production.websocket_connect(ws_path()): pass
