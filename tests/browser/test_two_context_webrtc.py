@@ -9,7 +9,7 @@ if os.getenv("BROWSER_QA_ENABLED") != "1":
     pytest.skip("Browser QA is isolated from the default pytest suite.", allow_module_level=True)
 
 pytest.importorskip("playwright.sync_api")
-from playwright.sync_api import expect
+from playwright.sync_api import Page, expect
 
 from tests.browser.support import (
     create_context,
@@ -31,6 +31,45 @@ def _last_event(snapshot: dict, event_name: str, direction: str = "inbound") -> 
     events = [event for event in snapshot[direction] if event["event_name"] == event_name]
     assert events, f"Missing {direction} event: {event_name}"
     return events[-1]
+
+
+def _wait_for_usable_remote_media(page: Page) -> dict:
+    page.wait_for_function(
+        """() => {
+          const snapshot = window.__guiluaQa.snapshot();
+          const liveAudio = snapshot.remote_video_tracks.filter(
+            track => track.kind === 'audio' && track.ready_state === 'live'
+          );
+          const liveVideo = snapshot.remote_video_tracks.filter(
+            track => track.kind === 'video' && track.ready_state === 'live'
+          );
+          return snapshot.active_non_closed_peer_count === 1
+            && liveAudio.length === 1
+            && liveVideo.length === 1
+            && snapshot.remote_video_ready_state >= HTMLMediaElement.HAVE_CURRENT_DATA
+            && snapshot.remote_video_width > 0
+            && snapshot.remote_video_height > 0
+            && snapshot.remote_placeholder_hidden;
+        }""",
+        timeout=30_000,
+    )
+    expect(page.locator("#remote-placeholder")).not_to_be_visible()
+    snapshot = page.evaluate("window.__guiluaQa.snapshot()")
+    assert snapshot["active_non_closed_peer_count"] == 1
+    assert sum(
+        track["kind"] == "audio" and track["ready_state"] == "live"
+        for track in snapshot["remote_video_tracks"]
+    ) == 1
+    assert sum(
+        track["kind"] == "video" and track["ready_state"] == "live"
+        for track in snapshot["remote_video_tracks"]
+    ) == 1
+    assert snapshot["remote_video_ready_state"] >= 2
+    assert snapshot["remote_video_width"] > 0
+    assert snapshot["remote_video_height"] > 0
+    assert snapshot["remote_placeholder_hidden"] is True
+    assert snapshot["duplicate_remote_video_track_ids"] is False
+    return snapshot
 
 
 def test_two_context_fake_media_signaling_reconnect_and_cleanup(
@@ -63,19 +102,8 @@ def test_two_context_fake_media_signaling_reconnect_and_cleanup(
         page_b.locator("#start-call").click()
         expect(page_b.locator("#connection-label")).to_have_text("Connected")
 
-        for page in (page_a, page_b):
-            page.wait_for_function(
-                "window.__guiluaQa.snapshot().peer_states.some(peer => peer.connection_state === 'connected')",
-                timeout=30_000,
-            )
-            page.wait_for_function(
-                "document.getElementById('remote-video').srcObject?.getTracks().length >= 1",
-                timeout=30_000,
-            )
-            expect(page.locator("#remote-placeholder")).not_to_be_visible()
-
-        snapshot_a = page_a.evaluate("window.__guiluaQa.snapshot()")
-        snapshot_b = page_b.evaluate("window.__guiluaQa.snapshot()")
+        snapshot_a = _wait_for_usable_remote_media(page_a)
+        snapshot_b = _wait_for_usable_remote_media(page_b)
         offer = _last_event(snapshot_a, "signaling.offer", "outbound")
         answer = _last_event(snapshot_b, "signaling.answer", "outbound")
         ice_a = _last_event(snapshot_a, "signaling.ice_candidate", "outbound")
@@ -85,8 +113,10 @@ def test_two_context_fake_media_signaling_reconnect_and_cleanup(
         assert ice_a["target_participant_id"] == "participant-b"
         assert ice_b["target_participant_id"] == "participant-a"
         assert snapshot_a["peer_count"] == snapshot_b["peer_count"] == 1
-        assert len(snapshot_a["remote_track_ids"]) == len(set(snapshot_a["remote_track_ids"]))
-        assert len(snapshot_b["remote_track_ids"]) == len(set(snapshot_b["remote_track_ids"]))
+        assert snapshot_a["reconnect_token_seen"] is True
+        assert snapshot_b["reconnect_token_seen"] is True
+        assert snapshot_a["reconnect_token_rotation_count"] == 0
+        assert snapshot_b["reconnect_token_rotation_count"] == 0
 
         page_a.locator("#microphone-toggle").click()
         page_b.locator("#camera-toggle").click()
@@ -113,8 +143,26 @@ def test_two_context_fake_media_signaling_reconnect_and_cleanup(
         page_c.locator("#start-call").click()
         expect(page_c.locator("#connection-pill")).to_have_attribute("data-state", "failed", timeout=15_000)
         expect(page_c.locator("#call-error")).to_contain_text("Kết nối đã đóng")
-        assert page_a.evaluate("window.__guiluaQa.snapshot().peer_states[0].connection_state") == "connected"
-        assert page_b.evaluate("window.__guiluaQa.snapshot().peer_states[0].connection_state") == "connected"
+        page_c.wait_for_function(
+            """() => {
+              const snapshot = window.__guiluaQa.snapshot();
+              return snapshot.local_track_states.length === 2
+                && snapshot.local_track_states.every(track => track.ready_state === 'ended');
+            }""",
+            timeout=10_000,
+        )
+        rejected_snapshot = page_c.evaluate("window.__guiluaQa.snapshot()")
+        assert rejected_snapshot["local_video_tracks"] == []
+        assert rejected_snapshot["active_non_closed_peer_count"] == 0
+        assert rejected_snapshot["active_timeout_count"] == 0
+        assert rejected_snapshot["reconnect_timer_active"] is False
+        assert all(state in (2, 3) for state in rejected_snapshot["websocket_states"])
+        expect(page_c.locator("#start-call")).to_be_enabled()
+        expect(page_c.locator("#microphone-toggle")).to_be_disabled()
+        expect(page_c.locator("#camera-toggle")).to_be_disabled()
+        expect(page_c.locator("#end-call")).to_be_disabled()
+        assert _wait_for_usable_remote_media(page_a)["active_non_closed_peer_count"] == 1
+        assert _wait_for_usable_remote_media(page_b)["active_non_closed_peer_count"] == 1
 
         before_reconnect = _last_event(
             page_a.evaluate("window.__guiluaQa.snapshot()"), "session.authorized"
@@ -125,22 +173,37 @@ def test_two_context_fake_media_signaling_reconnect_and_cleanup(
             "window.__guiluaQa.snapshot().inbound.some(event => event.event_name === 'participant.reconnected')",
             timeout=20_000,
         )
-        after_snapshot_a = page_a.evaluate("window.__guiluaQa.snapshot()")
-        after_authorized = _last_event(after_snapshot_a, "session.authorized")
+        after_authorization_a = page_a.evaluate("window.__guiluaQa.snapshot()")
+        after_authorized = _last_event(after_authorization_a, "session.authorized")
         assert after_authorized["reconnected"] is True
         assert after_authorized["connection_id"] != before_reconnect
         assert after_authorized["participant_count"] == 2
-        assert sum(peer["connection_state"] != "closed" for peer in after_snapshot_a["peer_states"]) == 1
-        page_a.wait_for_function(
-            "window.__guiluaQa.snapshot().peer_states.some(peer => peer.connection_state === 'connected')",
-            timeout=30_000,
+        assert after_authorization_a["reconnect_token_rotation_count"] == 1
+
+        after_snapshot_a = _wait_for_usable_remote_media(page_a)
+        after_snapshot_b = _wait_for_usable_remote_media(page_b)
+        assert after_snapshot_a["active_non_closed_peer_count"] == 1
+        assert after_snapshot_b["active_non_closed_peer_count"] == 1
+        assert after_snapshot_a["active_timeout_count"] == 0
+        assert after_snapshot_b["active_timeout_count"] == 0
+        assert after_snapshot_a["reconnect_timer_active"] is False
+        assert after_snapshot_b["reconnect_timer_active"] is False
+        assert after_snapshot_a["reconnect_token_rotation_count"] == 1
+        assert _last_event(after_snapshot_b, "participant.reconnected")["participant_id"] == "participant-a"
+        assert _last_event(after_snapshot_a, "signaling.offer", "outbound")["target_participant_id"] == "participant-b"
+        assert _last_event(after_snapshot_b, "signaling.answer", "outbound")["target_participant_id"] == "participant-a"
+        assert _last_event(after_snapshot_a, "signaling.ice_candidate", "outbound")["target_participant_id"] == "participant-b"
+        assert _last_event(after_snapshot_b, "signaling.ice_candidate", "outbound")["target_participant_id"] == "participant-a"
+
+        write_json(
+            artifact_dir / "evidence" / "webrtc-reconnect.json",
+            {
+                "participant_a": after_snapshot_a,
+                "participant_b": after_snapshot_b,
+                "physical_device": False,
+                "fake_media": True,
+            },
         )
-        page_b.wait_for_function(
-            "window.__guiluaQa.snapshot().peer_states.some(peer => peer.connection_state === 'connected')",
-            timeout=30_000,
-        )
-        after_snapshot_b = page_b.evaluate("window.__guiluaQa.snapshot()")
-        assert sum(peer["connection_state"] != "closed" for peer in after_snapshot_b["peer_states"]) == 1
 
         screenshot_dir = artifact_dir / "screenshots"
         screenshot_dir.mkdir(parents=True, exist_ok=True)
@@ -164,8 +227,12 @@ def test_two_context_fake_media_signaling_reconnect_and_cleanup(
             final_snapshot = page.evaluate("window.__guiluaQa.snapshot()")
             assert final_snapshot["local_video_tracks"] == []
             assert final_snapshot["remote_video_tracks"] == []
+            assert final_snapshot["active_non_closed_peer_count"] == 0
+            assert final_snapshot["active_timeout_count"] == 0
+            assert final_snapshot["reconnect_timer_active"] is False
             assert final_snapshot["peer_states"]
             assert all(peer["connection_state"] == "closed" for peer in final_snapshot["peer_states"])
+            assert all(state in (2, 3) for state in final_snapshot["websocket_states"])
             write_json(
                 artifact_dir / "evidence" / f"webrtc-{participant}.json",
                 {"snapshot": final_snapshot, "console": evidence[participant]},
@@ -174,7 +241,7 @@ def test_two_context_fake_media_signaling_reconnect_and_cleanup(
 
         write_json(
             artifact_dir / "evidence" / "webrtc-participant-c.json",
-            {"snapshot": page_c.evaluate("window.__guiluaQa.snapshot()"), "console": evidence["participant-c"]},
+            {"snapshot": rejected_snapshot, "console": evidence["participant-c"]},
         )
         participant_c_errors = relevant_console_errors(evidence["participant-c"])
         assert len(participant_c_errors) == 1

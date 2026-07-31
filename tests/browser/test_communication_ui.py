@@ -105,11 +105,30 @@ def test_responsive_surface_and_interpreter_states(
         local_box = page.locator(".local-frame").bounding_box()
         remote_box = page.locator(".remote-frame").bounding_box()
         assert caption_box and panel_box and controls_box and local_box and remote_box
-        assert _inside_viewport(controls_box, viewport)
-        assert _inside_viewport(caption_box, viewport)
-        assert not boxes_intersect(caption_box, controls_box)
-        assert not boxes_intersect(caption_box, panel_box)
-        assert not boxes_intersect(local_box, controls_box)
+        inside_viewport_results = {
+            "controls": _inside_viewport(controls_box, viewport),
+            "caption": _inside_viewport(caption_box, viewport),
+            "panel": _inside_viewport(panel_box, viewport),
+            "local_preview": _inside_viewport(local_box, viewport),
+            "remote_frame": _inside_viewport(remote_box, viewport),
+        }
+        intersection_results = {
+            "caption_controls": boxes_intersect(caption_box, controls_box),
+            "caption_panel": boxes_intersect(caption_box, panel_box),
+            "caption_local_preview": boxes_intersect(caption_box, local_box),
+            "local_preview_controls": boxes_intersect(local_box, controls_box),
+            "panel_controls": boxes_intersect(panel_box, controls_box),
+        }
+        assert inside_viewport_results["controls"]
+        assert inside_viewport_results["caption"]
+        assert inside_viewport_results["panel"]
+        assert inside_viewport_results["local_preview"]
+        assert inside_viewport_results["remote_frame"]
+        assert not intersection_results["caption_controls"]
+        assert not intersection_results["caption_panel"]
+        assert not intersection_results["caption_local_preview"]
+        assert not intersection_results["local_preview_controls"]
+        assert not intersection_results["panel_controls"]
 
         collapse = page.locator("#panel-collapse")
         collapse.click()
@@ -156,6 +175,9 @@ def test_responsive_surface_and_interpreter_states(
                 "controls_box": controls_box,
                 "local_box": local_box,
                 "remote_box": remote_box,
+                "horizontal_overflow": metrics["scrollWidth"] > metrics["width"] + 1,
+                "all_inside_viewport_results": inside_viewport_results,
+                "all_intersection_results": intersection_results,
                 "console": evidence,
                 "physical_device": False,
             },

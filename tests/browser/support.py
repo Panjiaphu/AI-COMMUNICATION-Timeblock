@@ -15,7 +15,28 @@ FAKE_MEDIA_ARGS = [
 QA_INSTRUMENTATION = r"""
 (() => {
   const denyMedia = __DENY_MEDIA__;
-  const qa = { websockets: [], socketCloses: [], inbound: [], outbound: [], peers: [], peerHistory: [], remoteTrackIds: [], localTracks: [] };
+  const qa = {
+    websockets: [], socketCloses: [], inbound: [], outbound: [], peers: [], peerHistory: [],
+    remoteTrackEvents: [], localTracks: [], activeTimeouts: new Set(), lastReconnectToken: null,
+    reconnectTokenSeen: false, reconnectTokenRotationCount: 0,
+  };
+  const NativeSetTimeout = window.setTimeout.bind(window);
+  const NativeClearTimeout = window.clearTimeout.bind(window);
+  window.setTimeout = (callback, delay = 0, ...args) => {
+    let timerId;
+    const wrapped = (...callbackArgs) => {
+      qa.activeTimeouts.delete(timerId);
+      if (typeof callback === "function") return callback(...callbackArgs);
+      return undefined;
+    };
+    timerId = NativeSetTimeout(wrapped, delay, ...args);
+    qa.activeTimeouts.add(timerId);
+    return timerId;
+  };
+  window.clearTimeout = (timerId) => {
+    qa.activeTimeouts.delete(timerId);
+    return NativeClearTimeout(timerId);
+  };
   const summarize = (raw, direction) => {
     try {
       const message = JSON.parse(raw);
@@ -33,6 +54,16 @@ QA_INSTRUMENTATION = r"""
       if (message.snapshot?.participants) summary.participant_count = message.snapshot.participants.length;
       if (message.payload?.target_participant_id) summary.target_participant_id = message.payload.target_participant_id;
       if (message.code) summary.result = message.code;
+      if (message.event_name === "session.authorized" && typeof message.reconnect_token === "string") {
+        summary.reconnect_token_present = message.reconnect_token.length > 0;
+        if (message.reconnect_token.length > 0) {
+          qa.reconnectTokenSeen = true;
+          if (qa.lastReconnectToken !== null && qa.lastReconnectToken !== message.reconnect_token) {
+            qa.reconnectTokenRotationCount += 1;
+          }
+          qa.lastReconnectToken = message.reconnect_token;
+        }
+      }
       return summary;
     } catch {
       return { direction, event_name: "non_json", timestamp: new Date().toISOString() };
@@ -59,7 +90,7 @@ QA_INSTRUMENTATION = r"""
       ["connectionstatechange", "iceconnectionstatechange", "signalingstatechange"].forEach((name) => peer.addEventListener(name, record));
       peer.addEventListener("track", (event) => {
         const tracks = event.streams[0]?.getTracks() || [event.track];
-        for (const track of tracks) if (!qa.remoteTrackIds.includes(track.id)) qa.remoteTrackIds.push(track.id);
+        for (const track of tracks) qa.remoteTrackEvents.push(track.id);
       });
       record();
       return peer;
@@ -74,6 +105,7 @@ QA_INSTRUMENTATION = r"""
       return stream;
     };
   }
+  const summarizeTrack = (track) => ({ id: track.id, kind: track.kind, enabled: track.enabled, ready_state: track.readyState });
   window.__guiluaQa = {
     closeLatestSocket() { const socket = qa.websockets.at(-1); if (socket && socket.readyState === NativeWebSocket.OPEN) socket.close(4000, "qa_disconnect"); },
     setSyntheticCaptions(sourceText, translatedText) {
@@ -83,6 +115,11 @@ QA_INSTRUMENTATION = r"""
     snapshot() {
       const localVideo = document.getElementById("local-video");
       const remoteVideo = document.getElementById("remote-video");
+      const remotePlaceholder = document.getElementById("remote-placeholder");
+      const peerStates = qa.peers.map((peer) => ({ connection_state: peer.connectionState, ice_connection_state: peer.iceConnectionState, signaling_state: peer.signalingState }));
+      const localVideoTracks = localVideo?.srcObject?.getTracks() || [];
+      const remoteVideoTracks = remoteVideo?.srcObject?.getTracks() || [];
+      const remoteVideoTrackIds = remoteVideoTracks.map((track) => track.id);
       return {
         websocket_count: qa.websockets.length,
         websocket_states: qa.websockets.map((socket) => socket.readyState),
@@ -90,12 +127,23 @@ QA_INSTRUMENTATION = r"""
         inbound: qa.inbound,
         outbound: qa.outbound,
         peer_count: qa.peers.length,
-        peer_states: qa.peers.map((peer) => ({ connection_state: peer.connectionState, ice_connection_state: peer.iceConnectionState, signaling_state: peer.signalingState })),
+        peer_states: peerStates,
+        active_non_closed_peer_count: peerStates.filter((peer) => peer.connection_state !== "closed").length,
         peer_history: qa.peerHistory,
-        remote_track_ids: [...new Set(qa.remoteTrackIds)],
-        local_track_states: qa.localTracks.map((track) => ({ kind: track.kind, enabled: track.enabled, ready_state: track.readyState })),
-        local_video_tracks: localVideo?.srcObject?.getTracks().map((track) => ({ kind: track.kind, enabled: track.enabled, ready_state: track.readyState })) || [],
-        remote_video_tracks: remoteVideo?.srcObject?.getTracks().map((track) => ({ kind: track.kind, enabled: track.enabled, ready_state: track.readyState })) || [],
+        remote_track_ids: [...new Set(qa.remoteTrackEvents)],
+        remote_track_event_count: qa.remoteTrackEvents.length,
+        local_track_states: qa.localTracks.map(summarizeTrack),
+        local_video_tracks: localVideoTracks.map(summarizeTrack),
+        remote_video_tracks: remoteVideoTracks.map(summarizeTrack),
+        duplicate_remote_video_track_ids: new Set(remoteVideoTrackIds).size !== remoteVideoTrackIds.length,
+        remote_video_width: remoteVideo?.videoWidth || 0,
+        remote_video_height: remoteVideo?.videoHeight || 0,
+        remote_video_ready_state: remoteVideo?.readyState ?? 0,
+        remote_placeholder_hidden: !remotePlaceholder || remotePlaceholder.hidden || getComputedStyle(remotePlaceholder).display === "none",
+        reconnect_token_seen: qa.reconnectTokenSeen,
+        reconnect_token_rotation_count: qa.reconnectTokenRotationCount,
+        active_timeout_count: qa.activeTimeouts.size,
+        reconnect_timer_active: qa.activeTimeouts.size > 0,
         active_element: document.activeElement?.id || null,
       };
     },
