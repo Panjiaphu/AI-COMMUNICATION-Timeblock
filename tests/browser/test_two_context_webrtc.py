@@ -168,7 +168,14 @@ def test_two_context_fake_media_signaling_reconnect_and_cleanup(
             page_a.evaluate("window.__guiluaQa.snapshot()"), "session.authorized"
         )["connection_id"]
         page_a.evaluate("window.__guiluaQa.closeLatestSocket()")
-        expect(page_a.locator("#connection-label")).to_have_text("Reconnected", timeout=20_000)
+        page_a.wait_for_function(
+            """() => window.__guiluaQa.snapshot().inbound.some(
+              event => event.event_name === 'session.authorized' && event.reconnected === true
+            )""",
+            timeout=20_000,
+        )
+        expect(page_a.locator("#connection-pill")).to_have_attribute("data-state", "connected")
+        assert page_a.locator("#connection-label").inner_text() in {"Reconnected", "Connected"}
         page_b.wait_for_function(
             "window.__guiluaQa.snapshot().inbound.some(event => event.event_name === 'participant.reconnected')",
             timeout=20_000,
