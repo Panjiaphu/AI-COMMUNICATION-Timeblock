@@ -219,12 +219,19 @@ def test_two_context_fake_media_signaling_reconnect_and_cleanup(
 
         page_a.locator("#end-call").click()
         expect(page_a.locator("#connection-label")).to_have_text("Ended")
+        expect(page_b.locator("#connection-label")).to_have_text("Ended", timeout=15_000)
         page_b.wait_for_function(
-            "window.__guiluaQa.snapshot().inbound.some(event => event.event_name === 'participant.left')",
+            """() => {
+              const snapshot = window.__guiluaQa.snapshot();
+              return snapshot.inbound.some(event => event.event_name === 'session.ended')
+                && snapshot.local_track_states.every(track => track.ready_state === 'ended')
+                && snapshot.remote_video_tracks.length === 0
+                && snapshot.active_non_closed_peer_count === 0
+                && snapshot.active_timeout_count === 0
+                && snapshot.websocket_states.every(state => state === 2 || state === 3);
+            }""",
             timeout=15_000,
         )
-        page_b.locator("#end-call").click()
-        expect(page_b.locator("#connection-label")).to_have_text("Ended")
 
         for participant, page in (("participant-a", page_a), ("participant-b", page_b)):
             page.wait_for_function(
@@ -240,6 +247,11 @@ def test_two_context_fake_media_signaling_reconnect_and_cleanup(
             assert final_snapshot["peer_states"]
             assert all(peer["connection_state"] == "closed" for peer in final_snapshot["peer_states"])
             assert all(state in (2, 3) for state in final_snapshot["websocket_states"])
+            if participant == "participant-b":
+                assert not any(
+                    event["event_name"] == "session.ended"
+                    for event in final_snapshot["outbound"]
+                )
             write_json(
                 artifact_dir / "evidence" / f"webrtc-{participant}.json",
                 {"snapshot": final_snapshot, "console": evidence[participant]},
