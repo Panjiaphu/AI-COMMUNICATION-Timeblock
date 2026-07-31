@@ -19,6 +19,7 @@ on:
       - "scripts/start_render.sh"
       - "docs/timeblock-control-plane-contract.md"
       - "GUILUA_PROJECT_MEMORY.md"
+      - ".github/workflows/communication-runtime.yml"
       - ".github/workflows/communication-browser-qa.yml"
   workflow_dispatch:
 
@@ -42,6 +43,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -54,8 +57,8 @@ jobs:
         run: |
           mkdir -p artifacts/browser
           CHECKED_OUT_SHA="$(git rev-parse HEAD)"
-          if [ "$GITHUB_EVENT_NAME_VALUE" = "pull_request" ] && [ "$CHECKED_OUT_SHA" != "$EXPECTED_PR_HEAD" ]; then
-            echo "Checked-out SHA does not match the pull-request head." >&2
+          if [ "$CHECKED_OUT_SHA" != "$EXPECTED_PR_HEAD" ]; then
+            echo "Checked-out SHA does not match the exact workflow source." >&2
             exit 1
           fi
           if [ "$DEPLOYMENT_VERSION" != "$EXPECTED_PR_HEAD" ]; then
