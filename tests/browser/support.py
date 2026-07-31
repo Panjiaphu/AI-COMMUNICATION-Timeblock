@@ -19,6 +19,7 @@ QA_INSTRUMENTATION = r"""
     websockets: [], socketCloses: [], inbound: [], outbound: [], peers: [], peerHistory: [],
     remoteTrackEvents: [], localTracks: [], activeTimeouts: new Set(), lastReconnectToken: null,
     reconnectTokenSeen: false, reconnectTokenRotationCount: 0,
+    fastTimers: false, failFutureSockets: false,
   };
   const NativeSetTimeout = window.setTimeout.bind(window);
   const NativeClearTimeout = window.clearTimeout.bind(window);
@@ -29,7 +30,7 @@ QA_INSTRUMENTATION = r"""
       if (typeof callback === "function") return callback(...callbackArgs);
       return undefined;
     };
-    timerId = NativeSetTimeout(wrapped, delay, ...args);
+    timerId = NativeSetTimeout(wrapped, qa.fastTimers ? 0 : delay, ...args);
     qa.activeTimeouts.add(timerId);
     return timerId;
   };
@@ -78,6 +79,9 @@ QA_INSTRUMENTATION = r"""
       socket.send = (data) => { qa.outbound.push(summarize(data, "outbound")); return nativeSend(data); };
       socket.addEventListener("message", (event) => qa.inbound.push(summarize(event.data, "inbound")));
       socket.addEventListener("close", (event) => qa.socketCloses.push({ code: event.code, reason: event.reason, clean: event.wasClean }));
+      socket.addEventListener("open", () => {
+        if (qa.failFutureSockets) socket.close(4000, "qa_forced_reconnect_failure");
+      });
       return socket;
     },
   });
@@ -108,6 +112,9 @@ QA_INSTRUMENTATION = r"""
   const summarizeTrack = (track) => ({ id: track.id, kind: track.kind, enabled: track.enabled, ready_state: track.readyState });
   window.__guiluaQa = {
     closeLatestSocket() { const socket = qa.websockets.at(-1); if (socket && socket.readyState === NativeWebSocket.OPEN) socket.close(4000, "qa_disconnect"); },
+    latestSocketUrl() { return qa.websockets.at(-1)?.url || ""; },
+    enableReconnectExhaustion() { qa.fastTimers = true; qa.failFutureSockets = true; },
+    disableReconnectExhaustion() { qa.fastTimers = false; qa.failFutureSockets = false; },
     setSyntheticCaptions(sourceText, translatedText) {
       document.getElementById("source-caption").textContent = sourceText;
       document.getElementById("translated-caption").textContent = translatedText;

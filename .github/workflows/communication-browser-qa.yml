@@ -30,6 +30,7 @@ jobs:
       APP_ENV: development
       DEBUG: "true"
       SECRET_KEY: browser-qa-non-production-secret-with-adequate-length
+      ALLOW_DEVELOPMENT_SESSION_FALLBACK: "true"
       ALLOWED_WEBSOCKET_ORIGINS: http://127.0.0.1:8000
       ALLOW_MISSING_WEBSOCKET_ORIGIN: "false"
       DEPLOYMENT_VERSION: ${{ github.event.pull_request.head.sha || github.sha }}

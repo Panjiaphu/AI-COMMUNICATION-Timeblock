@@ -68,7 +68,7 @@ Closure behavior now includes:
 - GitHub Actions run: `30607269845`
 - Job: `91082076396`
 - Conclusion: `success`
-- Legacy runtime absence gate: passed
+- Legacy absence gate: passed
 - `python -m compileall app`: passed
 - `PYTHONPATH=. pytest -q`: `17 passed, 2 skipped, 1 warning in 0.70s`
 - Build environment check: passed
@@ -149,10 +149,33 @@ Added exact-head browser QA with required responsive screenshots, traces, JUnit,
 
 Reconnect completion is proven by `session.authorized` with `reconnected=true`, connection/reconnect-token rotation, participant notification, renewed offer/answer/ICE, and usable decoded remote media. The transient UI label is not treated as the protocol source of truth.
 
+### 2026-07-31 — P1 foundation remediation staged
+
+Technical self-audit review `4828674968` identified four P1 findings at starting head `201c7b1e291ca4f80aab6b7c95983ba7c9b09ee4`:
+
+1. development-session fallback could run under production-classified settings;
+2. Timeblock authorize/refresh responses were not rebound to the requested session and participant;
+3. reconnect exhaustion left local media and runtime state active;
+4. one-sided `session.ended` did not terminally clean the remaining participant.
+
+The staged remediation adds an explicit production-safe fallback gate, authority-response identity binding, terminal reconnect-exhaustion cleanup, and server-owned one-sided hangup propagation with remote cleanup. Runtime tests cover fallback classification, boundary mismatch, room/workspace reconnect mismatch, rejected-state cleanup, terminal event delivery, and leave-versus-end behavior. Browser tests add deterministic reconnect-exhaustion and one-sided-hangup evidence.
+
+Files changed are limited to runtime configuration/integration/router/frontend cleanup, environment examples, browser workflow/evidence gates, focused tests, and this memory. No Timeblock provisional paths, signaling schemas, participant limit, infrastructure, database behavior, landing-page design, or Contract V1 implementation are changed.
+
+The pre-remediation runs `30607539178` and `30607539138`, and artifact `8784174718`, are historical and are not evidence for the new head. New exact-head Runtime and Browser QA identifiers remain pending until the foundation branch is updated and workflows finish.
+
+Contract V1 remains blocked. External review by a reviewer other than `Panjiaphu` remains required. Unified UI implementation remains unauthorized. No merge, deployment, Render operation, production database access, migration, or DDL was performed.
+
 ## Current review state
 
-The Communication Runtime foundation is ready for human code review based on exact-head automated evidence. Keep PR #1 as draft until review. Do not merge or deploy as part of this closure task.
+P1 remediation is implemented on an isolated staging branch and remains subject to staging source review plus new exact-head Runtime and Browser QA. PR #1 must remain draft. The remediation does not constitute independent approval.
 
 ## Next action
 
-Perform human code review of PR #1, with particular attention to the provisional Timeblock contract and acceptance of the documented zero-cost operational limitations. Production deployment remains a separate explicitly approved action.
+Complete staging source review, create one squashed remediation commit with parent `201c7b1e291ca4f80aab6b7c95983ba7c9b09ee4`, fast-forward the foundation branch with `force=false`, and obtain exact-head CI evidence. If both workflows pass, request external foundation review.
+
+```text
+DO NOT MERGE
+DO NOT DEPLOY
+KEEP PR AS DRAFT
+```

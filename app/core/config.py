@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     timeblock_api_url: str | None = None
     timeblock_api_key: str | None = None
     timeblock_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
+    allow_development_session_fallback: bool = False
 
     allowed_websocket_origins: str = 'http://127.0.0.1:8000,http://localhost:8000'
     allow_missing_websocket_origin: bool = True
@@ -36,7 +37,16 @@ class Settings(BaseSettings):
 
     @property
     def is_production(self) -> bool:
-        return self.app_env.lower() == 'production' or not self.debug
+        return self.app_env.strip().lower() == 'production' or not self.debug
+
+    @property
+    def development_session_fallback_enabled(self) -> bool:
+        return (
+            not self.is_production
+            and self.app_env.strip().lower() in {'development', 'test'}
+            and self.allow_development_session_fallback
+            and not self.timeblock_api_url
+        )
 
     @property
     def websocket_origins(self) -> set[str]:
@@ -46,6 +56,8 @@ class Settings(BaseSettings):
     def validate_production_settings(self):
         if self.is_production and self.secret_key in {'', 'change-me', 'dev-only-change-me'}:
             raise ValueError('SECRET_KEY must be set to a strong value in production')
+        if self.is_production and self.allow_development_session_fallback:
+            raise ValueError('ALLOW_DEVELOPMENT_SESSION_FALLBACK must be false in production')
         if self.is_production and self.allow_missing_websocket_origin:
             self.allow_missing_websocket_origin = False
         return self

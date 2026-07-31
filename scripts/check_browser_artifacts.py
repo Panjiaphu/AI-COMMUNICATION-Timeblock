@@ -26,6 +26,8 @@ REQUIRED_EVIDENCE_FILES = (
     "evidence/webrtc-participant-a.json",
     "evidence/webrtc-participant-b.json",
     "evidence/webrtc-participant-c.json",
+    "evidence/reconnect-exhaustion.json",
+    "evidence/one-sided-hangup.json",
 )
 REQUIRED_SCREENSHOT_FILES = (
     *(f"screenshots/{name}.png" for name in REQUIRED_VIEWPORTS),
