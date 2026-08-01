@@ -6,10 +6,4 @@ set -o pipefail
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python scripts/check_env.py --phase build
-
-if [[ "${RUN_MIGRATIONS_DURING_BUILD:-false}" == "true" ]]; then
-  python scripts/wait_for_database.py
-  alembic upgrade head
-else
-  echo "Skipping database migrations during build. Set RUN_MIGRATIONS_DURING_BUILD=true only after DATABASE_URL is valid."
-fi
+python -m compileall app

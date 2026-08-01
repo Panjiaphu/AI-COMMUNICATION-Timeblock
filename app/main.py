@@ -1,253 +1,50 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse
+from __future__ import annotations
+
+import asyncio
+from contextlib import asynccontextmanager, suppress
+
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import Enum as SQLAlchemyEnum, text
 
-from app.core.config import BASE_DIR, get_settings
-from app.core.i18n import resolve_locale
-from app.core.security import SessionMiddleware, ensure_admin_bootstrap
-from app.db.session import Base, SessionLocal, engine
-from app.services import slbo_settlement_guard  # noqa: F401
-from app.services import slbo_member_profit_cap  # noqa: F401
-from app.services import slbo_exposure_wrapper  # noqa: F401
-from app.services import slbo_delayed_settlement  # noqa: F401
-from app.services import slbo_transfer_direct  # noqa: F401
-from app.routers import admin, admin_legacy, admin_member_verification, agent, auth, member, member_point_transfer, public, slbo, slbo_admin_settings, slbo_bo_pro, webhooks
-from app.services.commercial import ensure_default_utilities
-from app.services.rates import ensure_default_rates
-from app.services.referral_policy import ensure_referral_policy_table
-from app.services.referrals import ensure_all_user_referral_identities
-from app.services.security_firewall import SecurityFirewallMiddleware, ensure_default_playbooks
+from app.communication.manager import RoomManager
+from app.communication.router import router as communication_router
+from app.core.config import BASE_DIR, Settings, get_settings
+from app.integrations.timeblock.client import TimeblockClient
+from app.telemetry.logging import configure_logging
+
+configure_logging()
 
 
-POSTGRES_ENUM_NAMES = (
-    "transactiontype",
-    "transactionstatus",
-    "emailstatus",
-    "referralcommissiontype",
-    "referralcommissionstatus",
-    "walletledgertype",
-    "sandboxrequesttype",
-    "sandboxrequeststatus",
-    "gamerequeststatus",
-    "boside",
-    "rapidplaytype",
-    "contentpoststatus",
-    "contentpostsource",
-    "contentposttype",
-)
+def create_app(settings: Settings | None = None) -> FastAPI:
+    runtime_settings = settings or get_settings()
 
-POSTGRES_ENUM_LABELS = {
-    "walletledgertype": (
-        "deposit_approved",
-        "withdraw_approved",
-        "transfer_in",
-        "transfer_out",
-        "bo_stake",
-        "bo_payout",
-        "rapid_stake",
-        "rapid_payout",
-        "adjustment",
-    ),
-    "sandboxrequeststatus": ("pending", "approved", "rejected", "cancelled"),
-    "gamerequeststatus": ("accepted", "won", "lost", "refunded", "cancelled"),
-    "referralcommissionstatus": ("pending", "approved", "paid", "void"),
-}
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        async def cleanup_loop() -> None:
+            while True:
+                await asyncio.sleep(30)
+                await app.state.room_manager.cleanup()
+
+        task = asyncio.create_task(cleanup_loop())
+        try:
+            yield
+        finally:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+
+    application = FastAPI(title=runtime_settings.app_name, debug=runtime_settings.debug, lifespan=lifespan)
+    application.state.settings = runtime_settings
+    application.state.room_manager = RoomManager(runtime_settings)
+    application.state.timeblock_client = TimeblockClient(runtime_settings)
+    application.mount('/static', StaticFiles(directory=BASE_DIR / 'app' / 'static'), name='static')
+    application.include_router(communication_router)
+
+    @application.get('/healthz/')
+    async def healthz() -> dict[str, str]:
+        return {'status': 'ok', 'service': 'guilua-communication-runtime'}
+
+    return application
 
 
-def _disable_native_enums_for_bootstrap_create_all() -> None:
-    """Avoid Render/Postgres startup failures caused by duplicate enum types.
-
-    The app currently bootstraps tables with Base.metadata.create_all(). On a
-    partially-created PostgreSQL database, native SQLAlchemy enums can leave an
-    enum type behind even when table creation fails. A later deploy then fails
-    with DuplicateObject when SQLAlchemy tries to CREATE TYPE again.
-
-    For this sandbox app, storing enum values as VARCHAR during bootstrap is
-    sufficient and safer. This keeps startup idempotent on Render Postgres.
-    """
-
-    for table in Base.metadata.tables.values():
-        for column in table.columns:
-            column_type = column.type
-            if isinstance(column_type, SQLAlchemyEnum):
-                column_type.native_enum = False
-                if hasattr(column_type, "create_type"):
-                    column_type.create_type = False
-
-
-def _drop_orphan_postgres_enum_types() -> None:
-    """Drop orphan enum types left by failed/partial previous deploys.
-
-    This only drops enum types that are not referenced by table columns in the
-    current schema. Enum types still used by existing tables are preserved.
-    """
-
-    if engine.dialect.name != "postgresql":
-        return
-
-    with engine.begin() as conn:
-        for enum_name in POSTGRES_ENUM_NAMES:
-            enum_exists = conn.execute(
-                text(
-                    """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM pg_type t
-                        JOIN pg_namespace n ON n.oid = t.typnamespace
-                        WHERE t.typname = :enum_name
-                          AND n.nspname = current_schema()
-                    )
-                    """
-                ),
-                {"enum_name": enum_name},
-            ).scalar()
-            if not enum_exists:
-                continue
-            referenced = conn.execute(
-                text(
-                    """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM pg_attribute a
-                        JOIN pg_class c ON c.oid = a.attrelid
-                        JOIN pg_namespace n ON n.oid = c.relnamespace
-                        WHERE a.atttypid = (
-                            SELECT t.oid
-                            FROM pg_type t
-                            JOIN pg_namespace tn ON tn.oid = t.typnamespace
-                            WHERE t.typname = :enum_name
-                              AND tn.nspname = current_schema()
-                        )
-                          AND a.attnum > 0
-                          AND NOT a.attisdropped
-                          AND c.relkind IN ('r', 'p')
-                          AND n.nspname = current_schema()
-                    )
-                    """
-                ),
-                {"enum_name": enum_name},
-            ).scalar()
-            if not referenced:
-                conn.execute(text(f'DROP TYPE IF EXISTS "{enum_name}"'))
-
-
-def _ensure_postgres_enum_labels() -> None:
-    """Add enum labels needed by older Render Postgres databases.
-
-    Existing Render databases may still have native PostgreSQL enum columns from
-    earlier deploys. create_all() does not add enum labels to an existing type,
-    so new wallet ledger values such as transfer_in/transfer_out can raise a
-    500 during member point transfer unless we patch the type at startup.
-    """
-
-    if engine.dialect.name != "postgresql":
-        return
-
-    with engine.begin() as conn:
-        for enum_name, labels in POSTGRES_ENUM_LABELS.items():
-            enum_exists = conn.execute(
-                text(
-                    """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM pg_type t
-                        JOIN pg_namespace n ON n.oid = t.typnamespace
-                        WHERE t.typname = :enum_name
-                          AND n.nspname = current_schema()
-                    )
-                    """
-                ),
-                {"enum_name": enum_name},
-            ).scalar()
-            if not enum_exists:
-                continue
-            safe_enum_name = enum_name.replace('"', '')
-            for label in labels:
-                safe_label = label.replace("'", "''")
-                conn.execute(text(f"ALTER TYPE \"{safe_enum_name}\" ADD VALUE IF NOT EXISTS '{safe_label}'"))
-
-
-def _ensure_postgres_point_transfer_columns() -> None:
-    """Patch older point_transfers tables that predate direct transfer fields."""
-
-    if engine.dialect.name != "postgresql":
-        return
-
-    with engine.begin() as conn:
-        exists = conn.execute(
-            text(
-                """
-                SELECT EXISTS (
-                    SELECT 1
-                    FROM information_schema.tables
-                    WHERE table_schema = current_schema()
-                      AND table_name = 'point_transfers'
-                )
-                """
-            )
-        ).scalar()
-        if not exists:
-            return
-        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS currency VARCHAR(16) DEFAULT 'SLB_POINT'"))
-        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS status VARCHAR(32) DEFAULT 'pending_receiver_confirmation'"))
-        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS memo TEXT DEFAULT ''"))
-        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS admin_note TEXT DEFAULT ''"))
-        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS sender_confirmed_at TIMESTAMP WITH TIME ZONE NULL"))
-        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS receiver_confirmed_at TIMESTAMP WITH TIME ZONE NULL"))
-        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP WITH TIME ZONE NULL"))
-        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP WITH TIME ZONE NULL"))
-        conn.execute(text("ALTER TABLE point_transfers ADD COLUMN IF NOT EXISTS reviewed_by_user_id INTEGER NULL"))
-
-
-settings = get_settings()
-_disable_native_enums_for_bootstrap_create_all()
-_drop_orphan_postgres_enum_types()
-_ensure_postgres_enum_labels()
-_ensure_postgres_point_transfer_columns()
-Base.metadata.create_all(bind=engine)
-
-app = FastAPI(title=settings.app_name, debug=settings.debug)
-app.add_middleware(SessionMiddleware)
-app.add_middleware(SecurityFirewallMiddleware)
-app.mount("/static", StaticFiles(directory=BASE_DIR / "app" / "static"), name="static")
-
-
-@app.get("/healthz/")
-def healthz() -> dict[str, str]:
-    return {"status": "ok"}
-
-
-@app.on_event("startup")
-def startup_tasks() -> None:
-    with SessionLocal() as db:
-        ensure_default_rates(db)
-        ensure_default_utilities(db)
-        ensure_all_user_referral_identities(db)
-        ensure_referral_policy_table(db, commit=True)
-        ensure_default_playbooks(db)
-    ensure_admin_bootstrap()
-
-
-app.include_router(public.router)
-app.include_router(auth.router)
-app.include_router(member.router)
-app.include_router(member_point_transfer.router)
-app.include_router(admin.router)
-app.include_router(admin_member_verification.router)
-app.include_router(admin_legacy.router)
-app.include_router(slbo_bo_pro.router)
-app.include_router(slbo.router)
-app.include_router(slbo_admin_settings.router)
-app.include_router(agent.router)
-app.include_router(webhooks.router)
-
-
-@app.get("/language/{locale}")
-def set_language(locale: str, request: Request):
-    if locale not in settings.supported_locales:
-        locale = settings.default_locale
-    redirect = request.headers.get("referer") or "/"
-    response = RedirectResponse(redirect)
-    response.set_cookie("locale", locale, max_age=60 * 60 * 24 * 365, samesite="lax")
-    return response
+app = create_app()

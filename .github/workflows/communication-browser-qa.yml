@@ -1,0 +1,151 @@
+name: Communication Browser QA
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "app/communication/**"
+      - "app/integrations/timeblock/**"
+      - "app/telemetry/**"
+      - "app/templates/communication.html"
+      - "app/static/communication.css"
+      - "app/static/communication.js"
+      - "app/core/config.py"
+      - "app/main.py"
+      - "tests/browser/**"
+      - "tests/test_structured_logging.py"
+      - "tests/test_browser_artifact_privacy.py"
+      - "scripts/check_browser_artifacts.py"
+      - "scripts/start_render.sh"
+      - "docs/timeblock-control-plane-contract.md"
+      - "GUILUA_PROJECT_MEMORY.md"
+      - ".github/workflows/communication-runtime.yml"
+      - ".github/workflows/communication-browser-qa.yml"
+  workflow_dispatch:
+
+jobs:
+  browser-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP_ENV: development
+      DEBUG: "true"
+      SECRET_KEY: browser-qa-non-production-secret-with-adequate-length
+      ALLOW_DEVELOPMENT_SESSION_FALLBACK: "true"
+      ALLOWED_WEBSOCKET_ORIGINS: http://127.0.0.1:8000
+      ALLOW_MISSING_WEBSOCKET_ORIGIN: "false"
+      DEPLOYMENT_VERSION: ${{ github.event.pull_request.head.sha || github.sha }}
+      BROWSER_QA_ENABLED: "1"
+      BROWSER_QA_BASE_URL: http://127.0.0.1:8000
+      BROWSER_QA_ARTIFACT_DIR: artifacts/browser
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Record exact checkout identity
+        env:
+          EXPECTED_PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          GITHUB_EVENT_NAME_VALUE: ${{ github.event_name }}
+          WORKFLOW_RUN_ID_VALUE: ${{ github.run_id }}
+        run: |
+          mkdir -p artifacts/browser
+          CHECKED_OUT_SHA="$(git rev-parse HEAD)"
+          if [ "$CHECKED_OUT_SHA" != "$EXPECTED_PR_HEAD" ]; then
+            echo "Checked-out SHA does not match the exact workflow source." >&2
+            exit 1
+          fi
+          if [ "$DEPLOYMENT_VERSION" != "$EXPECTED_PR_HEAD" ]; then
+            echo "DEPLOYMENT_VERSION does not match the expected head." >&2
+            exit 1
+          fi
+          export CHECKED_OUT_SHA EXPECTED_PR_HEAD GITHUB_EVENT_NAME_VALUE WORKFLOW_RUN_ID_VALUE
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          payload = {
+              "expected_pr_head": os.environ["EXPECTED_PR_HEAD"],
+              "checked_out_sha": os.environ["CHECKED_OUT_SHA"],
+              "deployment_version": os.environ["DEPLOYMENT_VERSION"],
+              "github_event_name": os.environ["GITHUB_EVENT_NAME_VALUE"],
+              "workflow_run_id": os.environ["WORKFLOW_RUN_ID_VALUE"],
+          }
+          Path("artifacts/browser/build-identity.json").write_text(
+              json.dumps(payload, indent=2), encoding="utf-8"
+          )
+          PY
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pip install -r tests/browser/requirements-browser.txt
+      - name: Install browser engines
+        run: python -m playwright install --with-deps chromium webkit
+      - name: Record Playwright CLI version
+        run: |
+          mkdir -p artifacts/browser
+          python -m playwright --version | tee artifacts/browser/browser-cli-version.txt
+      - run: python scripts/check_legacy_runtime_absence.py
+      - run: python -m compileall app
+      - name: Run default test suite
+        env:
+          BROWSER_QA_ENABLED: "0"
+        run: PYTHONPATH=. pytest -q
+      - name: Start local communication runtime
+        run: |
+          mkdir -p artifacts/browser
+          gunicorn app.main:app \
+            --workers 1 \
+            --worker-class uvicorn.workers.UvicornWorker \
+            --logger-class app.telemetry.gunicorn.JsonGunicornLogger \
+            --bind 127.0.0.1:8000 \
+            --log-file - \
+            > artifacts/browser/server.log 2>&1 &
+          echo $! > /tmp/guilua-browser-server.pid
+          python - <<'PY'
+          import json
+          import time
+          import urllib.request
+
+          expected = {"status": "ok", "service": "guilua-communication-runtime"}
+          deadline = time.monotonic() + 30
+          last_error = None
+          while time.monotonic() < deadline:
+              try:
+                  with urllib.request.urlopen("http://127.0.0.1:8000/healthz/", timeout=2) as response:
+                      payload = json.load(response)
+                  if payload == expected:
+                      print("Local runtime is ready.")
+                      break
+              except Exception as exc:
+                  last_error = exc
+              time.sleep(0.25)
+          else:
+              raise SystemExit(f"Local runtime readiness failed: {last_error}")
+          PY
+      - name: Run rendered browser and two-context WebRTC QA
+        run: PYTHONPATH=. pytest -q tests/browser --junitxml=artifacts/browser/junit.xml
+      - name: Stop local communication runtime
+        if: always()
+        run: |
+          if [ -f /tmp/guilua-browser-server.pid ]; then
+            kill "$(cat /tmp/guilua-browser-server.pid)" 2>/dev/null || true
+          fi
+      - name: Check browser artifact privacy
+        id: privacy
+        if: always()
+        run: python scripts/check_browser_artifacts.py artifacts/browser
+      - name: Upload browser QA evidence
+        if: always() && steps.privacy.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: communication-browser-qa-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/browser
+          if-no-files-found: error
+          retention-days: 14

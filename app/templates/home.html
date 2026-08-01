@@ -1,112 +1,43 @@
-{% extends "base.html" %}
-{% import "_icons.html" as icons %}
-{% block content %}
-<section class="hero slbo-hero">
-  <div>
-    <p class="eyebrow">{{ t("home.kicker") }}</p>
-    <h1>{{ t("home.title") }}</h1>
-    <p>{{ t("home.subtitle") }}</p>
-    <div class="proof-row">
-      <span>{{ t("home.proof.secure") }}</span>
-      <span>{{ t("home.proof.manual") }}</span>
-      <span>{{ t("home.proof.admin") }}</span>
-    </div>
-    <div class="hero-actions">
-      <a class="button primary" href="#rate-board">{{ t("rates.manual") }}</a>
-      <a class="button ghost" href="/login?lang={{ locale }}">{{ t("nav.login") }}</a>
-    </div>
-  </div>
-  <div class="hero-console motion-card">
-    <div class="console-top">
-      <span>Guilua</span>
-      <strong>{{ t("home.hero_status") }}</strong>
-    </div>
-    <div class="console-balance">
-      <small>TWD / VND</small>
-      <strong>{{ rates["TWD_VND"].buy_rate }}</strong>
-      <small>{{ t("rates.buy") }} / {{ t("rates.sell") }} {{ rates["TWD_VND"].sell_rate }}</small>
-    </div>
-    <div class="console-grid">
-      <div><small>USDT / TWD {{ t("rates.buy") }}</small><strong>{{ rates["USDT_TWD"].buy_rate }}</strong></div>
-      <div><small>USDT / TWD {{ t("rates.sell") }}</small><strong>{{ rates["USDT_TWD"].sell_rate }}</strong></div>
-    </div>
-    <div class="console-flow">
-      <span>{{ t("home.ops.one") }}</span>
-      <span>{{ t("home.ops.two") }}</span>
-      <span>{{ t("home.ops.three") }}</span>
-    </div>
-  </div>
-</section>
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Timeblock AI Communication</title>
+  <link rel="stylesheet" href="/static/communication.css">
+</head>
+<body class="landing-page">
+  <main class="landing-shell">
+    <nav class="topbar" aria-label="Điều hướng chính">
+      <a class="brand" href="/">Timeblock</a>
+      <a class="nav-action" href="/communication">Mở hệ thống</a>
+    </nav>
 
-<section class="panel home-rate-board" id="rate-board">
-  <div class="section-head">
-    <div>
-      <h2>{{ t("rates.manual") }}</h2>
-      <span>{{ t("admin.rate_help") }}</span>
-    </div>
-    <a class="button small" href="/login?lang={{ locale }}">{{ t("nav.login") }}</a>
-  </div>
-  <div class="rate-grid">
-    {% for pair, rate in rates.items() %}
-      <article class="rate-card">
-        <span>{{ pair_label(pair) }}</span>
-        <div class="rate-buy-sell">
-          <div>
-            <small>{{ t("rates.buy") }}</small>
-            <strong>{{ rate.buy_rate }}</strong>
-          </div>
-          <div>
-            <small>{{ t("rates.sell") }}</small>
-            <strong>{{ rate.sell_rate }}</strong>
-          </div>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="system-label">Guilua Communication Runtime</p>
+        <h1>Timeblock AI Communication</h1>
+        <p class="hero-description">Giao tiếp đa ngôn ngữ theo thời gian thực cho cuộc gọi thoại, video và phụ đề dịch trực tiếp.</p>
+        <div class="hero-actions">
+          <a class="primary-button" href="/communication">Bắt đầu phiên liên lạc</a>
         </div>
-        <small>{{ source_label(rate.source) }}</small>
-        <div class="rate-action-row">
-          {% if pair == "TWD_VND" %}
-            <a class="button small primary" href="/member/transactions/send-home?lang={{ locale }}">{{ t("home.rate_cta.twd_vnd") }}</a>
-          {% elif pair == "USDT_TWD" %}
-            <a class="button small primary" href="/member/transactions/buy-usdt?lang={{ locale }}">{{ t("home.rate_cta.buy_usdt") }}</a>
-            <a class="button small" href="/member/transactions/sell-usdt?lang={{ locale }}">{{ t("home.rate_cta.sell_usdt") }}</a>
-          {% endif %}
+      </div>
+      <div class="runtime-preview" aria-label="Mô phỏng giao tiếp đa ngôn ngữ">
+        <div class="preview-status"><span></span> Runtime sẵn sàng</div>
+        <div class="preview-person">
+          <div class="avatar">A</div>
+          <div><strong>Tiếng Việt</strong><small>Âm thanh trực tiếp</small></div>
         </div>
-      </article>
-    {% endfor %}
-  </div>
-</section>
-
-{% if settings.bo_public_enabled %}
-  <section class="grid three">
-    <a class="feature-card gradient-cyan slbo-link-card" href="/bo?lang={{ locale }}">
-      <div class="card-glow"></div>
-      <div class="feature-inner">
-        <span class="icon">{{ icons.icon("chart") }}</span>
-        <h2>{{ t("home.card.bo.title") }}</h2>
-        <p>{{ t("home.card.bo.desc") }}</p>
-        <strong class="card-cta">{{ t("nav.bo") }}</strong>
+        <div class="translation-line"><span>AI</span><p>Xin chào, chúng ta có thể bắt đầu cuộc họp.</p></div>
+        <div class="translation-line secondary"><span>譯</span><p>您好，我們可以開始會議了。</p></div>
       </div>
-    </a>
-    <a class="feature-card gradient-violet delay-2 slbo-link-card" href="/member?lang={{ locale }}">
-      <div class="card-glow"></div>
-      <div class="feature-inner">
-        <span class="icon">{{ icons.icon("affiliate") }}</span>
-        <h2>{{ t("home.card.member.title") }}</h2>
-        <p>{{ t("home.card.member.desc") }}</p>
-        <strong class="card-cta">{{ t("nav.member") }}</strong>
-      </div>
-    </a>
-  </section>
+    </section>
 
-  <section class="panel slbo-notice">
-    <div>
-      <p class="eyebrow">{{ t("home.notice.title") }}</p>
-      <h2>{{ t("meta.product") }}</h2>
-      <p class="muted">{{ t("home.notice.body") }}</p>
-    </div>
-    <div class="ops-pill-list">
-      <span>{{ t("wallet.request.deposit") }}</span>
-      <span>{{ t("wallet.request.withdraw") }}</span>
-      <span>{{ t("wallet.transfer_title") }}</span>
-    </div>
-  </section>
-{% endif %}
-{% endblock %}
+    <section class="capabilities" aria-label="Năng lực hệ thống">
+      <article><strong>WebRTC P2P</strong><span>Âm thanh và video trực tiếp giữa thiết bị</span></article>
+      <article><strong>Live captions</strong><span>Phụ đề nguồn và bản dịch theo thời gian thực</span></article>
+      <article><strong>Reconnect</strong><span>Phục hồi kết nối khi mạng không ổn định</span></article>
+    </section>
+  </main>
+</body>
+</html>
