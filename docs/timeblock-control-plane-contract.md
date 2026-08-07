@@ -1,76 +1,118 @@
 # Timeblock control-plane contract status
 
-Status: `PROVISIONAL_CONTRACT`
+Status: `CONTRACT_V1_IMPLEMENTED_AND_CONSUMED`
 
-Guilua is an ephemeral Communication Runtime. Timeblock remains the source of truth for identity, workspace membership, participant authorization, entitlement, glossary master data, durable results, usage, billing, audit, and retention.
+Verified against Timeblock source repository `Panjiaphu/fumap-bot-life` at main SHA `28476fe50d7e02486be190b7e895ce7832382102` on 2026-08-07.
 
-No endpoint below is considered approved until the Timeblock team supplies a source contract or explicitly approves the path and schema. Guilua must continue to fail closed in production when `TIMEBLOCK_API_URL` or `TIMEBLOCK_API_KEY` is missing.
+Guilua is an ephemeral Communication Runtime. Timeblock remains the source of truth for identity, workspace membership, participant authorization, entitlement/quota, glossary master data, durable results, usage, billing, audit, and retention.
 
-## Implemented adapter
+## Approved Contract V1 endpoints
 
-### `authorize_session`
+### Browser bootstrap
 
-- Current method: `POST`
-- Provisional path: `/api/communication/sessions/{session_id}/authorize`
-- Request: `{ "participant_id": string, "session_token": string }`
-- Response: `AuthorizedSession`
-- Idempotency: not currently supplied by the adapter
-- Fail-closed behavior: missing configuration, invalid response, timeout, or HTTP failure rejects the WebSocket authorization
-- Status: `IMPLEMENTED_ADAPTER`, `PROVISIONAL_PATH`, `REQUIRED_TIMEBLOCK_CONFIRMATION`
+`POST /api/communication/bootstrap`
 
-### `refresh_session`
+The authenticated Timeblock browser calls this endpoint from an exact approved Timeblock origin. A successful response contains an opaque short-lived `session_token`, immutable `session_id`, `participant_id`, `workspace_id`, `audience`, `expires_at`, `runtime_url`, and a token-free `websocket_url`.
 
-- Current method: `POST`
-- Provisional path: `/api/communication/sessions/{session_id}/refresh`
-- Request: `{ "participant_id": string, "session_token": string }`
-- Response: `AuthorizedSession`
-- Idempotency: not currently supplied by the adapter
-- Fail-closed behavior: missing configuration, invalid response, timeout, or HTTP failure rejects reconnect authorization
-- Status: `IMPLEMENTED_ADAPTER`, `PROVISIONAL_PATH`, `REQUIRED_TIMEBLOCK_CONFIRMATION`
+The bootstrap token is a secret. Guilua must never require it in a page URL or WebSocket URL.
 
-### `fetch_glossary`
+### Runtime authorization
 
-- Current method: `POST`
-- Provisional path: `/api/communication/glossary`
-- Request: `{ "workspace_id": string, "version": string | null }`
-- Response: provider-defined JSON glossary payload
-- Idempotency: read operation; no idempotency key is currently supplied
-- Fail-closed behavior: request failure raises `timeblock_request_failed`; translation integration must decide whether a default glossary fallback is permitted
-- Status: `IMPLEMENTED_ADAPTER`, `PROVISIONAL_PATH`, `REQUIRED_TIMEBLOCK_CONFIRMATION`
+`POST /api/communication/sessions/{session_id}/authorize`
 
-### `submit_session_result`
+Server-to-server request uses `Authorization: Bearer <TIMEBLOCK_API_KEY>` and sends `participant_id` plus `session_token`. Optional `workspace_id`, `issuer`, and `audience` fields are comparison claims only. Guilua binds the response back to the requested session, participant, and supplied workspace claim before creating runtime state.
 
-- Current method: `POST`
-- Provisional path: `/api/communication/session-results`
-- Request: caller-supplied session-result JSON
-- Response: empty or provider-defined JSON, ignored by the adapter
-- Idempotency: `Idempotency-Key` header; caller key is preferred, otherwise a UUID is generated
-- Fail-closed behavior: HTTP failure raises `timeblock_request_failed`; durable retry orchestration is not implemented in the zero-cost foundation
-- Status: `IMPLEMENTED_ADAPTER`, `PROVISIONAL_PATH`, `REQUIRED_TIMEBLOCK_CONFIRMATION`
+### Runtime refresh
 
-### `submit_usage`
+`POST /api/communication/sessions/{session_id}/refresh`
 
-- Current method: `POST`
-- Provisional path: `/api/communication/usage`
-- Request: `{ "events": list[object] }`
-- Response: empty or provider-defined JSON, ignored by the adapter
-- Idempotency: `Idempotency-Key` header; caller key is preferred, otherwise a UUID is generated
-- Fail-closed behavior: HTTP failure raises `timeblock_request_failed`; Guilua does not become the durable usage ledger
-- Status: `IMPLEMENTED_ADAPTER`, `PROVISIONAL_PATH`, `REQUIRED_TIMEBLOCK_CONFIRMATION`
+Uses the live Timeblock session grant and the same server authentication. Guilua uses this during reconnect and still applies immutable session/participant/workspace binding checks.
 
-## Required Timeblock confirmation
+### Glossary
 
-Timeblock must confirm:
+`POST /api/communication/glossary`
 
-1. endpoint paths and HTTP methods;
-2. session-token format and expiry;
-3. participant, room, workspace, role, permission, entitlement, and quota fields;
-4. authorization and reconnect response status codes;
-5. glossary versioning and fallback policy;
-6. session-result and usage schemas;
-7. idempotency-key retention and conflict behavior;
-8. retry, timeout, and partial-failure behavior;
-9. audit and retention requirements;
-10. whether any server-to-server request signing is required beyond the bearer API key.
+Request is workspace-scoped. Timeblock remains authoritative for glossary visibility and versioning.
 
-Do not change the provisional paths by inference. Update this document and the adapter only from an approved Timeblock contract.
+### Durable result callback
+
+`POST /api/communication/session-results`
+
+Requires `Idempotency-Key`. Guilua does not become the durable result store.
+
+### Usage callback
+
+`POST /api/communication/usage`
+
+Requires `Idempotency-Key`; usage event IDs are durable deduplication keys on the Timeblock side. Guilua does not become the usage ledger.
+
+## Phase 2A browser handoff
+
+Canonical production flow:
+
+1. Timeblock authenticates the browser user and calls `/api/communication/bootstrap`.
+2. Timeblock opens or embeds the token-free Guilua `/communication` page.
+3. Timeblock sends a `window.postMessage` message with type `timeblock.communication.handoff.v1` to the Guilua window.
+4. Guilua accepts the message only when the sender origin is in `ALLOWED_TIMEBLOCK_HANDOFF_ORIGINS` and the source window matches its opener or parent where applicable.
+5. Guilua validates `session_id`, `participant_id`, and `session_token`, then keeps the credential in JavaScript memory only.
+6. Guilua opens the token-free WebSocket URL `/ws/communication/{session_id}`.
+7. The first WebSocket frame must be typed `session.authenticate`.
+8. Guilua calls the Timeblock authorize/refresh endpoint and creates `RoomManager` participant state only after authorization succeeds.
+9. Signaling and normal application events are rejected structurally until authorization has completed.
+
+Production must not persist the Timeblock session token to localStorage/sessionStorage and must not place Timeblock or Guilua reconnect credentials in browser URLs.
+
+## WebSocket authentication protocol
+
+The WebSocket HTTP request contains no Timeblock credential. Secret query parameters `token`, `session_token`, and `reconnect_token` are rejected.
+
+The first client frame is:
+
+```json
+{
+  "event_name": "session.authenticate",
+  "event_version": 1,
+  "session_id": "123",
+  "participant_id": "member:42",
+  "trace_id": "uuid-or-trace-id",
+  "payload": {
+    "session_token": "opaque-timeblock-token",
+    "reconnect_token": "optional-guilua-reconnect-token",
+    "workspace_id": "optional-comparison-claim",
+    "issuer": "optional-comparison-claim",
+    "audience": "optional-comparison-claim"
+  }
+}
+```
+
+The unauthenticated socket has a bounded authentication timeout and authentication-frame size limit. It receives no room snapshot before successful authorization.
+
+## Production origins
+
+- Timeblock application origin: `https://timeblock-commercial-pro.onrender.com`
+- Canonical Timeblock browser host: `https://fumapgo.com`
+- Guilua runtime origin: `https://guilua.onrender.com`
+- Guilua WebSocket browser Origin: `https://guilua.onrender.com`
+
+No wildcard origin is permitted.
+
+## Development policy
+
+A static `development-session` credential is permitted only when all explicit non-production fallback conditions are satisfied. Local browser QA may obtain `session` and `participant` from query parameters, but the token itself is not supplied in the URL; the static development credential is created internally by the development-only code path.
+
+Production configuration rejects development fallback.
+
+## Cross-repository dependency
+
+This Guilua Phase 2A branch implements and tests the receiving side of the secure handoff. Timeblock still needs a browser sender integration that:
+
+- calls its existing `/api/communication/bootstrap` endpoint;
+- opens/embeds `runtime_url` without appending secrets;
+- posts `timeblock.communication.handoff.v1` to the exact Guilua origin;
+- never logs or persists the bootstrap credential.
+
+That sender change belongs in `Panjiaphu/fumap-bot-life` and is intentionally not modified by this Guilua-only PR.
+
+## Rollback
+
+Rollback Guilua by deploying the previous known-good runtime SHA. No Guilua database migration or destructive DDL is part of Phase 2A. Timeblock Contract V1 tables remain additive and independent of this runtime rollback.
