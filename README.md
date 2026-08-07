@@ -4,16 +4,31 @@ Guilua is the realtime communication runtime for Timeblock. It provides the brow
 
 Timeblock remains the Control Plane and durable System of Record for identity, workspace membership, permission, entitlement, quota, glossary master, transcript, usage ledger, billing, audit, and retention.
 
+## Current phase
+
+The Timeblock Communication Contract V1 is implemented on the Timeblock control plane and consumed by Guilua.
+
+Phase 2A adds a production-safe session boundary:
+
+1. an authenticated Timeblock browser calls its existing `/api/communication/bootstrap` endpoint;
+2. Timeblock opens or embeds token-free Guilua `/communication`;
+3. Timeblock hands the bootstrap credential to Guilua with exact-origin `postMessage` using `timeblock.communication.handoff.v1`;
+4. Guilua keeps the credential in browser memory and opens `/ws/communication/{session_id}` with no secret query parameter;
+5. the first WebSocket frame is typed `session.authenticate`;
+6. Guilua calls Timeblock authorize/refresh server-to-server and creates runtime participant state only after authorization succeeds.
+
+The Guilua receiver is implemented in this repository. The corresponding Timeblock browser sender remains a cross-repository integration dependency until it is added to `Panjiaphu/fumap-bot-life`.
+
 ## Zero-cost Render architecture
 
-The foundation phase intentionally uses:
+The current foundation intentionally uses:
 
 - one existing Render Standard Web Service;
 - one instance and one Gunicorn/Uvicorn worker;
 - one public port for HTTP and WebSocket;
 - in-memory room, connection, sequence, and reconnect state;
 - WebRTC peer-to-peer media for initial 1:1 calls;
-- external async AI providers when configured.
+- external async AI providers only in later phases when configured.
 
 It does not add Redis, Postgres, a background worker, cron service, private service, second web service, persistent disk, horizontal scaling, SFU, TURN, local Whisper, local LLM, GPU runtime, or media transcoding.
 
@@ -39,10 +54,10 @@ Open:
 
 - `/` — Timeblock AI Communication landing page.
 - `/communication` — responsive call/interpreter shell.
-- `/ws/communication/{session_id}` — communication WebSocket.
+- `/ws/communication/{session_id}` — token-free communication WebSocket; authentication is the first frame.
 - `/healthz/` — runtime health.
 
-Development WebSocket sessions use the explicit mock token `development-session` until the Timeblock authorization contract is configured.
+For explicit local/test fallback, the browser QA may supply only `session` and `participant` query values. Guilua creates the static `development-session` credential internally. Production configuration rejects this fallback and never reads a session credential from the page URL.
 
 ## Render commands
 
@@ -61,7 +76,11 @@ SECRET_KEY=<random secret, at least 32 characters>
 PUBLIC_BASE_URL=https://guilua.onrender.com
 TIMEBLOCK_API_URL=<Timeblock control-plane API>
 TIMEBLOCK_API_KEY=<server credential>
+ALLOWED_TIMEBLOCK_HANDOFF_ORIGINS=https://timeblock-commercial-pro.onrender.com,https://fumapgo.com
 ALLOWED_WEBSOCKET_ORIGINS=https://guilua.onrender.com
+ALLOW_MISSING_WEBSOCKET_ORIGIN=false
+WEBSOCKET_AUTH_TIMEOUT_SECONDS=5
+MAX_AUTH_EVENT_BYTES=16384
 ```
 
 Runtime TTL settings are optional and have safe defaults:
@@ -73,6 +92,18 @@ ENDED_SESSION_CACHE_SECONDS=600
 IDEMPOTENCY_CACHE_SECONDS=1800
 ```
 
+## Security boundary
+
+- No Timeblock session token or Guilua reconnect token belongs in a page or WebSocket URL.
+- The Timeblock session credential is memory-only in the Guilua browser runtime.
+- Browser handoff uses an exact origin allowlist; wildcard origins are not supported.
+- WebSocket Origin is validated before the unauthenticated socket is accepted for useful traffic.
+- The unauthenticated socket has a bounded authentication timeout and authentication-frame size.
+- It receives no room snapshot before successful Timeblock authorization.
+- Guilua does not trust browser-supplied workspace, role, membership, entitlement, or quota data.
+
+See `docs/timeblock-control-plane-contract.md` for the exact Contract V1 boundary and sender specification.
+
 ## Testing
 
 ```bash
@@ -80,16 +111,18 @@ python -m compileall app
 PYTHONPATH=. pytest -q
 ```
 
-The active test suite verifies the health endpoint, communication pages, removal of legacy routes, WebSocket authorization, heartbeat acknowledgement, duplicate-event rejection, and sequence validation.
+The exact-head CI suite also runs rendered Chromium/WebKit browser QA, fake-media two-context WebRTC, reconnect/hangup cleanup, URL-secret assertions, and browser artifact privacy/identity checks.
+
+Hosted browser QA is not a claim of physical iOS/Android validation.
 
 ## Production data
 
 Legacy BO, rates, member, wallet, point, treasury, affiliate, referral, and settlement tables are not used by the new runtime. They are not dropped automatically in this refactor. See `docs/legacy-database-retirement.md` for the backup and destructive-migration gate.
 
-## Known foundation limitations
+## Known limitations
 
 - A Render restart loses in-memory runtime state.
 - One worker does not support horizontal scaling.
 - P2P calls can fail on strict NAT without TURN.
-- Production sessions require real Timeblock API contracts and credentials.
-- Speech, translation, and TTS providers are interfaces to be added after provider selection.
+- Physical-device and strict-NAT validation remain separate gates.
+- STT, realtime translation, glossary application, translated captions from a real provider, TTS, durable result orchestration, and usage retry are Phase 2B or later concerns.
