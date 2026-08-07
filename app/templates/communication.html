@@ -21,9 +21,10 @@
       <div class="panel-content" id="interpreter-content"><div class="language-row"><label>Nguồn<select id="source-language"><option value="vi">Tiếng Việt</option><option value="zh-TW">繁體中文</option><option value="en">English</option></select></label><span aria-hidden="true">→</span><label>Đích<select id="target-language"><option value="zh-TW">繁體中文</option><option value="vi">Tiếng Việt</option><option value="en">English</option></select></label></div><div class="transcript-box"><small>Nội dung nguồn</small><p id="source-caption">Chưa có nội dung.</p></div></div>
     </aside>
     <button type="button" class="panel-restore" id="panel-restore" aria-label="Hiện bảng phiên dịch AI" aria-controls="interpreter-panel" hidden>Hiện AI Interpreter</button>
-    <nav class="call-controls" aria-label="Điều khiển cuộc gọi"><button type="button" id="start-call" class="control primary">Bắt đầu</button><button type="button" id="microphone-toggle" class="control" disabled>Micro</button><button type="button" id="camera-toggle" class="control" disabled>Camera</button><button type="button" id="end-call" class="control danger" disabled>Kết thúc</button></nav>
+    <nav class="call-controls" aria-label="Điều khiển cuộc gọi"><button type="button" id="start-call" class="control primary" disabled>Bắt đầu</button><button type="button" id="microphone-toggle" class="control" disabled>Micro</button><button type="button" id="camera-toggle" class="control" disabled>Camera</button><button type="button" id="end-call" class="control danger" disabled>Kết thúc</button></nav>
     <p class="call-error" id="call-error" role="alert" aria-live="assertive"></p>
   </main>
+  <script id="guilua-runtime-config" type="application/json">{{ runtime_config | tojson }}</script>
   <script src="/static/communication.js" defer></script>
 </body>
 </html>
