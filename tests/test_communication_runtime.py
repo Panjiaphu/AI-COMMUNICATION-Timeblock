@@ -18,6 +18,7 @@ def settings(**overrides) -> Settings:
         'secret_key': 'test-secret-that-is-not-default-and-is-long',
         'allow_development_session_fallback': True,
         'allowed_websocket_origins': 'http://testserver,http://localhost:8000',
+        'allowed_timeblock_handoff_origins': 'http://testserver',
         'allow_missing_websocket_origin': True,
         'event_rate_limit_count': 50, 'signaling_rate_limit_count': 20, 'heartbeat_rate_limit_count': 10,
     }
@@ -29,10 +30,28 @@ def client_for(**overrides) -> TestClient:
     return TestClient(create_app(settings(**overrides)))
 
 
-def ws_path(session='session-1', participant='participant-1', token='development-session', reconnect=None):
-    path = f'/ws/communication/{session}?token={token}&participant_id={participant}&trace_id=trace-test'
-    if reconnect: path += f'&reconnect_token={reconnect}'
-    return path
+def ws_path(session='session-1'):
+    return f'/ws/communication/{session}'
+
+
+def auth_frame(session='session-1', participant='participant-1', token='development-session', reconnect=None, **claims):
+    payload = {'session_token': token}
+    if reconnect:
+        payload['reconnect_token'] = reconnect
+    payload.update({key: value for key, value in claims.items() if value is not None})
+    return {
+        'event_name': 'session.authenticate',
+        'event_version': 1,
+        'session_id': session,
+        'participant_id': participant,
+        'trace_id': 'trace-test',
+        'payload': payload,
+    }
+
+
+def authorize(ws, **kwargs):
+    ws.send_json(auth_frame(**kwargs))
+    return ws.receive_json()
 
 
 def event(authorized, name='connection.heartbeat', sequence=1, event_id=None, payload=None, participant=None, session='session-1'):
@@ -45,7 +64,10 @@ def test_http_and_legacy_absence():
         home, call = client.get('/'), client.get('/communication')
         assert home.status_code == call.status_code == 200
         assert 'Timeblock AI Communication' in home.text
-        assert 'RTCPeerConnection' in client.get('/static/communication.js').text
+        script = client.get('/static/communication.js').text
+        assert 'RTCPeerConnection' in script
+        assert 'session.authenticate' in script
+        assert 'token: state.sessionToken' not in script
         rendered = home.text + call.text
         assert all(term not in rendered for term in ['BO Trading', 'SLB_POINT', 'TWD/VND', 'USDT/TWD', 'Member portal', 'Crypto dashboard'])
         for path in ['/bo', '/rapid', '/member', '/admin', '/rates', '/wallet', '/affiliate', '/referral', '/crypto', '/odds']:
@@ -54,24 +76,31 @@ def test_http_and_legacy_absence():
 
 def test_websocket_authorization_and_origin_policy():
     with client_for() as client:
+        with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as ws:
+            ws.send_json(auth_frame(token='wrong'))
+            with pytest.raises(WebSocketDisconnect):
+                ws.receive_json()
         with pytest.raises(WebSocketDisconnect):
-            with client.websocket_connect('/ws/communication/session-1?participant_id=p1'): pass
+            with client.websocket_connect('/ws/communication/session-1?token=development-session', headers={'origin': 'http://testserver'}):
+                pass
         with pytest.raises(WebSocketDisconnect):
-            with client.websocket_connect(ws_path(token='wrong')): pass
-        with pytest.raises(WebSocketDisconnect):
-            with client.websocket_connect(ws_path(), headers={'origin': 'https://evil.example'}): pass
+            with client.websocket_connect(ws_path(), headers={'origin': 'https://evil.example'}):
+                pass
     production = client_for(app_env='production', debug=False, allow_development_session_fallback=False)
     with production:
         with pytest.raises(WebSocketDisconnect):
-            with production.websocket_connect(ws_path()): pass
-        with pytest.raises(WebSocketDisconnect):
-            with production.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}): pass
+            with production.websocket_connect(ws_path()):
+                pass
+        with production.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as ws:
+            ws.send_json(auth_frame())
+            with pytest.raises(WebSocketDisconnect):
+                ws.receive_json()
 
 
 def test_event_validation_duplicate_and_sequence():
     with client_for() as client:
         with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as ws:
-            authorized = ws.receive_json(); first_id = str(uuid4())
+            authorized = authorize(ws); first_id = str(uuid4())
             ws.send_json(event(authorized, event_id=first_id)); assert ws.receive_json()['event_name'] == 'connection.ack'
             ws.send_json(event(authorized, sequence=2, event_id=first_id)); assert ws.receive_json()['code'] == 'duplicate_event'
             ws.send_json(event(authorized, sequence=1)); assert ws.receive_json()['code'] == 'out_of_order'
@@ -81,41 +110,64 @@ def test_event_validation_duplicate_and_sequence():
 
 def test_room_capacity_targeted_signaling_and_self_target():
     with client_for() as client:
-        with client.websocket_connect(ws_path(participant='p1'), headers={'origin': 'http://testserver'}) as one:
-            auth1 = one.receive_json()
-            with client.websocket_connect(ws_path(participant='p2'), headers={'origin': 'http://testserver'}) as two:
-                two.receive_json(); assert one.receive_json()['event_name'] == 'participant.joined'
+        with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as one:
+            auth1 = authorize(one, participant='p1')
+            with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as two:
+                authorize(two, participant='p2'); assert one.receive_json()['event_name'] == 'participant.joined'
                 one.send_json(event(auth1, name='signaling.offer', sequence=1, participant='p1', payload={'target_participant_id': 'p2', 'sdp_type': 'offer', 'sdp': 'v=0'}))
                 forwarded = two.receive_json(); assert forwarded['event_name'] == 'signaling.offer' and forwarded['participant_id'] == 'p1'
                 one.send_json(event(auth1, name='signaling.offer', sequence=2, participant='p1', payload={'target_participant_id': 'p1', 'sdp_type': 'offer', 'sdp': 'v=0'})); assert one.receive_json()['code'] == 'self_target'
-                with pytest.raises(WebSocketDisconnect):
-                    with client.websocket_connect(ws_path(participant='p3'), headers={'origin': 'http://testserver'}): pass
+                with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as three:
+                    three.send_json(auth_frame(participant='p3'))
+                    with pytest.raises(WebSocketDisconnect):
+                        three.receive_json()
 
 
 def test_reconnect_rotates_token_and_rejects_reuse():
     app = create_app(settings())
     with TestClient(app) as client:
-        with client.websocket_connect(ws_path(participant='p1'), headers={'origin': 'http://testserver'}) as ws:
-            first = ws.receive_json(); token = first['reconnect_token']
-        with client.websocket_connect(ws_path(participant='p1', reconnect=token), headers={'origin': 'http://testserver'}) as reconnected:
-            second = reconnected.receive_json(); assert second['reconnected'] is True; assert second['connection_id'] != first['connection_id']; assert second['reconnect_token'] != token
-        with pytest.raises(WebSocketDisconnect):
-            with client.websocket_connect(ws_path(participant='p1', reconnect=token), headers={'origin': 'http://testserver'}): pass
+        with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as ws:
+            first = authorize(ws, participant='p1'); token = first['reconnect_token']
+        with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as reconnected:
+            second = authorize(reconnected, participant='p1', reconnect=token); assert second['reconnected'] is True; assert second['connection_id'] != first['connection_id']; assert second['reconnect_token'] != token
+        with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as reused:
+            reused.send_json(auth_frame(participant='p1', reconnect=token))
+            with pytest.raises(WebSocketDisconnect):
+                reused.receive_json()
 
 
 def test_expired_reconnect_and_cleanup():
     app = create_app(settings(connection_stale_seconds=10, ended_session_cache_seconds=30))
     with TestClient(app) as client:
-        with client.websocket_connect(ws_path(participant='p1'), headers={'origin': 'http://testserver'}) as ws:
-            token = ws.receive_json()['reconnect_token']
+        with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as ws:
+            token = authorize(ws, participant='p1')['reconnect_token']
         app.state.room_manager.reconnect_tokens[app.state.room_manager._token_hash(token)].expires_at = utcnow() - timedelta(seconds=1)
-        with pytest.raises(WebSocketDisconnect):
-            with client.websocket_connect(ws_path(participant='p1', reconnect=token), headers={'origin': 'http://testserver'}): pass
+        with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as expired:
+            expired.send_json(auth_frame(participant='p1', reconnect=token))
+            with pytest.raises(WebSocketDisconnect):
+                expired.receive_json()
 
 
 def test_rate_limit_is_connection_scoped():
     with client_for(heartbeat_rate_limit_count=2, event_rate_limit_count=10) as client:
         with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as ws:
-            authorized = ws.receive_json()
+            authorized = authorize(ws)
             for sequence in (1, 2): ws.send_json(event(authorized, sequence=sequence)); assert ws.receive_json()['event_name'] == 'connection.ack'
             ws.send_json(event(authorized, sequence=3)); assert ws.receive_json()['code'] == 'heartbeat_rate_limited'
+
+
+def test_authentication_timeout_and_unauthorized_socket_gets_no_room_state():
+    app = create_app(settings(websocket_auth_timeout_seconds=0.6))
+    with TestClient(app) as client:
+        with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as ws:
+            with pytest.raises(WebSocketDisconnect):
+                ws.receive_json()
+        assert app.state.room_manager.rooms == {}
+        assert app.state.room_manager.reconnect_tokens == {}
+
+
+def test_workspace_claim_is_compared_not_trusted():
+    with client_for() as client:
+        with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as ws:
+            authorized = authorize(ws, workspace_id='workspace-from-timeblock')
+            assert authorized['snapshot']['workspace_id'] == 'workspace-from-timeblock'
