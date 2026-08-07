@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -12,7 +13,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from app.communication.manager import RoomManagerError
-from app.communication.schemas import EventEnvelope, EventName
+from app.communication.schemas import AuthenticationEnvelope, EventEnvelope, EventName
 from app.integrations.timeblock.client import TimeblockIntegrationError
 
 logger = logging.getLogger('guilua.communication')
@@ -52,7 +53,17 @@ async def home(request: Request) -> HTMLResponse:
 
 @router.get('/communication', response_class=HTMLResponse)
 async def communication(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request=request, name='communication.html', context={})
+    settings = request.app.state.settings
+    runtime_config = {
+        'handoff_event': 'timeblock.communication.handoff.v1',
+        'allowed_handoff_origins': sorted(settings.timeblock_handoff_origins),
+        'development_query_handoff': settings.development_query_handoff_enabled,
+    }
+    return templates.TemplateResponse(
+        request=request,
+        name='communication.html',
+        context={'runtime_config': runtime_config},
+    )
 
 
 @router.websocket('/ws/communication/{session_id}')
@@ -60,30 +71,76 @@ async def communication_socket(websocket: WebSocket, session_id: str) -> None:
     settings = websocket.app.state.settings
     manager = websocket.app.state.room_manager
     origin = websocket.headers.get('origin')
-    trace_id = websocket.query_params.get('trace_id') or str(uuid4())
-    participant_id = websocket.query_params.get('participant_id', '')
-    token = websocket.query_params.get('token', '')
-    reconnect_token = websocket.query_params.get('reconnect_token')
 
     if not origin and not settings.allow_missing_websocket_origin:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason='origin_required')
         return
-    if origin and origin not in settings.websocket_origins:
+    if origin and origin.rstrip('/') not in settings.websocket_origins:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason='origin_not_allowed')
         return
-    if not token or not participant_id:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason='authorization_required')
+    if any(key in websocket.query_params for key in ('token', 'session_token', 'reconnect_token')):
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason='secret_query_not_allowed')
+        return
+
+    await websocket.accept()
+    try:
+        raw_auth = await asyncio.wait_for(
+            websocket.receive_text(),
+            timeout=settings.websocket_auth_timeout_seconds,
+        )
+    except TimeoutError:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason='authentication_timeout')
+        return
+    except WebSocketDisconnect:
+        return
+
+    if len(raw_auth.encode('utf-8')) > settings.max_auth_event_bytes:
+        await websocket.close(code=status.WS_1009_MESSAGE_TOO_BIG, reason='authentication_event_too_large')
         return
 
     try:
-        if reconnect_token:
-            authorized = await websocket.app.state.timeblock_client.refresh_session(session_id, token, participant_id)
+        authentication = AuthenticationEnvelope.model_validate_json(raw_auth)
+    except ValidationError:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason='invalid_authentication_event')
+        return
+
+    if authentication.session_id != session_id:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason='session_binding_failed')
+        return
+
+    participant_id = authentication.participant_id
+    trace_id = authentication.trace_id
+    auth_payload = authentication.payload
+
+    try:
+        if auth_payload.reconnect_token:
+            authorized = await websocket.app.state.timeblock_client.refresh_session(
+                session_id,
+                auth_payload.session_token,
+                participant_id,
+                workspace_id=auth_payload.workspace_id,
+                issuer=auth_payload.issuer,
+                audience=auth_payload.audience,
+            )
         else:
-            authorized = await websocket.app.state.timeblock_client.authorize_session(session_id, token, participant_id)
-        result = await manager.connect(authorized, websocket, trace_id, reconnect_token)
+            authorized = await websocket.app.state.timeblock_client.authorize_session(
+                session_id,
+                auth_payload.session_token,
+                participant_id,
+                workspace_id=auth_payload.workspace_id,
+                issuer=auth_payload.issuer,
+                audience=auth_payload.audience,
+            )
+        result = await manager.connect(authorized, websocket, trace_id, auth_payload.reconnect_token)
     except (TimeblockIntegrationError, RoomManagerError) as exc:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason=str(exc))
-        log_event('connection_rejected', trace_id=trace_id, session_id=session_id, participant_id=participant_id, error_code=str(exc))
+        log_event(
+            'connection_rejected',
+            trace_id=trace_id,
+            session_id=session_id,
+            participant_id=participant_id,
+            error_code=str(exc),
+        )
         return
 
     connection = result.connection
@@ -101,7 +158,10 @@ async def communication_socket(websocket: WebSocket, session_id: str) -> None:
     )
     await websocket.send_json(
         server_event(
-            'session.authorized', session_id, connection.connection_id, trace_id,
+            'session.authorized',
+            session_id,
+            connection.connection_id,
+            trace_id,
             participant_id=authorized.participant_id,
             reconnect_token=result.reconnect_token,
             reconnected=result.reconnected,
@@ -112,7 +172,9 @@ async def communication_socket(websocket: WebSocket, session_id: str) -> None:
         session_id,
         server_event(
             'participant.reconnected' if result.reconnected else 'participant.joined',
-            session_id, connection.connection_id, trace_id,
+            session_id,
+            connection.connection_id,
+            trace_id,
             participant_id=authorized.participant_id,
         ),
         exclude_connection_id=connection.connection_id,
@@ -122,36 +184,98 @@ async def communication_socket(websocket: WebSocket, session_id: str) -> None:
         while True:
             raw_text = await websocket.receive_text()
             if len(raw_text.encode('utf-8')) > settings.max_event_bytes:
-                await send_error(websocket, code='event_too_large', session_id=session_id, connection_id=connection.connection_id, trace_id=trace_id)
+                await send_error(
+                    websocket,
+                    code='event_too_large',
+                    session_id=session_id,
+                    connection_id=connection.connection_id,
+                    trace_id=trace_id,
+                )
                 continue
             try:
                 raw_event = json.loads(raw_text)
                 event = EventEnvelope.model_validate(raw_event)
             except (json.JSONDecodeError, ValidationError):
-                await send_error(websocket, code='invalid_event', session_id=session_id, connection_id=connection.connection_id, trace_id=trace_id)
+                await send_error(
+                    websocket,
+                    code='invalid_event',
+                    session_id=session_id,
+                    connection_id=connection.connection_id,
+                    trace_id=trace_id,
+                )
                 continue
-            if event.session_id != session_id or event.connection_id != connection.connection_id or event.participant_id != authorized.participant_id:
-                await send_error(websocket, code='event_binding_failed', session_id=session_id, connection_id=connection.connection_id, trace_id=trace_id)
+            if (
+                event.session_id != session_id
+                or event.connection_id != connection.connection_id
+                or event.participant_id != authorized.participant_id
+            ):
+                await send_error(
+                    websocket,
+                    code='event_binding_failed',
+                    session_id=session_id,
+                    connection_id=connection.connection_id,
+                    trace_id=trace_id,
+                )
                 continue
             accepted, error = await manager.handle_event(event)
             if not accepted:
-                await send_error(websocket, code=error or 'event_rejected', session_id=session_id, connection_id=connection.connection_id, trace_id=trace_id)
-                log_event('event_rejected', trace_id=trace_id, session_id=session_id, participant_id=authorized.participant_id, connection_id=connection.connection_id, event_name=event.event_name, event_version=event.event_version, error_code=error)
+                await send_error(
+                    websocket,
+                    code=error or 'event_rejected',
+                    session_id=session_id,
+                    connection_id=connection.connection_id,
+                    trace_id=trace_id,
+                )
+                log_event(
+                    'event_rejected',
+                    trace_id=trace_id,
+                    session_id=session_id,
+                    participant_id=authorized.participant_id,
+                    connection_id=connection.connection_id,
+                    event_name=event.event_name,
+                    event_version=event.event_version,
+                    error_code=error,
+                )
                 continue
             if event.event_name == EventName.HEARTBEAT:
-                await websocket.send_json(server_event('connection.ack', session_id, connection.connection_id, trace_id, acknowledged_event_id=str(event.event_id)))
+                await websocket.send_json(
+                    server_event(
+                        'connection.ack',
+                        session_id,
+                        connection.connection_id,
+                        trace_id,
+                        acknowledged_event_id=str(event.event_id),
+                    )
+                )
                 continue
             if event.event_name in {EventName.SIGNALING_OFFER, EventName.SIGNALING_ANSWER, EventName.SIGNALING_ICE}:
                 payload = event.typed_payload()
                 try:
-                    await manager.send_to_participant(session_id, authorized.participant_id, payload.target_participant_id, event.model_dump(mode='json'))
+                    await manager.send_to_participant(
+                        session_id,
+                        authorized.participant_id,
+                        payload.target_participant_id,
+                        event.model_dump(mode='json'),
+                    )
                 except RoomManagerError as exc:
-                    await send_error(websocket, code=exc.code, session_id=session_id, connection_id=connection.connection_id, trace_id=trace_id)
+                    await send_error(
+                        websocket,
+                        code=exc.code,
+                        session_id=session_id,
+                        connection_id=connection.connection_id,
+                        trace_id=trace_id,
+                    )
                 continue
             if event.event_name == EventName.SESSION_ENDED:
                 await manager.broadcast(
                     session_id,
-                    server_event('session.ended', session_id, connection.connection_id, trace_id, participant_id=authorized.participant_id),
+                    server_event(
+                        'session.ended',
+                        session_id,
+                        connection.connection_id,
+                        trace_id,
+                        participant_id=authorized.participant_id,
+                    ),
                     exclude_connection_id=connection.connection_id,
                 )
                 break
@@ -159,11 +283,23 @@ async def communication_socket(websocket: WebSocket, session_id: str) -> None:
                 break
             await manager.broadcast(session_id, event.model_dump(mode='json'), connection.connection_id)
     except WebSocketDisconnect:
-        log_event('connection_closed', trace_id=trace_id, session_id=session_id, participant_id=authorized.participant_id, connection_id=connection.connection_id)
+        log_event(
+            'connection_closed',
+            trace_id=trace_id,
+            session_id=session_id,
+            participant_id=authorized.participant_id,
+            connection_id=connection.connection_id,
+        )
     finally:
         participant = await manager.disconnect(session_id, connection.connection_id)
         if participant:
             await manager.broadcast(
                 session_id,
-                server_event('participant.left', session_id, connection.connection_id, trace_id, participant_id=authorized.participant_id),
+                server_event(
+                    'participant.left',
+                    session_id,
+                    connection.connection_id,
+                    trace_id,
+                    participant_id=authorized.participant_id,
+                ),
             )
