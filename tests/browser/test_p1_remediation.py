@@ -14,11 +14,17 @@ from playwright.sync_api import Page, expect
 from tests.browser.support import create_context, install_instrumentation, observe_page, relevant_console_errors, write_json
 
 
-EXPECTED_RECONNECT_REJECTION_COUNT = 5
-
-
 def _url(base_url: str, session: str, participant: str) -> str:
-    return f'{base_url}/communication?session={session}&participant={participant}&token=development-session'
+    return f'{base_url}/communication?session={session}&participant={participant}'
+
+
+def _assert_token_free(page: Page) -> None:
+    assert 'token=' not in page.url
+    socket_url = page.evaluate('window.__guiluaQa.latestSocketUrl()')
+    if socket_url:
+        assert 'token=' not in socket_url
+        assert 'session_token=' not in socket_url
+        assert 'reconnect_token=' not in socket_url
 
 
 def _wait_remote(page: Page) -> None:
@@ -30,25 +36,15 @@ def _wait_remote(page: Page) -> None:
     }""", timeout=30000)
 
 
-def _is_expected_reconnect_rejection(entry: dict[str, str]) -> bool:
-    text = entry.get('text', '')
-    return (
-        entry.get('type') == 'error'
-        and 'WebSocket connection to' in text
-        and '/ws/communication/reconnect-exhaustion' in text
-        and 'Unexpected response code: 403' in text
-        and 'token=[REDACTED]' in text
-        and 'reconnect_token=[REDACTED]' in text
-    )
-
-
 def test_reconnect_exhaustion_terminal_cleanup_and_restart(chromium_browser, base_url: str, artifact_dir: Path):
     context = create_context(chromium_browser, base_url=base_url, viewport={'width': 430, 'height': 932}, grant_media=True)
     page = context.new_page(); install_instrumentation(page); evidence = observe_page(page)
     try:
         page.goto(_url(base_url, 'reconnect-exhaustion', 'participant-a'), wait_until='networkidle')
+        assert 'token=' not in page.url
         page.locator('#start-call').click()
         expect(page.locator('#connection-label')).to_have_text('Connected')
+        _assert_token_free(page)
         page.wait_for_function("window.__guiluaQa.snapshot().local_video_tracks.length === 2")
         page.evaluate('window.__guiluaQa.enableReconnectExhaustion()')
         page.evaluate('window.__guiluaQa.closeLatestSocket()')
@@ -77,19 +73,12 @@ def test_reconnect_exhaustion_terminal_cleanup_and_restart(chromium_browser, bas
         page.evaluate('window.__guiluaQa.disableReconnectExhaustion()')
         page.locator('#start-call').click()
         expect(page.locator('#connection-label')).to_have_text('Connected', timeout=15000)
-        assert 'reconnect_token=' not in page.evaluate('window.__guiluaQa.latestSocketUrl()')
+        _assert_token_free(page)
         restarted = page.evaluate('window.__guiluaQa.snapshot()')
         page.locator('#end-call').click()
 
         errors = relevant_console_errors(evidence)
-        expected_reconnect_rejections = [
-            entry for entry in errors if _is_expected_reconnect_rejection(entry)
-        ]
-        unexpected_errors = [
-            entry for entry in errors if not _is_expected_reconnect_rejection(entry)
-        ]
-        assert len(expected_reconnect_rejections) == EXPECTED_RECONNECT_REJECTION_COUNT
-        assert unexpected_errors == []
+        assert errors == []
 
         write_json(
             artifact_dir / 'evidence' / 'reconnect-exhaustion.json',
@@ -97,8 +86,9 @@ def test_reconnect_exhaustion_terminal_cleanup_and_restart(chromium_browser, bas
                 'terminal': snapshot,
                 'restart': restarted,
                 'console': evidence,
-                'expected_reconnect_rejection_count': len(expected_reconnect_rejections),
-                'unexpected_error_count': len(unexpected_errors),
+                'unexpected_error_count': len(errors),
+                'websocket_url_token_free': True,
+                'page_url_token_free': True,
                 'physical_device': False,
                 'fake_media': True,
             },
@@ -115,9 +105,11 @@ def test_one_sided_hangup_cleans_remote_without_echo(chromium_browser, base_url:
             contexts.append(context); page = context.new_page(); install_instrumentation(page)
             pages[participant] = page; evidence[participant] = observe_page(page)
             page.goto(_url(base_url, 'one-sided-hangup', participant), wait_until='networkidle')
+            assert 'token=' not in page.url
         page_a, page_b = pages['participant-a'], pages['participant-b']
         page_a.locator('#start-call').click(); expect(page_a.locator('#connection-label')).to_have_text('Connected')
         page_b.locator('#start-call').click(); expect(page_b.locator('#connection-label')).to_have_text('Connected')
+        _assert_token_free(page_a); _assert_token_free(page_b)
         _wait_remote(page_a); _wait_remote(page_b)
 
         page_a.locator('#end-call').click()
@@ -139,7 +131,7 @@ def test_one_sided_hangup_cleans_remote_without_echo(chromium_browser, base_url:
         assert remote['active_non_closed_peer_count'] == 0
         assert remote['active_timeout_count'] == 0
         assert not any(event['event_name'] == 'session.ended' for event in remote['outbound'])
-        write_json(artifact_dir / 'evidence' / 'one-sided-hangup.json', {'remote': remote, 'console': evidence['participant-b'], 'physical_device': False, 'fake_media': True})
+        write_json(artifact_dir / 'evidence' / 'one-sided-hangup.json', {'remote': remote, 'console': evidence['participant-b'], 'websocket_url_token_free': True, 'page_url_token_free': True, 'physical_device': False, 'fake_media': True})
         assert relevant_console_errors(evidence['participant-a']) == []
         assert relevant_console_errors(evidence['participant-b']) == []
     finally:
