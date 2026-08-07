@@ -73,6 +73,7 @@
     return `${protocol}//${window.location.host}/ws/communication/${encodeURIComponent(state.sessionId)}`;
   }
   function sendAuthentication(socket) {
+    if (socket.readyState !== WebSocket.OPEN) return false;
     const payload = { session_token: state.sessionToken };
     if (state.reconnectToken) payload.reconnect_token = state.reconnectToken;
     if (state.workspaceId) payload.workspace_id = state.workspaceId;
@@ -82,6 +83,7 @@
       event_name: 'session.authenticate', event_version: 1, session_id: state.sessionId,
       participant_id: state.participantId, trace_id: crypto.randomUUID(), payload,
     }));
+    return true;
   }
   function sendEvent(eventName, payload = {}) {
     if (!state.socket || state.socket.readyState !== WebSocket.OPEN || !state.connectionId) return false;
@@ -147,7 +149,11 @@
     if (!state.sessionId || !state.participantId || !state.sessionToken) { setStatus('failed', 'Cần phiên Timeblock'); showError('Chưa nhận được phiên bảo mật từ Timeblock.'); return; }
     clearTimeout(state.reconnectTimer); state.reconnectTimer = null; setStatus(state.reconnectToken ? 'reconnecting' : 'authorizing', state.reconnectToken ? 'Reconnecting' : 'Authorizing');
     const socket = new WebSocket(wsUrl()); state.socket = socket;
-    socket.addEventListener('open', () => { setStatus('authorizing', 'Authorizing'); sendAuthentication(socket); });
+    socket.addEventListener('open', () => {
+      if (socket.readyState !== WebSocket.OPEN) return;
+      setStatus('authorizing', 'Authorizing');
+      sendAuthentication(socket);
+    });
     socket.addEventListener('message', (event) => handleMessage(event).catch((error) => showError(error.message)));
     socket.addEventListener('close', (event) => { if (state.ending) return; if (!state.reconnectToken) { resetFailedStart(event.reason); return; } scheduleReconnect(); });
     socket.addEventListener('error', () => setStatus('degraded', 'WebSocket error'));
