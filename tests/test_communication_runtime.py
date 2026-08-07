@@ -67,7 +67,9 @@ def test_http_and_legacy_absence():
         script = client.get('/static/communication.js').text
         assert 'RTCPeerConnection' in script
         assert 'session.authenticate' in script
-        assert 'token: state.sessionToken' not in script
+        assert "params.get('token')" not in script
+        assert 'localStorage' not in script
+        assert 'sessionStorage' not in script
         rendered = home.text + call.text
         assert all(term not in rendered for term in ['BO Trading', 'SLB_POINT', 'TWD/VND', 'USDT/TWD', 'Member portal', 'Crypto dashboard'])
         for path in ['/bo', '/rapid', '/member', '/admin', '/rates', '/wallet', '/affiliate', '/referral', '/crypto', '/odds']:
