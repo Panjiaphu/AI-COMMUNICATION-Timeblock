@@ -141,7 +141,7 @@ def test_two_context_fake_media_signaling_reconnect_and_cleanup(
         page_c.goto(_url(base_url, "participant-c"), wait_until="networkidle")
         page_c.locator("#start-call").click()
         expect(page_c.locator("#connection-pill")).to_have_attribute("data-state", "failed", timeout=15_000)
-        expect(page_c.locator("#call-error")).to_contain_text("Kết nối đã đóng")
+        expect(page_c.locator("#call-error")).to_contain_text("room_full")
         page_c.wait_for_function(
             """() => {
               const snapshot = window.__guiluaQa.snapshot();
