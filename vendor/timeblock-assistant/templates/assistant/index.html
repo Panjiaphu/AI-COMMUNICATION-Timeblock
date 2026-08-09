@@ -1,0 +1,24 @@
+{% extends "assistant/index_core.html" %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_core_v2.css', v='startup-20260730') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_mobile_immersive.css', v='mobile-translation-20260809') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_enterprise_workspace.css', v='enterprise-workspace-20260808') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_network_identity_restore.css', v='network-identity-restore-20260809') }}">
+{% endblock %}
+
+{% block scripts %}
+  <script
+    src="{{ url_for('static', filename='js/assistant_startup_hotfix.js', v='startup-20260730b') }}"
+    data-messaging-advanced-attachments-enabled="{{ 'true' if config.MESSAGING_ADVANCED_ATTACHMENTS_ENABLED else 'false' }}"
+    defer
+  ></script>
+  <script src="{{ url_for('static', filename='js/incoming_call_ringtone.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/assistant.js', v='startup-20260730') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/messaging_core_v2.js', v='startup-20260730') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/messaging_mobile_immersive.js', v='mobile-translation-20260809') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/messaging_enterprise_workspace.js', v='enterprise-workspace-20260808') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/messaging_image_download_platform.js', v='mobile-export-20260808') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/messaging_image_viewer_scroll_guard.js', v='mobile-export-scroll-20260808') }}" defer></script>
+{% endblock %}

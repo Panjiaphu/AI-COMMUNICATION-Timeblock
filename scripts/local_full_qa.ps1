@@ -9,13 +9,15 @@ python scripts/check_legacy_runtime_absence.py
 
 $node = Get-Command node -ErrorAction SilentlyContinue
 if ($node) {
-  node --check app/static/communication.js
-  node --check app/static/service-worker.js
+      node --check app/static/communication.js
+      node --check app/static/assistant_shell.js
+      node --check app/static/service-worker.js
 } else {
   $bundled = "C:\Users\inett\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe"
   if (-not (Test-Path -LiteralPath $bundled)) { throw "Node.js is required for JavaScript syntax QA." }
-  & $bundled --check app/static/communication.js
-  & $bundled --check app/static/service-worker.js
+      & $bundled --check app/static/communication.js
+      & $bundled --check app/static/assistant_shell.js
+      & $bundled --check app/static/service-worker.js
 }
 
 $env:PYTHONPATH = "."

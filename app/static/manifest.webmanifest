@@ -1,13 +1,13 @@
 {
-  "id": "/timeblock-chat",
-  "name": "Timeblock Chat",
-  "short_name": "TB Chat",
-  "description": "Timeblock Communication secure runtime",
-  "start_url": "/communication?source=pwa",
+  "id": "/",
+  "name": "Timeblock AI Assistant",
+  "short_name": "Timeblock AI",
+  "description": "Timeblock AI Assistant, communication and translation",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "theme_color": "#0f6858",
+  "theme_color": "#1f5eff",
   "background_color": "#f7faf9",
   "lang": "vi",
   "icons": [
@@ -23,5 +23,10 @@
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
+  ],
+  "shortcuts": [
+    {"name": "AI Assistant", "short_name": "AI", "url": "/ai"},
+    {"name": "Communication", "short_name": "Chat", "url": "/?mode=communication"},
+    {"name": "Notifications", "short_name": "Alerts", "url": "/notifications"}
   ]
 }

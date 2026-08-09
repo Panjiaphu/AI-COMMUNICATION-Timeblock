@@ -50,12 +50,48 @@ def log_event(result: str, **fields) -> None:
 
 @router.get('/', response_class=HTMLResponse)
 async def home(request: Request) -> HTMLResponse:
+    settings = request.app.state.settings
     locale = resolve_locale(request)
+    session = request.app.state.bff_session_store.get(
+        request.cookies.get(settings.guilua_session_cookie)
+    )
     return templates.TemplateResponse(
         request=request,
-        name='home.html',
-        context={'locale': locale, 'copy': communication_copy(locale)},
+        name='assistant.html',
+        context={
+            'locale': locale,
+            'copy': communication_copy(locale),
+            'session': session,
+            'initial_mode': request.query_params.get('mode') if request.query_params.get('mode') in {'ai', 'communication', 'translation', 'notifications'} else 'ai',
+            'initial_conversation_id': request.query_params.get('conversation_id', ''),
+        },
     )
+
+
+@router.get('/ai', response_class=HTMLResponse)
+async def assistant_deep_link(request: Request) -> HTMLResponse:
+    return await home(request)
+
+
+@router.get('/translate', response_class=HTMLResponse)
+async def translation_deep_link(request: Request) -> HTMLResponse:
+    return await home(request)
+
+
+@router.get('/notifications', response_class=HTMLResponse)
+async def notifications_deep_link(request: Request) -> HTMLResponse:
+    return await home(request)
+
+
+@router.get('/conversations/{conversation_id}', response_class=HTMLResponse)
+async def conversation_deep_link(request: Request, conversation_id: int) -> HTMLResponse:
+    request.scope['query_string'] = f'mode=communication&conversation_id={conversation_id}'.encode()
+    return await home(request)
+
+
+@router.get('/calls/{call_id}', response_class=HTMLResponse)
+async def call_deep_link(request: Request, call_id: str) -> HTMLResponse:
+    return await communication(request)
 
 
 @router.get('/communication', response_class=HTMLResponse)

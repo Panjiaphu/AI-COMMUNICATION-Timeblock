@@ -4,10 +4,13 @@ import asyncio
 from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.communication.manager import RoomManager
 from app.communication.router import router as communication_router
+from app.bff.router import router as bff_router
+from app.bff.session_store import SessionStore
 from app.core.config import BASE_DIR, Settings, get_settings
 from app.integrations.timeblock.client import TimeblockClient
 from app.telemetry.logging import configure_logging
@@ -37,7 +40,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.settings = runtime_settings
     application.state.room_manager = RoomManager(runtime_settings)
     application.state.timeblock_client = TimeblockClient(runtime_settings)
+    application.state.bff_session_store = SessionStore(
+        session_ttl_seconds=runtime_settings.guilua_session_ttl_seconds,
+        pending_ttl_seconds=runtime_settings.guilua_pending_authorization_ttl_seconds,
+        max_entries=runtime_settings.guilua_session_max_entries,
+    )
     application.mount('/static', StaticFiles(directory=BASE_DIR / 'app' / 'static'), name='static')
+
+    @application.get('/service-worker.js', include_in_schema=False)
+    async def service_worker() -> FileResponse:
+        response = FileResponse(BASE_DIR / 'app' / 'static' / 'service-worker.js', media_type='application/javascript')
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Service-Worker-Allowed'] = '/'
+        return response
+
+    application.include_router(bff_router)
     application.include_router(communication_router)
 
     @application.get('/healthz/')
