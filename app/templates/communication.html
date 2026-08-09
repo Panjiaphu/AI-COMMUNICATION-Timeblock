@@ -1,123 +1,142 @@
 <!doctype html>
-<html lang="vi">
+<html lang="{{ locale }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0f6858">
   <meta name="color-scheme" content="light">
-  <title>Timeblock AI Communication</title>
-  <link rel="stylesheet" href="/static/communication.css">
+  <meta name="description" content="{{ copy.runtime }}">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <title>{{ copy.page_title }}</title>
+  <link rel="stylesheet" href="/static/communication.css?v=7">
 </head>
-<body class="call-body" data-runtime-state="waiting_for_timeblock">
-  <header class="runtime-topbar" aria-label="Timeblock Communication Runtime">
+<body class="call-body" data-runtime-state="waiting_for_timeblock" data-pwa-state="PWA_BOOTING">
+  <header class="runtime-topbar" aria-label="{{ copy.runtime }}">
     <div class="runtime-brand">
       <span class="runtime-brand-mark" aria-hidden="true">T</span>
       <span class="runtime-brand-copy">
         <strong>Timeblock</strong>
-        <small>Communication Runtime</small>
+        <small>{{ copy.runtime }}</small>
       </span>
     </div>
     <div class="runtime-topbar-status">
-      <span class="security-pill" title="Thông tin xác thực chỉ được giữ trong bộ nhớ trình duyệt">
+      <span class="security-pill" title="{{ copy.privacy }}">
         <span class="security-icon" aria-hidden="true">✓</span>
-        Phiên bảo mật
+        {{ copy.secure_session }}
       </span>
       <div class="connection-pill" id="connection-pill" data-state="idle" role="status" aria-live="polite">
         <span class="status-dot" aria-hidden="true"></span>
-        <span id="connection-label">Waiting for Timeblock</span>
+        <span id="connection-label">{{ copy.waiting }}</span>
       </div>
     </div>
   </header>
 
   <main class="call-shell" id="call-shell">
+    <section class="pwa-session-card" id="pwa-session-card" aria-labelledby="pwa-session-title">
+      <div>
+        <p class="panel-kicker">{{ copy.pwa_state }}</p>
+        <strong id="pwa-session-title">{{ copy.session_required }}</strong>
+        <p id="pwa-session-guidance">{{ copy.pwa_required }}</p>
+      </div>
+      <a class="pwa-session-link" id="open-timeblock" href="{{ settings.primary_timeblock_handoff_origin }}" rel="noreferrer">{{ copy.open_timeblock }}</a>
+    </section>
+
     <header class="call-header">
       <div class="call-heading">
         <span class="assistant-avatar" aria-hidden="true">T</span>
         <div>
-          <p class="eyebrow">LIÊN LẠC TIMEBLOCK</p>
-          <h1>Cuộc gọi bảo mật</h1>
-          <p class="call-subtitle">Không gian video và phiên dịch trực tiếp của Timeblock.</p>
+          <p class="eyebrow">{{ copy.runtime }}</p>
+          <h1>{{ copy.call_title }}</h1>
+          <p class="call-subtitle">{{ copy.call_subtitle }}</p>
         </div>
       </div>
-      <div class="call-header-note" aria-label="Trạng thái bảo mật">
+      <div class="call-header-note" aria-label="{{ copy.secure_session }}">
         <span class="header-note-dot" aria-hidden="true"></span>
-        <span>WebRTC runtime</span>
+        <span>WebRTC</span>
       </div>
     </header>
 
-    <section class="communication-workspace" aria-label="Không gian cuộc gọi Timeblock">
-      <section class="video-stage" aria-label="Khu vực cuộc gọi">
+    <section class="communication-workspace" aria-label="{{ copy.call_workspace }}">
+      <section class="video-stage" aria-label="{{ copy.call_area }}">
         <article class="remote-frame">
           <video id="remote-video" autoplay playsinline></video>
           <div class="video-placeholder" id="remote-placeholder">
             <span class="placeholder-mark" aria-hidden="true">T</span>
-            <strong>Sẵn sàng cho cuộc gọi</strong>
-            <p id="runtime-guidance">Mở cuộc gọi từ Timeblock để nhận phiên bảo mật.</p>
+            <strong>{{ copy.ready_for_call }}</strong>
+            <p id="runtime-guidance">{{ copy.open_from_timeblock }}</p>
           </div>
           <div class="caption-layer" aria-live="polite" aria-atomic="true">
-            <small>Bản dịch</small>
-            <p id="translated-caption">Bản dịch chưa khả dụng.</p>
+            <small>{{ copy.live_translation }}</small>
+            <p id="translated-caption">{{ copy.translation_unavailable }}</p>
           </div>
         </article>
 
-        <article class="local-frame" aria-label="Xem trước camera của bạn">
+        <article class="local-frame" aria-label="{{ copy.local_preview }}">
           <video id="local-video" autoplay playsinline muted></video>
-          <span>Bạn</span>
+          <span>{{ copy.you }}</span>
         </article>
       </section>
 
       <div class="interpreter-column">
-        <aside class="interpreter-panel" id="interpreter-panel" data-state="expanded" aria-label="Bảng dịch trực tiếp" aria-hidden="false">
+        <aside class="interpreter-panel" id="interpreter-panel" data-state="expanded" aria-label="{{ copy.interpreter }}" aria-hidden="false">
           <div class="panel-header">
             <div>
-              <p class="panel-kicker">DỊCH TRỰC TIẾP</p>
-              <strong>Phiên dịch Timeblock</strong>
-              <small id="interpreter-status">Nhà cung cấp chưa kết nối</small>
+              <p class="panel-kicker">{{ copy.live_translation }}</p>
+              <strong>{{ copy.interpreter }}</strong>
+              <small id="interpreter-status">{{ copy.provider_waiting }}</small>
             </div>
             <div class="panel-actions">
-              <button type="button" id="panel-collapse" aria-label="Thu gọn bảng dịch trực tiếp" aria-controls="interpreter-content" aria-expanded="true">−</button>
-              <button type="button" id="panel-hide" aria-label="Ẩn bảng dịch trực tiếp" aria-controls="interpreter-panel">×</button>
+              <button type="button" id="panel-collapse" aria-label="{{ copy.collapse }}" aria-controls="interpreter-content" aria-expanded="true">−</button>
+              <button type="button" id="panel-hide" aria-label="{{ copy.hide }}" aria-controls="interpreter-panel">×</button>
             </div>
           </div>
           <div class="panel-content" id="interpreter-content">
             <div class="language-row">
-              <label>Nguồn
+              <label>{{ copy.source }}
                 <select id="source-language">
-                  <option value="vi">Tiếng Việt</option>
-                  <option value="zh-TW">繁體中文</option>
-                  <option value="en">English</option>
+                  <option value="vi"{% if locale == 'vi' %} selected{% endif %}>Tiếng Việt</option>
+                  <option value="zh-TW"{% if locale == 'zh-TW' %} selected{% endif %}>繁體中文</option>
+                  <option value="en"{% if locale == 'en' %} selected{% endif %}>English</option>
                 </select>
               </label>
               <span class="language-arrow" aria-hidden="true">→</span>
-              <label>Đích
+              <label>{{ copy.target }}
                 <select id="target-language">
-                  <option value="zh-TW">繁體中文</option>
-                  <option value="vi">Tiếng Việt</option>
-                  <option value="en">English</option>
+                  <option value="zh-TW"{% if locale != 'zh-TW' %} selected{% endif %}>繁體中文</option>
+                  <option value="vi"{% if locale == 'vi' %} selected{% endif %}>Tiếng Việt</option>
+                  <option value="en"{% if locale == 'en' %} selected{% endif %}>English</option>
                 </select>
               </label>
             </div>
             <div class="transcript-box">
-              <small>Nội dung nguồn</small>
-              <p id="source-caption">Chưa có nội dung.</p>
+              <small>{{ copy.source }}</small>
+              <p id="source-caption">{{ copy.no_source }}</p>
             </div>
-            <p class="provider-note">Nội dung gốc luôn là dữ liệu chuẩn. Bản dịch chỉ hiển thị khi nhà cung cấp realtime được kết nối.</p>
+            <p class="provider-note">{{ copy.translation_note }}</p>
           </div>
         </aside>
-        <button type="button" class="panel-restore" id="panel-restore" aria-label="Hiện bảng dịch trực tiếp" aria-controls="interpreter-panel" hidden>Hiện Dịch trực tiếp</button>
+        <button type="button" class="panel-restore" id="panel-restore" aria-label="{{ copy.restore }}" aria-controls="interpreter-panel" hidden>{{ copy.restore }}</button>
       </div>
     </section>
 
-    <nav class="call-controls" aria-label="Điều khiển cuộc gọi">
-      <button type="button" id="start-call" class="control primary" disabled>Bắt đầu</button>
-      <button type="button" id="microphone-toggle" class="control" disabled>Micro</button>
-      <button type="button" id="camera-toggle" class="control" disabled>Camera</button>
-      <button type="button" id="end-call" class="control danger" disabled>Kết thúc</button>
+    <section class="chat-contract-card" aria-labelledby="chat-contract-title">
+      <div class="chat-contract-icon" aria-hidden="true">⌁</div>
+      <div>
+        <strong id="chat-contract-title">{{ copy.chat_waiting }}</strong>
+        <p>{{ copy.chat_note }}</p>
+      </div>
+    </section>
+
+    <nav class="call-controls" aria-label="{{ copy.call_title }}">
+      <button type="button" id="start-call" class="control primary" disabled>{{ copy.start }}</button>
+      <button type="button" id="microphone-toggle" class="control" disabled>{{ copy.microphone }}</button>
+      <button type="button" id="camera-toggle" class="control" disabled>{{ copy.camera }}</button>
+      <button type="button" id="end-call" class="control danger" disabled>{{ copy.end }}</button>
     </nav>
     <p class="call-error" id="call-error" role="alert" aria-live="assertive"></p>
   </main>
 
   <script id="guilua-runtime-config" type="application/json">{{ runtime_config | tojson }}</script>
-  <script src="/static/communication.js" defer></script>
+  <script src="/static/communication.js?v=7" defer></script>
 </body>
 </html>

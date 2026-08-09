@@ -1,26 +1,6 @@
 name: Communication Browser QA
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - "app/communication/**"
-      - "app/integrations/timeblock/**"
-      - "app/telemetry/**"
-      - "app/templates/communication.html"
-      - "app/static/communication.css"
-      - "app/static/communication.js"
-      - "app/core/config.py"
-      - "app/main.py"
-      - "tests/browser/**"
-      - "tests/test_structured_logging.py"
-      - "tests/test_browser_artifact_privacy.py"
-      - "scripts/check_browser_artifacts.py"
-      - "scripts/start_render.sh"
-      - "docs/timeblock-control-plane-contract.md"
-      - "GUILUA_PROJECT_MEMORY.md"
-      - ".github/workflows/communication-runtime.yml"
-      - ".github/workflows/communication-browser-qa.yml"
   workflow_dispatch:
 
 jobs:

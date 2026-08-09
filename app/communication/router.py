@@ -14,6 +14,8 @@ from pydantic import ValidationError
 
 from app.communication.manager import RoomManagerError
 from app.communication.schemas import AuthenticationEnvelope, EventEnvelope, EventName
+from app.core.communication_i18n import communication_copy
+from app.core.i18n import resolve_locale
 from app.integrations.timeblock.client import TimeblockIntegrationError
 
 logger = logging.getLogger('guilua.communication')
@@ -48,21 +50,31 @@ def log_event(result: str, **fields) -> None:
 
 @router.get('/', response_class=HTMLResponse)
 async def home(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request=request, name='home.html', context={})
+    locale = resolve_locale(request)
+    return templates.TemplateResponse(
+        request=request,
+        name='home.html',
+        context={'locale': locale, 'copy': communication_copy(locale)},
+    )
 
 
 @router.get('/communication', response_class=HTMLResponse)
 async def communication(request: Request) -> HTMLResponse:
     settings = request.app.state.settings
+    locale = resolve_locale(request)
+    copy = communication_copy(locale)
     runtime_config = {
         'handoff_event': 'timeblock.communication.handoff.v1',
         'allowed_handoff_origins': sorted(settings.timeblock_handoff_origins),
         'development_query_handoff': settings.development_query_handoff_enabled,
+        'timeblock_entry_url': settings.primary_timeblock_handoff_origin,
+        'locale': locale,
+        'copy': copy,
     }
     return templates.TemplateResponse(
         request=request,
         name='communication.html',
-        context={'runtime_config': runtime_config},
+        context={'runtime_config': runtime_config, 'locale': locale, 'copy': copy, 'settings': settings},
     )
 
 

@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from gunicorn.glogging import Logger as GunicornLogger
+try:
+    from gunicorn.glogging import Logger as GunicornLogger
+except (ImportError, ModuleNotFoundError):  # pragma: no cover - Windows development fallback
+    class GunicornLogger:
+        """Small import-time fallback for development environments without Gunicorn."""
+
+        def setup(self, cfg) -> None:
+            return None
 
 from app.telemetry.logging import JsonLogFormatter
 

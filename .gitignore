@@ -6,3 +6,4 @@ guilua.db
 .env
 staticfiles/
 media/
+artifacts/

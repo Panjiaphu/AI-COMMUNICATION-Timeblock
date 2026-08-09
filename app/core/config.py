@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     secret_key: str = Field(default='dev-only-change-me')
     deployment_version: str = 'development'
     public_base_url: str = 'http://127.0.0.1:8000'
+    timeblock_app_url: str = 'http://127.0.0.1:5000'
+    default_locale: str = 'vi'
+    supported_locales: tuple[str, ...] = ('vi', 'zh-TW', 'en')
 
     timeblock_api_url: str | None = None
     timeblock_api_key: str | None = None
@@ -58,6 +61,11 @@ class Settings(BaseSettings):
     @property
     def timeblock_handoff_origins(self) -> set[str]:
         return {item.strip().rstrip('/') for item in self.allowed_timeblock_handoff_origins.split(',') if item.strip()}
+
+    @property
+    def primary_timeblock_handoff_origin(self) -> str:
+        configured = self.timeblock_app_url.strip().rstrip('/')
+        return configured if configured in self.timeblock_handoff_origins else sorted(self.timeblock_handoff_origins)[0] if self.timeblock_handoff_origins else configured
 
     @property
     def development_query_handoff_enabled(self) -> bool:

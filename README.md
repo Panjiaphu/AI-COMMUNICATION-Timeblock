@@ -19,6 +19,15 @@ Phase 2A adds a production-safe session boundary:
 
 The Guilua receiver is implemented in this repository. The corresponding Timeblock browser sender remains a cross-repository integration dependency until it is added to `Panjiaphu/fumap-bot-life`.
 
+The current hardening candidate also includes a source-locked local vendor of
+the Timeblock Communication presentation layer, a unique `Timeblock Chat` PWA
+manifest, and a static-shell-only service worker. A standalone launch never
+restores a session credential; it waits for a fresh exact-origin handoff.
+
+The Messaging Core V2 UI is not enabled against fake data. Guilua will only
+enable directory, conversation, message, media, and call client surfaces after
+the Timeblock-owned Communication Client Contract is available.
+
 ## Zero-cost Render architecture
 
 The current foundation intentionally uses:
@@ -107,11 +116,14 @@ See `docs/timeblock-control-plane-contract.md` for the exact Contract V1 boundar
 ## Testing
 
 ```bash
-python -m compileall app
-PYTHONPATH=. pytest -q
+# Phase 8 only; do not run before the phase gate.
+pwsh -File scripts/local_full_qa.ps1
 ```
 
-The exact-head CI suite also runs rendered Chromium/WebKit browser QA, fake-media two-context WebRTC, reconnect/hangup cleanup, URL-secret assertions, and browser artifact privacy/identity checks.
+The local Phase 8 gate covers Python compile/import, JavaScript syntax, the
+default suite, rendered Chromium/WebKit browser QA, fake-media two-context
+WebRTC, reconnect/hangup cleanup, URL-secret assertions, and browser artifact
+privacy/identity checks. GitHub Actions workflows are manual-only.
 
 Hosted browser QA is not a claim of physical iOS/Android validation.
 
@@ -126,3 +138,5 @@ Legacy BO, rates, member, wallet, point, treasury, affiliate, referral, and sett
 - P2P calls can fail on strict NAT without TURN.
 - Physical-device and strict-NAT validation remain separate gates.
 - STT, realtime translation, glossary application, translated captions from a real provider, TTS, durable result orchestration, and usage retry are Phase 2B or later concerns.
+- Messaging Client Contract V2 and the Timeblock browser sender for the
+  standalone chat PWA are not yet implemented; see `docs/phase-status.md`.

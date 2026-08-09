@@ -64,10 +64,10 @@ button:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid rgba
 .header-note-dot{width:7px;height:7px;border-radius:50%;background:var(--tb-ui-success)}
 
 .communication-workspace{
-  display:grid;grid-template-columns:minmax(0,1.7fr) minmax(290px,.72fr);min-height:610px;overflow:hidden;
+  position:relative;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(290px,.72fr);min-height:min(610px,calc(100vh - 170px));overflow:hidden;
   border:1px solid var(--tb-ui-border);border-radius:var(--tb-ui-radius-lg);background:var(--tb-ui-surface);box-shadow:var(--tb-ui-shadow)
 }
-.video-stage{position:relative;min-width:0;min-height:610px;background:var(--tb-ui-surface-subtle)}
+.video-stage{position:relative;min-width:0;min-height:min(610px,calc(100vh - 170px));background:var(--tb-ui-surface-subtle)}
 .remote-frame{position:absolute;inset:0;overflow:hidden;background:#edf4f1}
 .remote-frame::after{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,rgba(255,255,255,.08),rgba(15,104,88,.035));content:""}
 .remote-frame video{position:relative;z-index:1;width:100%;height:100%;object-fit:cover}
@@ -79,7 +79,7 @@ button:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid rgba
 .local-frame{position:absolute;z-index:4;top:16px;right:16px;width:min(24%,210px);aspect-ratio:4/3;overflow:hidden;border:2px solid #fff;border-radius:16px;background:#dfe8e4;box-shadow:0 12px 30px rgba(25,57,48,.18)}
 .local-frame video{width:100%;height:100%;object-fit:cover}
 .local-frame span{position:absolute;left:8px;bottom:8px;padding:4px 7px;border-radius:999px;color:#fff;background:rgba(23,33,30,.72);font-size:.66rem;font-weight:760}
-.caption-layer{position:absolute;z-index:5;left:50%;bottom:22px;width:min(680px,calc(100% - 48px));transform:translateX(-50%);text-align:center;pointer-events:none}
+.caption-layer{position:absolute;z-index:5;left:50%;bottom:88px;width:min(680px,calc(100% - 48px));transform:translateX(-50%);text-align:center;pointer-events:none}
 .caption-layer small{display:block;margin-bottom:5px;color:#36564d;font-size:.64rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
 .caption-layer p{display:inline-block;max-width:100%;margin:0;padding:9px 13px;border:1px solid rgba(221,231,227,.92);border-radius:11px;color:#294139;background:rgba(255,255,255,.9);box-shadow:0 8px 22px rgba(25,57,48,.08);font-size:.82rem;line-height:1.55;overflow-wrap:anywhere}
 
@@ -113,9 +113,19 @@ button:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid rgba
 .control:disabled{opacity:.44}
 .call-error{min-height:1.4em;margin:10px 0 0;color:var(--tb-ui-danger);text-align:center;font-size:.76rem}
 
+.pwa-session-card,.chat-contract-card{display:flex;align-items:center;gap:14px;margin:0 0 14px;padding:14px 16px;border:1px solid var(--tb-ui-border);border-radius:var(--tb-ui-radius-lg);background:var(--tb-ui-surface);box-shadow:var(--tb-ui-shadow)}
+.pwa-session-card[hidden]{display:none}
+.pwa-session-card strong,.chat-contract-card strong{display:block;color:var(--tb-ui-text);font-size:.82rem}
+.pwa-session-card p,.chat-contract-card p{margin:4px 0 0;color:var(--tb-ui-text-muted);font-size:.72rem;line-height:1.5}
+.pwa-session-link{flex:0 0 auto;min-height:42px;display:inline-flex;align-items:center;padding:0 13px;border:1px solid var(--tb-ui-accent);border-radius:10px;color:#fff;background:var(--tb-ui-accent);font-size:.72rem;font-weight:780;text-decoration:none}
+.pwa-session-link:hover{background:var(--tb-ui-accent-strong)}
+.chat-contract-card{margin-top:14px;background:var(--tb-ui-surface-subtle)}
+.chat-contract-icon{display:grid;flex:0 0 36px;width:36px;height:36px;place-items:center;border-radius:12px;color:var(--tb-ui-accent);background:var(--tb-ui-accent-soft);font-size:1.25rem;font-weight:800}
+.chat-contract-card p{max-width:760px}
+
 @media(max-width:900px){
   .communication-workspace{grid-template-columns:minmax(0,1fr);min-height:0}
-  .video-stage{min-height:clamp(390px,58dvh,560px)}
+  .video-stage{min-height:calc(100dvh - 500px);max-height:54dvh}
   .interpreter-column{border-top:1px solid var(--tb-ui-border);border-left:0}
   .interpreter-panel{height:auto}
 }
@@ -129,23 +139,30 @@ button:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid rgba
   .eyebrow,.call-subtitle,.call-header-note{display:none}
   .call-header h1{font-size:1.05rem}
   .communication-workspace{border-radius:16px}
-  .video-stage{min-height:calc(var(--assistant-visual-viewport-height,100dvh) - 235px);max-height:68dvh}
+  .video-stage{min-height:max(390px,calc(100dvh - 465px));max-height:58dvh}
   .local-frame{top:10px;right:10px;width:min(32vw,140px);border-radius:13px}
-  .caption-layer{bottom:14px;width:calc(100% - 24px)}
+  .caption-layer{bottom:70px;width:calc(100% - 24px)}
   .caption-layer small{display:none}
   .caption-layer p{font-size:.75rem}
   .panel-header{min-height:64px;padding:11px 12px}
   .panel-content{padding:12px}
+  .transcript-box{min-height:80px}
   .provider-note{display:none}
   .call-controls{width:calc(100% - 20px);justify-content:center;bottom:max(8px,env(safe-area-inset-bottom));padding:6px;border-radius:14px}
   .control{min-width:0;flex:1;min-height:44px;padding:0 7px;font-size:.72rem}
+  .pwa-session-card,.chat-contract-card{align-items:flex-start;padding:12px}
+  .pwa-session-card{flex-direction:column}
+  .pwa-session-link{width:100%;justify-content:center}
+}
+@media(min-width:761px) and (max-width:900px){
+  .video-stage{min-height:calc(100dvh - 590px);max-height:52dvh}
 }
 @media(max-height:520px) and (orientation:landscape){
   .runtime-topbar,.call-header{display:none}
   .call-body{padding:max(6px,env(safe-area-inset-top)) max(84px,calc(6px + env(safe-area-inset-right))) max(6px,env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left))}
   .communication-workspace{display:block;min-height:calc(100dvh - 12px);border-radius:14px}
   .video-stage{min-height:calc(100dvh - 12px);max-height:none}
-  .interpreter-column{position:absolute;z-index:7;left:18px;bottom:18px;width:min(340px,44vw);border:1px solid var(--tb-ui-border);border-radius:14px;overflow:hidden;box-shadow:0 12px 34px rgba(25,57,48,.16)}
+  .interpreter-column{position:absolute;z-index:7;left:18px;bottom:18px;width:min(300px,40vw);border:1px solid var(--tb-ui-border);border-radius:14px;overflow:hidden;box-shadow:0 12px 34px rgba(25,57,48,.16)}
   .panel-header{min-height:58px}
   .panel-content{max-height:45dvh;overflow:auto;background:#fff}
   .local-frame{width:min(18vw,150px);right:12px;top:12px}

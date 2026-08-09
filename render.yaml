@@ -15,6 +15,8 @@ services:
         value: false
       - key: PUBLIC_BASE_URL
         value: https://guilua.onrender.com
+      - key: TIMEBLOCK_APP_URL
+        value: https://timeblock-commercial-pro.onrender.com
       - key: SECRET_KEY
         sync: false
       - key: TIMEBLOCK_API_URL
@@ -23,6 +25,14 @@ services:
         sync: false
       - key: ALLOWED_WEBSOCKET_ORIGINS
         value: https://guilua.onrender.com
+      - key: ALLOWED_TIMEBLOCK_HANDOFF_ORIGINS
+        value: https://timeblock-commercial-pro.onrender.com,https://fumapgo.com
+      - key: ALLOW_MISSING_WEBSOCKET_ORIGIN
+        value: false
+      - key: WEBSOCKET_AUTH_TIMEOUT_SECONDS
+        value: 5
+      - key: MAX_AUTH_EVENT_BYTES
+        value: 16384
       - key: CONNECTION_STALE_SECONDS
         value: 120
       - key: RECONNECT_TOKEN_SECONDS

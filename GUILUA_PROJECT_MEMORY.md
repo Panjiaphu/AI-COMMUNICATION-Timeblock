@@ -105,3 +105,20 @@ Only after secure handoff and exact-head gates are stable, proceed to Realtime A
 `audio → VAD → STT → partial/final transcript → translation → glossary → translated caption → optional TTS → Timeblock result/usage callback`
 
 Do not combine that provider integration with the authentication-boundary PR.
+
+## 2026-08-09 ?? PWA hardening candidate
+
+- Working branch: `agent/timeblock-chat-pwa-final`, based on PR #3 head
+  `ab52967a060e5510636a879cd71c8e1406760518`.
+- Timeblock presentation source is pinned to current main
+  `1ca83486c8985f2c28d60a767be9b30a68701dae` in
+  `vendor/timeblock-communication/SOURCE_LOCK.json`.
+- Added a unique Timeblock Chat manifest, static-only service worker,
+  fail-closed PWA re-entry state, localized standalone runtime copy, exact
+  production handoff settings, manual-only QA workflows, and local Phase 8
+  scripts.
+- Messaging Core V2 is intentionally not enabled in Guilua: the existing
+  Contract V1 is call-session scoped, and no secure Timeblock browser sender
+  plus client contract for directory/conversations/messages/media exists yet.
+- Do not claim full Communication/Chat parity or production messaging
+  completion until that cross-repository contract is implemented and tested.
