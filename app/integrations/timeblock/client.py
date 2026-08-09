@@ -18,12 +18,21 @@ class TimeblockIntegrationError(RuntimeError):
 class TimeblockClient:
     settings: Settings
 
-    async def _post(self, path: str, payload: dict[str, Any], *, idempotency_key: str | None = None) -> dict:
+    async def _post(
+        self,
+        path: str,
+        payload: dict[str, Any],
+        *,
+        idempotency_key: str | None = None,
+        client_session: str | None = None,
+    ) -> dict:
         if not self.settings.timeblock_api_url or not self.settings.timeblock_api_key:
             raise TimeblockIntegrationError('timeblock_not_configured')
         headers = {'Authorization': f'Bearer {self.settings.timeblock_api_key}'}
         if idempotency_key:
             headers['Idempotency-Key'] = idempotency_key
+        if client_session:
+            headers['X-Timeblock-Client-Session'] = client_session
         try:
             async with httpx.AsyncClient(timeout=self.settings.timeblock_timeout_seconds) as client:
                 response = await client.post(
@@ -41,6 +50,58 @@ class TimeblockClient:
         if not isinstance(data, dict):
             raise TimeblockIntegrationError('timeblock_invalid_response')
         return data
+
+    async def _get(self, path: str, *, client_session: str, params: dict[str, Any] | None = None) -> dict:
+        if not self.settings.timeblock_api_url or not self.settings.timeblock_api_key:
+            raise TimeblockIntegrationError('timeblock_not_configured')
+        headers = {
+            'Authorization': f'Bearer {self.settings.timeblock_api_key}',
+            'X-Timeblock-Client-Session': client_session,
+        }
+        try:
+            async with httpx.AsyncClient(timeout=self.settings.timeblock_timeout_seconds) as client:
+                response = await client.get(
+                    f"{self.settings.timeblock_api_url.rstrip('/')}{path}",
+                    headers=headers,
+                    params=params or {},
+                )
+                response.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise TimeblockIntegrationError('timeblock_request_failed') from exc
+        try:
+            data = response.json() if response.content else {}
+        except ValueError as exc:
+            raise TimeblockIntegrationError('timeblock_invalid_response') from exc
+        return data
+
+    async def exchange_guilua_code(self, code: str, redirect_uri: str) -> dict:
+        return await self._post(
+            '/api/guilua/token',
+            {
+                'grant_type': 'authorization_code',
+                'client_id': self.settings.guilua_client_id,
+                'code': code,
+                'redirect_uri': redirect_uri,
+            },
+        )
+
+    async def refresh_guilua_session(self, token: str) -> dict:
+        return await self._post(
+            '/api/guilua/token/refresh',
+            {'client_id': self.settings.guilua_client_id, 'session_token': token},
+        )
+
+    async def revoke_guilua_session(self, token: str) -> None:
+        await self._post(
+            '/api/guilua/session/revoke',
+            {'client_id': self.settings.guilua_client_id, 'session_token': token},
+        )
+
+    async def client_get(self, path: str, token: str, *, params: dict[str, Any] | None = None) -> dict:
+        return await self._get(path, client_session=token, params=params)
+
+    async def client_post(self, path: str, token: str, payload: dict[str, Any]) -> dict:
+        return await self._post(path, payload, client_session=token)
 
     @staticmethod
     def _bind_authorized_session(

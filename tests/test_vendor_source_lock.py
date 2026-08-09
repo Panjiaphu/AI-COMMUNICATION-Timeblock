@@ -12,7 +12,7 @@ VENDOR = ROOT / "vendor/timeblock-communication"
 def test_vendor_lock_is_pinned_to_current_timeblock_main():
     lock = json.loads((VENDOR / "SOURCE_LOCK.json").read_text(encoding="utf-8"))
     assert lock["source_repo"] == "Panjiaphu/fumap-bot-life"
-    assert lock["source_sha"] == "1ca83486c8985f2c28d60a767be9b30a68701dae"
+    assert lock["source_sha"] == "3c18c1f115dabc5b654c806a8911c40c9bdbeb18"
     assert lock["sync_version"] == 1
     assert len(lock["source_paths"]) == 15
 

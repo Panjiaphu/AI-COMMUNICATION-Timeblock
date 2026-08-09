@@ -1,0 +1,155 @@
+.assistant-call-stage {
+  --call-interpreter-panel-height: 0px;
+}
+
+.assistant-call-interpreter {
+  overflow: hidden;
+}
+
+.assistant-call-interpreter-header {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  min-width: 0;
+  padding: 2px;
+  background: rgba(4, 20, 15, 0.96);
+}
+
+.assistant-call-interpreter-heading-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.assistant-call-interpreter-heading-copy strong,
+.assistant-call-interpreter-heading-copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assistant-call-interpreter-heading-copy span {
+  color: #b8cbc4;
+  font-size: 0.68rem;
+  line-height: 1.3;
+}
+
+.assistant-call-interpreter-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.assistant-call-interpreter .assistant-call-interpreter-state-button {
+  display: inline-grid;
+  min-width: 44px;
+  min-height: 44px;
+  place-items: center;
+  padding: 0;
+  font: inherit;
+  font-size: 1.25rem;
+  font-weight: 850;
+}
+
+.assistant-call-interpreter .assistant-call-interpreter-state-button[hidden] {
+  display: none;
+}
+
+.assistant-call-interpreter .assistant-call-interpreter-state-button:focus-visible {
+  outline: 3px solid rgba(120, 235, 196, 0.78);
+  outline-offset: 2px;
+}
+
+.assistant-call-interpreter-body {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  gap: 11px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.assistant-call-interpreter[data-interpreter-state="collapsed"] {
+  gap: 0;
+}
+
+.assistant-call-interpreter[data-interpreter-state="collapsed"] .assistant-call-interpreter-body,
+.assistant-call-interpreter[data-interpreter-state="collapsed"] [data-call-interpreter-collapse],
+.assistant-call-interpreter[data-interpreter-state="expanded"] [data-call-interpreter-expand] {
+  display: none;
+}
+
+@media (min-width: 1200px) {
+  body.timeblock-call-active .assistant-call-interpreter {
+    width: min(340px, calc(100% - 320px));
+    max-height: calc(100% - 190px);
+    padding: 10px;
+  }
+
+  body.timeblock-call-active .assistant-call-interpreter[data-interpreter-state="collapsed"] {
+    max-height: 58px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  body.timeblock-call-active .assistant-call-interpreter {
+    max-height: min(46dvh, 400px);
+  }
+
+  body.timeblock-call-active .assistant-call-interpreter[data-interpreter-state="collapsed"] {
+    max-height: 58px;
+  }
+
+  body.timeblock-call-active .assistant-call-caption {
+    bottom: calc(94px + var(--call-interpreter-panel-height, 0px) + 12px);
+  }
+}
+
+@media (max-width: 767px) {
+  body.timeblock-call-active .assistant-call-interpreter {
+    max-height: min(42dvh, 360px);
+    padding: 8px;
+  }
+
+  body.timeblock-call-active .assistant-call-interpreter[data-interpreter-state="collapsed"] {
+    max-height: calc(58px + var(--timeblock-call-safe-bottom));
+  }
+
+  body.timeblock-call-active .assistant-call-interpreter-body {
+    max-height: calc(min(42dvh, 360px) - 58px);
+  }
+
+  body.timeblock-call-active .assistant-call-caption {
+    bottom: calc(88px + var(--timeblock-call-safe-bottom) + var(--call-interpreter-panel-height, 0px) + 12px);
+  }
+}
+
+@media (max-width: 900px) and (max-height: 500px) and (orientation: landscape) {
+  body.timeblock-call-active .assistant-call-interpreter {
+    top: calc(52px + var(--timeblock-call-safe-top));
+    right: auto;
+    bottom: calc(58px + var(--timeblock-call-safe-bottom));
+    left: max(8px, var(--timeblock-call-safe-left));
+    width: min(320px, 46vw);
+    max-height: none;
+  }
+
+  body.timeblock-call-active .assistant-call-interpreter[data-interpreter-state="collapsed"] {
+    width: min(320px, 46vw);
+    max-height: 58px;
+  }
+
+  body.timeblock-call-active .assistant-call-interpreter-body {
+    max-height: calc(100dvh - 128px - var(--timeblock-call-safe-top) - var(--timeblock-call-safe-bottom));
+  }
+
+  body.timeblock-call-active .assistant-call-caption {
+    right: max(10px, var(--timeblock-call-safe-right));
+    bottom: calc(66px + var(--timeblock-call-safe-bottom));
+    left: calc(min(320px, 46vw) + 18px + var(--timeblock-call-safe-left));
+    width: auto;
+    transform: none;
+  }
+}

@@ -1,0 +1,128 @@
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 100;
+  transform: translateY(-140%);
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: #fff;
+  background: var(--accent-strong);
+  font-weight: 900;
+  box-shadow: 0 12px 30px rgba(20, 23, 18, 0.18);
+  transition: transform 160ms ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+.site-header {
+  max-width: calc(100vw - 48px);
+}
+
+main > .business-shell,
+main > .admin-console {
+  padding-top: 104px;
+}
+
+.desktop-nav,
+.nav-actions,
+.language-switcher,
+.footer-links {
+  min-width: 0;
+}
+
+.desktop-nav a,
+.language-switcher a,
+.footer-links a,
+.mobile-bottom-nav a {
+  overflow-wrap: anywhere;
+  line-height: 1.18;
+  text-align: center;
+}
+
+.language-switcher {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.language-switcher .ghost-link {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.language-switcher .ghost-link.active {
+  border: 1px solid rgba(29, 111, 95, 0.22);
+  background: rgba(29, 111, 95, 0.08);
+}
+
+.content-filters label span {
+  line-height: 1.25;
+}
+
+.content-filters select {
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1180px) {
+  .site-header {
+    gap: 12px;
+  }
+
+  .nav-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 760px) {
+  .site-header {
+    max-width: calc(100vw - 24px);
+    flex-wrap: wrap;
+  }
+
+  main > .business-shell,
+  main > .admin-console {
+    padding-top: 86px;
+  }
+
+  .nav-actions {
+    flex: 1 0 100%;
+    justify-content: flex-start;
+    margin-left: 0;
+    max-width: 100%;
+  }
+
+  .language-switcher {
+    justify-content: flex-start;
+    max-width: 100%;
+  }
+
+  .language-switcher .ghost-link {
+    display: inline-flex;
+    min-height: 32px;
+    padding: 0 8px;
+    font-size: 0.72rem;
+  }
+
+  .content-filters {
+    gap: 10px;
+  }
+
+  .content-filters select,
+  .content-filters button {
+    min-height: 44px;
+  }
+
+  .mobile-bottom-nav a {
+    min-width: 0;
+    padding: 4px 2px;
+    word-break: keep-all;
+  }
+}

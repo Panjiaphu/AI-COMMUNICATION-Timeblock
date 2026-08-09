@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 
-    app_name: str = 'Guilua Communication Runtime'
+    app_name: str = 'Guilua Timeblock AI Assistant'
     app_env: str = 'development'
     debug: bool = True
     secret_key: str = Field(default='dev-only-change-me')
@@ -22,6 +22,12 @@ class Settings(BaseSettings):
 
     timeblock_api_url: str | None = None
     timeblock_api_key: str | None = None
+    guilua_client_id: str = 'guilua'
+    guilua_session_cookie: str = 'guilua_session'
+    guilua_session_ttl_seconds: int = Field(default=14400, ge=300, le=86400)
+    guilua_pending_authorization_ttl_seconds: int = Field(default=120, ge=60, le=600)
+    guilua_session_max_entries: int = Field(default=10000, ge=100, le=100000)
+    allow_missing_bff_origin: bool = True
     timeblock_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
     allow_development_session_fallback: bool = False
 
@@ -77,6 +83,8 @@ class Settings(BaseSettings):
             raise ValueError('SECRET_KEY must be set to a strong value in production')
         if self.is_production and self.allow_development_session_fallback:
             raise ValueError('ALLOW_DEVELOPMENT_SESSION_FALLBACK must be false in production')
+        if self.is_production and self.allow_missing_bff_origin:
+            self.allow_missing_bff_origin = False
         if self.is_production and self.allow_missing_websocket_origin:
             self.allow_missing_websocket_origin = False
         if self.is_production and not self.websocket_origins:

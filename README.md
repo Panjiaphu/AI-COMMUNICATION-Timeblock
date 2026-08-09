@@ -1,10 +1,14 @@
-# Guilua Communication Runtime
+# Guilua Timeblock AI Assistant
 
-Guilua is the realtime communication runtime for Timeblock. It provides the browser/PWA surface, WebSocket session events, WebRTC signaling, participant lifecycle, reconnect foundations, translated-caption delivery, and runtime telemetry.
+Guilua is the standalone Timeblock AI Assistant PWA. Its root surface provides the AI workspace, Timeblock-authoritative messaging entry points, notifications, translation hand-off, and deep links while retaining the existing realtime communication runtime at `/communication`.
 
 Timeblock remains the Control Plane and durable System of Record for identity, workspace membership, permission, entitlement, quota, glossary master, transcript, usage ledger, billing, audit, and retention.
 
 ## Current phase
+
+The Assistant Client Contract V2 is being delivered across the two repositories. Timeblock owns identity, profile, entitlement, quota, AI history, directory, connections, presence, conversations, messages, media, calls, notifications, and audit. Guilua owns only the browser shell and a bounded process-local BFF session that stores an opaque browser cookie plus the server-side Timeblock session credential.
+
+The root `/` route is the Assistant PWA. `/communication` remains a compatibility route for the existing WebRTC/interpreter runtime. `/ai`, `/translate`, `/notifications`, `/conversations/<id>`, and `/calls/<id>` are supported deep-link entry points.
 
 The Timeblock Communication Contract V1 is implemented on the Timeblock control plane and consumed by Guilua.
 

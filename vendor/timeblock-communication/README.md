@@ -5,7 +5,7 @@ presentation layer. It is not loaded from GitHub or another network source at
 runtime.
 
 - Source repository: `Panjiaphu/fumap-bot-life`
-- Source SHA: `1ca83486c8985f2c28d60a767be9b30a68701dae`
+- Source SHA: `3c18c1f115dabc5b654c806a8911c40c9bdbeb18`
 - Lock file: `SOURCE_LOCK.json`
 - Sync command: `python scripts/sync_timeblock_communication_ui.py ...`
 

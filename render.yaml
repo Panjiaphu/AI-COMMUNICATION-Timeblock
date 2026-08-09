@@ -23,6 +23,18 @@ services:
         sync: false
       - key: TIMEBLOCK_API_KEY
         sync: false
+      - key: GUILUA_CLIENT_ID
+        value: guilua
+      - key: GUILUA_SESSION_COOKIE
+        value: guilua_session
+      - key: GUILUA_SESSION_TTL_SECONDS
+        value: 14400
+      - key: GUILUA_PENDING_AUTHORIZATION_TTL_SECONDS
+        value: 120
+      - key: GUILUA_SESSION_MAX_ENTRIES
+        value: 10000
+      - key: ALLOW_MISSING_BFF_ORIGIN
+        value: false
       - key: ALLOWED_WEBSOCKET_ORIGINS
         value: https://guilua.onrender.com
       - key: ALLOWED_TIMEBLOCK_HANDOFF_ORIGINS

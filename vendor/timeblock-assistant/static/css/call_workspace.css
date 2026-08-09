@@ -1,0 +1,505 @@
+/* Timeblock responsive call workspace.
+ * Loaded only on the authenticated Assistant page by call_answer_bootstrap.js.
+ */
+
+:root {
+  --timeblock-call-viewport-height: 100dvh;
+  --timeblock-call-safe-top: env(safe-area-inset-top, 0px);
+  --timeblock-call-safe-right: env(safe-area-inset-right, 0px);
+  --timeblock-call-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --timeblock-call-safe-left: env(safe-area-inset-left, 0px);
+}
+
+body.timeblock-call-active:not(.timeblock-call-minimized) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body.timeblock-call-active:not(.timeblock-call-minimized)::before {
+  position: fixed;
+  z-index: 2050;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(31, 104, 86, 0.24), transparent 42%),
+    rgba(3, 13, 10, 0.78);
+  backdrop-filter: blur(12px);
+  content: "";
+}
+
+body.timeblock-call-active .assistant-call-stage {
+  isolation: isolate;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #06110d;
+  box-shadow: 0 32px 100px rgba(0, 0, 0, 0.48);
+}
+
+body.timeblock-call-active .assistant-call-stage:not(.is-minimized) {
+  position: fixed;
+  z-index: 2200;
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  width: min(94vw, 1380px);
+  height: min(82dvh, 860px);
+  max-height: calc(var(--timeblock-call-viewport-height, 100dvh) - 32px);
+  min-height: min(520px, calc(var(--timeblock-call-viewport-height, 100dvh) - 32px));
+  border-radius: 26px;
+  transform: translate(-50%, -50%);
+}
+
+body.timeblock-call-active .assistant-call-stage.is-audio:not(.is-minimized) {
+  width: min(90vw, 760px);
+  height: min(74dvh, 680px);
+}
+
+body.timeblock-call-active .assistant-call-stage-header {
+  min-height: 68px;
+  padding: 14px 18px;
+  background: linear-gradient(180deg, rgba(2, 10, 8, 0.94), rgba(2, 10, 8, 0.52) 62%, transparent);
+}
+
+body.timeblock-call-active .assistant-call-stage-header > div:first-child {
+  min-width: 0;
+}
+
+body.timeblock-call-active .assistant-call-stage-header strong {
+  max-width: min(62vw, 720px);
+  font-size: clamp(0.82rem, 1.1vw, 1rem);
+}
+
+body.timeblock-call-active .assistant-call-live-dot {
+  width: 10px;
+  height: 10px;
+  box-shadow: 0 0 0 6px rgba(56, 213, 138, 0.16);
+}
+
+body.timeblock-call-active .assistant-call-stage-actions {
+  align-items: center;
+  gap: 8px;
+}
+
+body.timeblock-call-active [data-call-fit-media] {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+body.timeblock-call-active .assistant-call-stage.is-audio [data-call-fit-media] {
+  display: none;
+}
+
+body.timeblock-call-active .assistant-call-canvas {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(42, 112, 91, 0.42), transparent 38%),
+    linear-gradient(145deg, #081a15, #020806 72%);
+}
+
+body.timeblock-call-active .assistant-remote-media {
+  object-fit: cover;
+  object-position: center;
+}
+
+body.timeblock-call-active .assistant-call-stage.is-media-contain .assistant-remote-media {
+  object-fit: contain;
+  background: #020806;
+}
+
+body.timeblock-call-active .assistant-call-placeholder {
+  padding: 86px 24px 120px;
+  text-align: center;
+}
+
+body.timeblock-call-active .assistant-call-placeholder .assistant-avatar {
+  width: clamp(92px, 10vw, 132px);
+  height: clamp(92px, 10vw, 132px);
+  border-radius: 34%;
+  font-size: clamp(1.5rem, 3vw, 2.3rem);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.34),
+    0 0 0 12px rgba(52, 196, 145, 0.08);
+}
+
+body.timeblock-call-active .assistant-call-stage.is-audio .assistant-call-placeholder .assistant-avatar {
+  animation: timeblock-call-breathe 2.4s ease-in-out infinite;
+}
+
+body.timeblock-call-active .assistant-local-media-wrap {
+  top: 78px;
+  right: 20px;
+  width: clamp(170px, 18vw, 260px);
+  aspect-ratio: 4 / 3;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  box-shadow: 0 22px 56px rgba(0, 0, 0, 0.42);
+}
+
+body.timeblock-call-active .assistant-call-caption {
+  bottom: 118px;
+  width: min(760px, calc(100% - 260px));
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(2, 12, 9, 0.82);
+}
+
+body.timeblock-call-active .assistant-call-interpreter {
+  top: 82px;
+  left: 20px;
+  width: min(380px, calc(100% - 320px));
+  max-height: calc(100% - 190px);
+  overflow-y: auto;
+  border-radius: 18px;
+}
+
+body.timeblock-call-active .assistant-call-control-dock {
+  right: 50%;
+  bottom: 24px;
+  max-width: calc(100% - 32px);
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  border-radius: 24px;
+  scrollbar-width: none;
+  transform: translateX(50%);
+}
+
+body.timeblock-call-active .assistant-call-control-dock::-webkit-scrollbar {
+  display: none;
+}
+
+body.timeblock-call-active .assistant-call-control {
+  min-width: 58px;
+  min-height: 54px;
+  flex: 0 0 auto;
+  border-radius: 16px;
+  transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+
+body.timeblock-call-active .assistant-call-control:hover {
+  transform: translateY(-2px);
+}
+
+body.timeblock-call-active .assistant-call-control:focus-visible {
+  outline: 3px solid rgba(120, 235, 196, 0.72);
+  outline-offset: 3px;
+}
+
+body.timeblock-call-active .assistant-call-control-end {
+  min-width: 68px;
+  background: #d7433a;
+  box-shadow: 0 10px 24px rgba(215, 67, 58, 0.3);
+}
+
+body.timeblock-call-active .assistant-call-stage.is-minimized {
+  position: fixed;
+  z-index: 2200;
+  inset: auto 20px 20px auto;
+  width: min(360px, calc(100vw - 40px));
+  height: 220px;
+  min-height: 0;
+  max-height: none;
+  border-radius: 20px;
+  transform: none;
+}
+
+body.timeblock-call-active .assistant-call-stage.is-minimized .assistant-call-stage-header {
+  min-height: 46px;
+  padding: 7px 9px;
+}
+
+body.timeblock-call-active .assistant-call-stage.is-minimized .assistant-call-stage-header strong {
+  max-width: 190px;
+  font-size: 0.72rem;
+}
+
+body.timeblock-call-active .assistant-call-stage.is-minimized .assistant-local-media-wrap {
+  top: 52px;
+  right: 8px;
+  width: 88px;
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
+}
+
+body.timeblock-call-active .assistant-call-stage.is-minimized .assistant-call-control-dock {
+  bottom: 8px;
+  gap: 5px;
+  padding: 5px;
+}
+
+body.timeblock-call-active .assistant-call-stage.is-minimized .assistant-call-control {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 5px;
+  border-radius: 12px;
+}
+
+body.timeblock-call-active .assistant-call-stage.is-minimized .assistant-call-caption {
+  bottom: 56px;
+  width: calc(100% - 18px);
+  padding: 6px 8px;
+}
+
+body.timeblock-call-active .assistant-call-stage.is-expanded,
+body.timeblock-call-active .assistant-call-stage:fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  transform: none;
+}
+
+@media (min-width: 1200px) {
+  body.timeblock-call-active .assistant-call-stage:not(.is-minimized):not(.is-expanded) {
+    width: min(94vw, 1380px);
+    height: min(82dvh, 860px);
+  }
+
+  body.timeblock-call-active .assistant-call-stage.is-audio:not(.is-minimized):not(.is-expanded) {
+    width: min(86vw, 760px);
+    height: min(72dvh, 680px);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  body.timeblock-call-active .assistant-call-stage:not(.is-minimized):not(.is-expanded) {
+    width: min(96vw, 1000px);
+    height: min(78dvh, 760px);
+    max-height: calc(var(--timeblock-call-viewport-height, 100dvh) - 24px);
+    border-radius: 22px;
+  }
+
+  body.timeblock-call-active .assistant-call-stage.is-audio:not(.is-minimized):not(.is-expanded) {
+    width: min(92vw, 680px);
+    height: min(72dvh, 640px);
+  }
+
+  body.timeblock-call-active .assistant-local-media-wrap {
+    top: 72px;
+    right: 14px;
+    width: clamp(138px, 24vw, 220px);
+  }
+
+  body.timeblock-call-active .assistant-call-interpreter {
+    top: auto;
+    right: 14px;
+    bottom: 94px;
+    left: 14px;
+    width: auto;
+    max-height: min(48dvh, 420px);
+  }
+
+  body.timeblock-call-active .assistant-call-caption {
+    bottom: 108px;
+    width: calc(100% - 32px);
+  }
+
+  body.timeblock-call-active .assistant-call-control-dock {
+    bottom: 18px;
+    max-width: calc(100% - 24px);
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 767px) {
+  body.timeblock-call-active:not(.timeblock-call-minimized)::before {
+    display: none;
+  }
+
+  body.timeblock-call-active:not(.timeblock-call-minimized) > footer,
+  body.timeblock-call-active:not(.timeblock-call-minimized) .site-footer,
+  body.timeblock-call-active:not(.timeblock-call-minimized) .mobile-bottom-nav {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  body.timeblock-call-active .assistant-call-stage:not(.is-minimized) {
+    position: fixed;
+    z-index: 2400;
+    inset: 0;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: var(--timeblock-call-viewport-height, 100dvh);
+    max-height: var(--timeblock-call-viewport-height, 100dvh);
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    transform: none;
+  }
+
+  body.timeblock-call-active .assistant-call-stage.is-audio:not(.is-minimized) {
+    width: 100vw;
+    height: var(--timeblock-call-viewport-height, 100dvh);
+  }
+
+  body.timeblock-call-active .assistant-call-stage-header {
+    min-height: calc(60px + var(--timeblock-call-safe-top));
+    padding:
+      calc(10px + var(--timeblock-call-safe-top))
+      max(12px, var(--timeblock-call-safe-right))
+      10px
+      max(12px, var(--timeblock-call-safe-left));
+  }
+
+  body.timeblock-call-active .assistant-call-stage-header strong {
+    max-width: 56vw;
+    font-size: 0.78rem;
+  }
+
+  body.timeblock-call-active .assistant-local-media-wrap {
+    top: calc(70px + var(--timeblock-call-safe-top));
+    right: max(12px, var(--timeblock-call-safe-right));
+    width: clamp(96px, 28vw, 138px);
+    aspect-ratio: 3 / 4;
+    border-radius: 16px;
+  }
+
+  body.timeblock-call-active .assistant-call-placeholder {
+    padding:
+      calc(84px + var(--timeblock-call-safe-top))
+      18px
+      calc(120px + var(--timeblock-call-safe-bottom));
+  }
+
+  body.timeblock-call-active .assistant-call-caption {
+    bottom: calc(96px + var(--timeblock-call-safe-bottom));
+    width: calc(100% - 20px - var(--timeblock-call-safe-left) - var(--timeblock-call-safe-right));
+    padding: 9px 11px;
+  }
+
+  body.timeblock-call-active .assistant-call-caption span {
+    white-space: normal;
+  }
+
+  body.timeblock-call-active .assistant-call-interpreter {
+    top: auto;
+    right: max(10px, var(--timeblock-call-safe-right));
+    bottom: calc(88px + var(--timeblock-call-safe-bottom));
+    left: max(10px, var(--timeblock-call-safe-left));
+    width: auto;
+    max-height: min(58dvh, calc(100% - 150px));
+    padding: 12px;
+    border-radius: 18px;
+    overflow-y: auto;
+  }
+
+  body.timeblock-call-active .assistant-call-control-dock {
+    right: auto;
+    bottom: calc(10px + var(--timeblock-call-safe-bottom));
+    left: 50%;
+    width: calc(100% - 16px - var(--timeblock-call-safe-left) - var(--timeblock-call-safe-right));
+    max-width: 520px;
+    justify-content: safe center;
+    gap: 7px;
+    padding: 7px;
+    transform: translateX(-50%);
+  }
+
+  body.timeblock-call-active .assistant-call-control {
+    min-width: 50px;
+    min-height: 50px;
+    padding: 6px;
+    border-radius: 15px;
+  }
+
+  body.timeblock-call-active .assistant-call-control small {
+    font-size: 0.52rem;
+  }
+
+  body.timeblock-call-active .assistant-call-control-end {
+    min-width: 60px;
+  }
+
+  body.timeblock-call-active .assistant-call-stage.is-minimized {
+    right: max(10px, var(--timeblock-call-safe-right));
+    bottom: calc(78px + var(--timeblock-call-safe-bottom));
+    width: min(156px, calc(100vw - 20px));
+    height: 208px;
+    border-radius: 18px;
+  }
+
+  body.timeblock-call-active .assistant-call-stage.is-minimized .assistant-call-stage-header strong,
+  body.timeblock-call-active .assistant-call-stage.is-minimized [data-call-fit-media],
+  body.timeblock-call-active .assistant-call-stage.is-minimized .assistant-call-interpreter,
+  body.timeblock-call-active .assistant-call-stage.is-minimized .assistant-call-caption {
+    display: none;
+  }
+
+  body.timeblock-call-active .assistant-call-stage.is-minimized .assistant-local-media-wrap {
+    top: 50px;
+    right: 8px;
+    width: 68px;
+  }
+
+  body.timeblock-call-active .assistant-call-stage.is-minimized .assistant-call-control-dock {
+    bottom: 7px;
+    width: calc(100% - 12px);
+    gap: 3px;
+    padding: 4px;
+  }
+
+  body.timeblock-call-active .assistant-call-stage.is-minimized .assistant-call-control {
+    min-width: 38px;
+    min-height: 38px;
+  }
+}
+
+@media (max-width: 900px) and (max-height: 500px) and (orientation: landscape) {
+  body.timeblock-call-active .assistant-call-stage:not(.is-minimized) {
+    height: var(--timeblock-call-viewport-height, 100dvh);
+  }
+
+  body.timeblock-call-active .assistant-call-stage-header {
+    min-height: calc(48px + var(--timeblock-call-safe-top));
+    padding-top: calc(6px + var(--timeblock-call-safe-top));
+    padding-bottom: 6px;
+  }
+
+  body.timeblock-call-active .assistant-local-media-wrap {
+    top: calc(54px + var(--timeblock-call-safe-top));
+    width: clamp(92px, 18vw, 132px);
+    aspect-ratio: 4 / 3;
+  }
+
+  body.timeblock-call-active .assistant-call-control-dock {
+    bottom: calc(6px + var(--timeblock-call-safe-bottom));
+  }
+
+  body.timeblock-call-active .assistant-call-control {
+    min-height: 44px;
+  }
+
+  body.timeblock-call-active .assistant-call-caption {
+    bottom: calc(66px + var(--timeblock-call-safe-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.timeblock-call-active .assistant-call-stage,
+  body.timeblock-call-active .assistant-call-control,
+  body.timeblock-call-active .assistant-call-stage.is-audio .assistant-call-placeholder .assistant-avatar {
+    animation: none;
+    transition: none;
+  }
+}
+
+@keyframes timeblock-call-breathe {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow:
+      0 24px 70px rgba(0, 0, 0, 0.34),
+      0 0 0 12px rgba(52, 196, 145, 0.08);
+  }
+  50% {
+    transform: scale(1.035);
+    box-shadow:
+      0 28px 82px rgba(0, 0, 0, 0.42),
+      0 0 0 20px rgba(52, 196, 145, 0.04);
+  }
+}

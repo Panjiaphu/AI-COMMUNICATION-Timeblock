@@ -1,5 +1,7 @@
-const CACHE_NAME = "timeblock-chat-shell-v7";
+const CACHE_NAME = "timeblock-ai-assistant-shell-v1";
 const STATIC_ASSETS = [
+  "/static/assistant_shell.css?v=1",
+  "/static/assistant_shell.js?v=1",
   "/static/communication.css?v=7",
   "/static/communication.js?v=7",
   "/static/manifest.webmanifest",
