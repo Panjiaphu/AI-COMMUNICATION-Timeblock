@@ -24,6 +24,7 @@ def _production_env(monkeypatch) -> None:
     monkeypatch.setenv("PUBLIC_BASE_URL", "https://guilua.onrender.com")
     monkeypatch.setenv("TIMEBLOCK_APP_URL", "https://timeblock.example")
     monkeypatch.setenv("ALLOW_DEVELOPMENT_SESSION_FALLBACK", "false")
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "a" * 40)
 
 
 def test_production_environment_fails_closed_without_timeblock_contract_credentials(
@@ -45,6 +46,27 @@ def test_production_environment_accepts_complete_contract_configuration(monkeypa
     monkeypatch.setenv("TIMEBLOCK_API_KEY", "server-contract-key-with-at-least-32-bytes")
 
     assert check_env(["--phase", "build"]) == 0
+
+
+def test_production_environment_requires_exact_deploy_identity(monkeypatch, capsys):
+    _production_env(monkeypatch)
+    monkeypatch.setenv("TIMEBLOCK_API_URL", "https://timeblock.example")
+    monkeypatch.setenv("TIMEBLOCK_API_KEY", "server-contract-key-with-at-least-32-bytes")
+    monkeypatch.delenv("DEPLOYMENT_VERSION", raising=False)
+    monkeypatch.delenv("RENDER_GIT_COMMIT", raising=False)
+
+    assert check_env(["--phase", "build"]) == 1
+    assert "exact 40-64 character hexadecimal deploy SHA" in capsys.readouterr().err
+
+
+def test_settings_use_render_git_commit_as_deployment_version(monkeypatch):
+    render_sha = "b" * 40
+    monkeypatch.delenv("DEPLOYMENT_VERSION", raising=False)
+    monkeypatch.setenv("RENDER_GIT_COMMIT", render_sha)
+
+    settings = Settings(_env_file=None)
+
+    assert settings.deployment_version == render_sha
 
 
 def test_build_gate_verifies_every_source_locked_destination():
@@ -75,6 +97,7 @@ def _readiness_settings() -> Settings:
         timeblock_api_key="server-contract-key-with-at-least-32-bytes",
         allowed_websocket_origins="http://testserver",
         allowed_timeblock_handoff_origins="https://timeblock.example",
+        deployment_version="c" * 40,
     )
 
 
@@ -95,6 +118,7 @@ def test_readiness_requires_timeblock_client_contract_v2():
     assert ready.status_code == 200
     assert ready.json()["status"] == "ready"
     assert ready.json()["contract_version"] == "2"
+    assert ready.json()["deployment_version"] == "c" * 40
 
 
 def test_readiness_is_503_when_timeblock_contract_is_unavailable():

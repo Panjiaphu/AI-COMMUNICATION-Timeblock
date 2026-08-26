@@ -28,6 +28,12 @@ The build verifies the production environment, the 214-source /
 start the process. `/healthz/` is process liveness only; `/readyz/` is the
 release gate and requires Timeblock Client Contract V2.
 
+Render supplies `RENDER_GIT_COMMIT` automatically at runtime. The application
+uses it as `deployment_version`, and the production environment gate rejects a
+missing or non-hexadecimal deploy identity. Do not manually pin
+`RENDER_GIT_COMMIT`; for a non-Render production runtime, set
+`DEPLOYMENT_VERSION` to the exact deployed commit SHA instead.
+
 ## Required production environment
 
 ```text
@@ -91,8 +97,9 @@ rather than carrying them into the Assistant release.
    runtime logs for source-lock, environment, startup, dependency and health
    failures.
 7. Verify `/healthz/` returns process liveness and `/readyz/` returns 200 with
-   Contract V2. Then run authenticated desktop/mobile Assistant, messaging,
-   notification, translation and call smoke checks against the exact deploy.
+   Contract V2 and reports the same SHA as Render's deployed commit. Then run
+   authenticated desktop/mobile Assistant, messaging, notification,
+   translation and call smoke checks against the exact deploy.
 
 ## Rollback
 

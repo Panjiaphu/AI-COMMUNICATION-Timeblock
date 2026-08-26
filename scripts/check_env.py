@@ -1,5 +1,6 @@
 import argparse
 import os
+import re
 import sys
 from urllib.parse import urlparse
 
@@ -21,6 +22,10 @@ def main(argv: list[str] | None = None) -> int:
     timeblock_app_url = os.getenv('TIMEBLOCK_APP_URL', '')
     timeblock_api_url = os.getenv('TIMEBLOCK_API_URL', '')
     timeblock_api_key = os.getenv('TIMEBLOCK_API_KEY', '')
+    deployment_version = (
+        os.getenv('DEPLOYMENT_VERSION', '').strip()
+        or os.getenv('RENDER_GIT_COMMIT', '').strip()
+    )
     fallback_enabled = is_true(os.getenv('ALLOW_DEVELOPMENT_SESSION_FALLBACK', 'false'))
     errors: list[str] = []
     warnings: list[str] = []
@@ -48,6 +53,11 @@ def main(argv: list[str] | None = None) -> int:
         errors.append('TIMEBLOCK_API_URL is required in production.')
     if is_production and len(timeblock_api_key.encode('utf-8')) < 32:
         errors.append('TIMEBLOCK_API_KEY must contain at least 32 bytes in production.')
+    if is_production and not re.fullmatch(r'[0-9a-fA-F]{40,64}', deployment_version):
+        errors.append(
+            'DEPLOYMENT_VERSION or Render-provided RENDER_GIT_COMMIT must contain '
+            'the exact 40-64 character hexadecimal deploy SHA in production.'
+        )
 
     legacy_variables = sorted(
         key
@@ -72,7 +82,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f'ERROR: {error}', file=sys.stderr)
         return 1
 
-    print('Environment check passed for Guilua Communication Runtime.')
+    print('Environment check passed for Timeblock AI Assistant.')
     return 0
 
 

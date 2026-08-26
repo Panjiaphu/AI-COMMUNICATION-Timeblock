@@ -1,4 +1,5 @@
 from functools import lru_cache
+import os
 from pathlib import Path
 
 from pydantic import Field, model_validator
@@ -14,7 +15,9 @@ class Settings(BaseSettings):
     app_env: str = 'development'
     debug: bool = True
     secret_key: str = Field(default='dev-only-change-me')
-    deployment_version: str = 'development'
+    deployment_version: str = Field(
+        default_factory=lambda: os.getenv('RENDER_GIT_COMMIT', '').strip() or 'development'
+    )
     public_base_url: str = 'http://127.0.0.1:8000'
     timeblock_app_url: str = 'http://127.0.0.1:5000'
     default_locale: str = 'vi'
