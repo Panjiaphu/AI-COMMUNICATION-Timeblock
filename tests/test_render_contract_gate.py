@@ -15,6 +15,12 @@ from scripts.verify_assistant_source_lock import main as verify_source_lock
 
 
 RENDER_BLUEPRINT = Path(__file__).resolve().parents[1] / "render.yaml"
+BROWSER_WORKFLOW = (
+    Path(__file__).resolve().parents[1]
+    / ".github"
+    / "workflows"
+    / "communication-browser-qa.yml"
+)
 
 
 def _production_env(monkeypatch) -> None:
@@ -84,6 +90,16 @@ def test_render_blueprint_targets_existing_fail_closed_service():
     assert not re.search(r"^\s+value:\s+(?:true|false)\s*$", blueprint, re.MULTILINE)
     assert re.search(r"key: SECRET_KEY\s+sync: false", blueprint)
     assert re.search(r"key: TIMEBLOCK_API_KEY\s+sync: false", blueprint)
+
+
+def test_browser_workflow_does_not_leak_development_fallback_into_production_tests():
+    workflow = BROWSER_WORKFLOW.read_text(encoding="utf-8")
+
+    assert re.search(
+        r'name: Run default test suite\s+env:\s+BROWSER_QA_ENABLED: "0"\s+'
+        r'ALLOW_DEVELOPMENT_SESSION_FALLBACK: "false"',
+        workflow,
+    )
 
 
 def _readiness_settings() -> Settings:

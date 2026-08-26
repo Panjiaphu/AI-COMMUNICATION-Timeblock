@@ -76,6 +76,7 @@ jobs:
       - name: Run default test suite
         env:
           BROWSER_QA_ENABLED: "0"
+          ALLOW_DEVELOPMENT_SESSION_FALLBACK: "false"
         run: PYTHONPATH=. pytest -q
       - name: Start local communication runtime
         run: |
