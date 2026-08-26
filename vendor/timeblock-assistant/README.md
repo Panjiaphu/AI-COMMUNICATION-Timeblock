@@ -3,9 +3,14 @@
 This directory is a local source-locked migration input copied from
 `Panjiaphu/fumap-bot-life`. It is not loaded from a network source at runtime.
 
-- Source SHA: `3c18c1f115dabc5b654c806a8911c40c9bdbeb18`
+- Source SHA: `16a83643b77afd20feb6d7b7f7366702d25fd87d`
 - Lock: `SOURCE_LOCK.json`
 - Sync: `python scripts/sync_timeblock_assistant_ui.py ...`
+
+The synchronizer reads blobs from the pinned Git commit object database, so
+Windows checkout line-ending filters cannot change the locked source bytes.
+The four paths listed under `preserved_legacy_unmanaged` are rollback-only
+legacy files; they are outside the canonical runtime/destination graph.
 
 The templates and assets are controlled inputs for the Guilua Assistant shell.
 Timeblock remains the authority for identity, quota, AI history, messaging,

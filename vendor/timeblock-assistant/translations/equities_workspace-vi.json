@@ -1,0 +1,10 @@
+{
+  "market.equities.workspace_page_title": "Equity Intelligence Workspace | Timeblock",
+  "market.equities.workspace_page_meta": "Không gian phân tích cổ phiếu theo quốc gia với TradingView, Top 10 thiên hướng mua/bán và Playbook kỹ thuật từ dữ liệu nến ngày.",
+  "market.equities.workspace_eyebrow": "Equity Intelligence",
+  "market.equities.workspace_title": "Phân tích cổ phiếu theo quốc gia",
+  "market.equities.workspace_note": "Theo dõi chỉ số quốc gia, Top 10 thiên hướng mua/bán, biểu đồ TradingView và Playbook kỹ thuật cho từng mã. Dữ liệu có thể trễ theo thị trường và chỉ dùng để tham khảo.",
+  "market.equities.workspace_coverage": "Mã có dữ liệu",
+  "market.equities.workspace_analysis_title": "Xếp hạng tín hiệu theo quốc gia",
+  "market.equities.workspace_analysis_note": "Chỉ hiển thị số mã thực sự đạt ngưỡng. Hệ thống không tự thêm mã trung lập để lấp đủ Top 10."
+}

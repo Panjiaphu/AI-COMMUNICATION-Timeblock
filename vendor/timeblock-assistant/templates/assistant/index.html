@@ -1,24 +1,87 @@
 {% extends "assistant/index_core.html" %}
 
 {% block head %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css', v='call-v1-ring-owner-20260822') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant_image_generation.css', v='assistant-image-generation-v4') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/live_translate.css', v='assistant-layout-history-mobile-20260822') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/live_translate_history.css', v='translation-history-mobile-20260822') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_core_v2.css', v='startup-20260730') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_mobile_immersive.css', v='mobile-translation-20260809') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_enterprise_workspace.css', v='enterprise-workspace-20260808') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_network_identity_restore.css', v='network-identity-restore-20260809') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_mobile_immersive.css', v='assistant-layout-hotfix-20260822') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_enterprise_workspace.css', v='contact-layout-owner-20260824e') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_network_identity_restore.css', v='network-identity-boundary-20260823') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_contact_v1.css', v='contact-v1-compact-20260824') }}">
 {% endblock %}
 
 {% block scripts %}
   <script
-    src="{{ url_for('static', filename='js/assistant_startup_hotfix.js', v='startup-20260730b') }}"
+    src="{{ url_for('static', filename='js/assistant_startup_hotfix.js', v='notification-multi-image-20260823b') }}"
     data-messaging-advanced-attachments-enabled="{{ 'true' if config.MESSAGING_ADVANCED_ATTACHMENTS_ENABLED else 'false' }}"
     defer
   ></script>
-  <script src="{{ url_for('static', filename='js/incoming_call_ringtone.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/assistant.js', v='startup-20260730') }}" defer></script>
+  <script>window.__TIMEBLOCK_CALL_V1_ENABLED__ = true;</script>
+  <script src="{{ url_for('static', filename='js/call_audio_ownership.js', v='call-v1-ring-owner-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/session.js', v='call-v1-ring-owner-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/media.js', v='call-v1-ring-owner-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/peer.js', v='call-v1-ring-owner-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/signaling.js', v='call-v1-ring-owner-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/ring-audio.js', v='call-v1-ring-owner-20260822-silent-arm') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/runtime.js', v='call-v1-ring-owner-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/translation_plugin.js', v='call-v1-translation-plugin-20260824-voice-task') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call_audio_ownership_install.js', v='call-v1-ring-owner-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/bootstrap.js', v='call-v1-ring-owner-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/live_translate.js', v='live-translate-v1-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/live_translate_hotfix_core.js', v='live-translate-v1-qa-hotfix-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/live_translate_hotfix_media.js', v='live-translate-v1-qa-hotfix-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/live_translate_hotfix_bootstrap.js', v='live-translate-v1-qa-hotfix-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/live_translate_history.js', v='translation-history-v1-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/assistant.js', v='call-v1-ring-owner-20260822') }}" defer></script>
+  <script id="assistant-image-generation-copy" type="application/json">{{ {
+    "create": t('assistant.image_generation.create'),
+    "title": t('assistant.image_generation.title'),
+    "prompt": t('assistant.image_generation.prompt'),
+    "placeholder": t('assistant.image_generation.placeholder'),
+    "size": t('assistant.image_generation.size'),
+    "size_square": t('assistant.image_generation.size_square'),
+    "size_portrait": t('assistant.image_generation.size_portrait'),
+    "size_landscape": t('assistant.image_generation.size_landscape'),
+    "quality": t('assistant.image_generation.quality'),
+    "quality_low": t('assistant.image_generation.quality_low'),
+    "quality_medium": t('assistant.image_generation.quality_medium'),
+    "quality_high": t('assistant.image_generation.quality_high'),
+    "format": t('assistant.image_generation.format'),
+    "format_webp": t('assistant.image_generation.format_webp'),
+    "format_png": t('assistant.image_generation.format_png'),
+    "format_jpeg": t('assistant.image_generation.format_jpeg'),
+    "generate": t('assistant.image_generation.generate'),
+    "generating": t('assistant.image_generation.generating'),
+    "completed": t('assistant.image_generation.completed'),
+    "failed": t('assistant.image_generation.failed'),
+    "unavailable": t('assistant.image_generation.unavailable'),
+    "disabled": t('assistant.image_generation.disabled'),
+    "provider_not_configured": t('assistant.image_generation.provider_not_configured'),
+    "provider_auth": t('assistant.image_generation.provider_auth'),
+    "provider_billing_required": t('assistant.image_generation.provider_billing_required'),
+    "provider_model_access": t('assistant.image_generation.provider_model_access'),
+    "provider_moderation": t('assistant.image_generation.provider_moderation'),
+    "provider_connection": t('assistant.image_generation.provider_connection'),
+    "provider_failed": t('assistant.image_generation.provider_failed'),
+    "prompt_required": t('assistant.image_generation.prompt_required'),
+    "prompt_too_long": t('assistant.image_generation.prompt_too_long'),
+    "regenerate": t('assistant.image_generation.regenerate'),
+    "cancel": t('assistant.image_generation.cancel'),
+    "download": t('assistant.image_generation.download'),
+    "fullscreen": t('assistant.image_generation.fullscreen'),
+    "you": t('assistant.ai.you'),
+    "assistant": t('assistant.ai.assistant'),
+    "media_retention": t('assistant.media.retention'),
+    "media_expires": t('assistant.media.expires')
+  } | tojson }}</script>
+  <script src="{{ url_for('static', filename='js/assistant_image_generation.js', v='assistant-image-generation-v4') }}" defer></script>
   <script src="{{ url_for('static', filename='js/messaging_core_v2.js', v='startup-20260730') }}" defer></script>
   <script src="{{ url_for('static', filename='js/messaging_mobile_immersive.js', v='mobile-translation-20260809') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/messaging_enterprise_workspace.js', v='enterprise-workspace-20260808') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/messaging_enterprise_workspace.js', v='enterprise-workspace-840-20260824b') }}" defer></script>
   <script src="{{ url_for('static', filename='js/messaging_image_download_platform.js', v='mobile-export-20260808') }}" defer></script>
   <script src="{{ url_for('static', filename='js/messaging_image_viewer_scroll_guard.js', v='mobile-export-scroll-20260808') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/messaging_contact_v1.js', v='contact-v1-compact-20260823') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/messaging_contact_avatar_bridge.js', v='contact-v1-compact-20260823') }}" defer></script>
 {% endblock %}

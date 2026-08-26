@@ -1,0 +1,879 @@
+{% extends "base.html" %}
+
+{% macro icon(name) -%}
+<svg viewBox="0 0 24 24" aria-hidden="true">
+  {% if name == "ai" %}<path d="M12 3l1.5 4.2L18 9l-4.5 1.8L12 15l-1.5-4.2L6 9l4.5-1.8L12 3Z"/><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z"/>
+  {% elif name == "message" %}<path d="M5 18.5 3.5 21l4-1.2c1.3.7 2.8 1.1 4.5 1.1 5 0 9-3.7 9-8.4S17 4 12 4s-9 3.7-9 8.5c0 2.3.8 4.3 2 6Z"/><path d="M8 12h8M8 15h5"/>
+  {% elif name == "translate" %}<path d="M4 5h9M8.5 3v2M6 8c1.4 2.5 3.2 4.4 5.5 5.7M11 8c-1.2 2.4-3.3 4.6-6.5 6"/><path d="m13 20 3.5-9 3.5 9M14.2 17h4.6"/>
+  {% elif name == "bell" %}<path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 8h18c0-1-3-1-3-8ZM10 21h4"/>
+  {% elif name == "shield" %}<path d="M12 3 4.5 6v5.5c0 4.7 3.1 7.8 7.5 9.5 4.4-1.7 7.5-4.8 7.5-9.5V6L12 3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/>
+  {% elif name == "send" %}<path d="m3 11 18-8-8 18-2-8-8-2Z"/><path d="m11 13 5-5"/>
+  {% elif name == "attach" %}<path d="m9 12 5.2-5.2a3 3 0 0 1 4.2 4.2l-7 7a5 5 0 0 1-7-7l7.2-7.2"/>
+  {% elif name == "mic" %}<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/>
+  {% elif name == "mic-off" %}<path d="M9 9.5V6a3 3 0 0 1 5.7-1.3M15 9v2a3 3 0 0 1-.4 1.5M5.5 11a6.5 6.5 0 0 0 10.8 4.9M12 17.5V21M9 21h6M3 3l18 18"/>
+  {% elif name == "globe" %}<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.2 2.4 3.3 5.4 3.3 9S14.2 18.6 12 21c-2.2-2.4-3.3-5.4-3.3-9S9.8 5.4 12 3Z"/>
+  {% elif name == "settings" %}<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/>
+  {% elif name == "phone" %}<path d="M7 3H4.8C3.8 3 3 3.8 3 4.8 3 13.7 10.3 21 19.2 21c1 0 1.8-.8 1.8-1.8V17l-4.8-1-1.1 2.3a15.6 15.6 0 0 1-9.4-9.4L8 7.8 7 3Z"/>
+  {% elif name == "video" %}<rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/>
+  {% elif name == "video-off" %}<path d="M10.7 6H14a2 2 0 0 1 2 2v3m0 4v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1M16 10l5-3v10l-5-3M3 3l18 18"/>
+  {% elif name == "minimize" %}<path d="M5 12h14"/>
+  {% elif name == "maximize" %}<path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/>
+  {% elif name == "volume" %}<path d="M11 5 6.5 9H3v6h3.5l4.5 4V5Z"/><path d="M15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12"/>
+  {% elif name == "back" %}<path d="m15 18-6-6 6-6"/>
+  {% elif name == "close" %}<path d="m6 6 12 12M18 6 6 18"/>
+  {% endif %}
+</svg>
+{%- endmacro %}
+
+{% block title %}{{ t('assistant.page_title') }} | Timeblock{% endblock %}
+{% block body_class %}assistant-workspace-page{% endblock %}
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css', v='call-v1-hotfix-20260820b') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/live_translate.css', v='live-translate-v1-20260822') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_core_v2.css', v='uiux-20260729') }}">
+  {% if config.MESSAGING_ADVANCED_ATTACHMENTS_ENABLED %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_composer_attachments_v2.css', v='uiux-20260729') }}" data-messaging-composer-attachments-v2>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<section
+  class="assistant-page"
+  id="assistant-app"
+  data-locale="{{ current_locale }}"
+  data-actor-type="{{ assistant_actor.type }}"
+  data-actor-id="{{ assistant_actor.id }}"
+  data-messaging-realtime-enabled="{{ 'true' if config.MESSAGING_REALTIME_ENABLED else 'false' }}"
+  data-messaging-mailbox-lock-enabled="{{ 'true' if config.MESSAGING_MAILBOX_LOCK_ENABLED else 'false' }}"
+  data-composer-add="{{ t('messaging.v2.composer.add') }}"
+  data-composer-camera="{{ t('messaging.v2.composer.camera') }}"
+  data-composer-gallery="{{ t('messaging.v2.composer.gallery') }}"
+  data-composer-file="{{ t('messaging.v2.composer.file') }}"
+  data-composer-location="{{ t('messaging.v2.composer.location') }}"
+  data-composer-voice="{{ t('messaging.v2.composer.voice') }}"
+  data-composer-cancel="{{ t('messaging.v2.composer.cancel') }}"
+  data-composer-remove="{{ t('messaging.v2.composer.remove') }}"
+  data-composer-retry="{{ t('messaging.v2.composer.retry') }}"
+  data-composer-pause="{{ t('messaging.v2.composer.pause') }}"
+  data-composer-resume="{{ t('messaging.v2.composer.resume') }}"
+  data-composer-stop="{{ t('messaging.v2.composer.stop') }}"
+  data-composer-recording="{{ t('messaging.v2.composer.recording') }}"
+  data-composer-paused="{{ t('messaging.v2.composer.paused') }}"
+  data-composer-preparing="{{ t('messaging.v2.composer.preparing') }}"
+  data-composer-location-loading="{{ t('messaging.v2.composer.location_loading') }}"
+  data-composer-location-name="{{ t('messaging.v2.composer.location_name') }}"
+  data-composer-attachment-ready="{{ t('messaging.v2.composer.attachment_ready') }}"
+  data-composer-camera-error="{{ t('messaging.v2.composer.camera_error') }}"
+  data-composer-image-type-error="{{ t('messaging.v2.composer.image_type_error') }}"
+  data-composer-file-type-error="{{ t('messaging.v2.composer.file_type_error') }}"
+  data-composer-file-size-error="{{ t('messaging.v2.composer.file_size_error') }}"
+  data-composer-audio-error="{{ t('messaging.v2.composer.audio_error') }}"
+  data-composer-audio-size-error="{{ t('messaging.v2.composer.audio_size_error') }}"
+  data-composer-location-error="{{ t('messaging.v2.composer.location_error') }}"
+  data-composer-integration-error="{{ t('messaging.v2.composer.integration_error') }}"
+  data-composer-send-error="{{ t('messaging.v2.composer.send_error') }}"
+  data-initial-mode="{{ request.args.get('mode', 'ai') }}"
+  data-initial-context="{{ request.args.get('context_type', 'general') }}"
+  data-initial-country="{{ request.args.get('country', 'usa') }}"
+  data-initial-symbol="{{ request.args.get('symbol', '') }}"
+  data-initial-connect="{{ request.args.get('connect', '') }}"
+  data-initial-conversation="{{ request.args.get('conversation', '') }}"
+  data-v2-filters-label="{{ t('messaging.v2.filters.label') }}"
+  data-v2-filters-inbox="{{ t('messaging.v2.filters.inbox') }}"
+  data-v2-filters-archived="{{ t('messaging.v2.filters.archived') }}"
+  data-v2-filters-restricted="{{ t('messaging.v2.filters.restricted') }}"
+  data-v2-filters-pinned="{{ t('messaging.v2.filters.pinned') }}"
+  data-v2-filters-unread="{{ t('messaging.v2.filters.unread') }}"
+  data-v2-sync-connecting="{{ t('messaging.v2.sync.connecting') }}"
+  data-v2-sync-live="{{ t('messaging.v2.sync.live') }}"
+  data-v2-sync-offline="{{ t('messaging.v2.sync.offline') }}"
+  data-v2-thread-settings="{{ t('messaging.v2.thread.settings') }}"
+  data-v2-thread-load-older="{{ t('messaging.v2.thread.load_older') }}"
+  data-v2-thread-no-older="{{ t('messaging.v2.thread.no_older') }}"
+  data-v2-thread-jump-latest="{{ t('messaging.v2.thread.jump_latest') }}"
+  data-v2-thread-new-messages="{{ t('messaging.v2.thread.new_messages') }}"
+  data-v2-message-reply="{{ t('messaging.v2.message.reply') }}"
+  data-v2-message-edit="{{ t('messaging.v2.message.edit') }}"
+  data-v2-message-delete="{{ t('messaging.v2.message.delete') }}"
+  data-v2-message-pin="{{ t('messaging.v2.message.pin') }}"
+  data-v2-message-unpin="{{ t('messaging.v2.message.unpin') }}"
+  data-v2-pinned-title="{{ t('messaging.v2.pinned.title') }}"
+  data-v2-pinned-open="{{ t('messaging.v2.pinned.open') }}"
+  data-v2-pinned-count="{{ t('messaging.v2.pinned.count') }}"
+  data-v2-pinned-jump="{{ t('messaging.v2.pinned.jump') }}"
+  data-v2-pinned-unpin="{{ t('messaging.v2.pinned.unpin') }}"
+  data-v2-pinned-empty="{{ t('messaging.v2.pinned.empty') }}"
+  data-v2-pinned-unavailable="{{ t('messaging.v2.pinned.unavailable') }}"
+  data-v2-pinned-load-more="{{ t('messaging.v2.pinned.load_more') }}"
+  data-v2-pinned-sender-unknown="{{ t('messaging.v2.pinned.sender_unknown') }}"
+  data-v2-pinned-images="{{ t('messaging.v2.pinned.images') }}"
+  data-v2-pinned-type-text="{{ t('messaging.v2.pinned.type_text') }}"
+  data-v2-pinned-type-image="{{ t('messaging.v2.pinned.type_image') }}"
+  data-v2-pinned-type-file="{{ t('messaging.v2.pinned.type_file') }}"
+  data-v2-pinned-type-audio="{{ t('messaging.v2.pinned.type_audio') }}"
+  data-v2-pinned-type-location="{{ t('messaging.v2.pinned.type_location') }}"
+  data-v2-pinned-type-unavailable="{{ t('messaging.v2.pinned.type_unavailable') }}"
+  data-v2-pinned-type-other="{{ t('messaging.v2.pinned.type_other') }}"
+  data-v2-message-react="{{ t('messaging.v2.message.react') }}"
+  data-v2-message-translate="{{ t('messaging.v2.message.translate') }}"
+  data-v2-message-translate-again="{{ t('messaging.v2.message.translate_again') }}"
+  data-v2-translation-conversation="{{ t('messaging.v2.translation.conversation') }}"
+  data-v2-translation-source="{{ t('messaging.v2.translation.source_language') }}"
+  data-v2-translation-target="{{ t('messaging.v2.translation.target_language') }}"
+  data-v2-translation-auto="{{ t('messaging.v2.translation.auto_detect') }}"
+  data-v2-translation-swap="{{ t('messaging.v2.translation.swap_languages') }}"
+  data-v2-translation-done="{{ t('messaging.v2.translation.done') }}"
+  data-v2-translation-label="{{ t('messaging.v2.translation.translation') }}"
+  data-v2-translation-show="{{ t('messaging.v2.translation.show_translation') }}"
+  data-v2-translation-hide="{{ t('messaging.v2.translation.hide_translation') }}"
+  data-v2-translation-translating="{{ t('messaging.v2.translation.translating') }}"
+  data-v2-translation-error="{{ t('messaging.v2.translation.error') }}"
+  data-v2-translation-unavailable="{{ t('messaging.v2.translation.unavailable') }}"
+  data-v2-translation-source-equals-target="{{ t('messaging.v2.translation.source_equals_target') }}"
+  data-v2-message-edited="{{ t('messaging.v2.message.edited') }}"
+  data-v2-message-deleted="{{ t('messaging.v2.message.deleted') }}"
+  data-v2-message-sent="{{ t('messaging.v2.message.sent') }}"
+  data-v2-message-delivered="{{ t('messaging.v2.message.delivered') }}"
+  data-v2-message-read="{{ t('messaging.v2.message.read') }}"
+  data-v2-replying-to="{{ t('messaging.v2.replying_to') }}"
+  data-v2-reply-unavailable="{{ t('messaging.v2.reply.unavailable') }}"
+  data-v2-cancel="{{ t('messaging.v2.cancel') }}"
+  data-v2-destructive-cancel="{{ t('messaging.v2.destructive.cancel') }}"
+  data-v2-save="{{ t('messaging.v2.save') }}"
+  data-v2-close="{{ t('messaging.v2.close') }}"
+  data-v2-edit-title="{{ t('messaging.v2.edit.title') }}"
+  data-v2-edit-label="{{ t('messaging.v2.edit.label') }}"
+  data-v2-delete-title="{{ t('messaging.v2.delete.title') }}"
+  data-v2-delete-question="{{ t('messaging.v2.delete.question') }}"
+  data-v2-delete-for-me="{{ t('messaging.v2.delete.for_me') }}"
+  data-v2-delete-for-me-question="{{ t('messaging.v2.delete.for_me_question') }}"
+  data-v2-delete-for-me-confirm="{{ t('messaging.v2.delete.for_me_confirm') }}"
+  data-v2-delete-for-everyone="{{ t('messaging.v2.delete.for_everyone') }}"
+  data-v2-delete-for-everyone-question="{{ t('messaging.v2.delete.for_everyone_question') }}"
+  data-v2-delete-for-everyone-confirm="{{ t('messaging.v2.delete.for_everyone_confirm') }}"
+  data-v2-settings-title="{{ t('messaging.v2.settings.title') }}"
+  data-v2-settings-pin="{{ t('messaging.v2.settings.pin') }}"
+  data-v2-settings-archive="{{ t('messaging.v2.settings.archive') }}"
+  data-v2-settings-mark-unread="{{ t('messaging.v2.settings.mark_unread') }}"
+  data-v2-settings-mute="{{ t('messaging.v2.settings.mute') }}"
+  data-v2-settings-mute-duration="{{ t('messaging.v2.settings.mute_duration') }}"
+  data-v2-settings-mute-one-hour="{{ t('messaging.v2.settings.mute_1h') }}"
+  data-v2-settings-mute-eight-hours="{{ t('messaging.v2.settings.mute_8h') }}"
+  data-v2-settings-mute-one-week="{{ t('messaging.v2.settings.mute_1w') }}"
+  data-v2-settings-notification="{{ t('messaging.v2.settings.notification') }}"
+  data-v2-settings-notification-all="{{ t('messaging.v2.settings.notification_all') }}"
+  data-v2-settings-notification-mentions="{{ t('messaging.v2.settings.notification_mentions') }}"
+  data-v2-settings-notification-none="{{ t('messaging.v2.settings.notification_none') }}"
+  data-v2-settings-label="{{ t('messaging.v2.settings.label') }}"
+  data-v2-settings-label-hint="{{ t('messaging.v2.settings.label_hint') }}"
+  data-v2-settings-ai-title="{{ t('messaging.v2.settings.ai_title') }}"
+  data-v2-settings-ai-access="{{ t('messaging.v2.settings.ai_access') }}"
+  data-v2-settings-ai-history="{{ t('messaging.v2.settings.ai_history') }}"
+  data-v2-settings-ai-attachments="{{ t('messaging.v2.settings.ai_attachments') }}"
+  data-v2-settings-transcript-retention="{{ t('messaging.v2.settings.transcript_retention') }}"
+  data-v2-settings-saved="{{ t('messaging.v2.settings.saved') }}"
+  data-v2-settings-security-title="{{ t('messaging.v2.settings.security_title') }}"
+  data-v2-settings-mailbox-lock="{{ t('messaging.v2.settings.mailbox_lock') }}"
+  data-v2-settings-privacy-title="{{ t('messaging.v2.settings.privacy_title') }}"
+  data-v2-settings-block="{{ t('messaging.v2.settings.block') }}"
+  data-v2-settings-unblock="{{ t('messaging.v2.settings.unblock') }}"
+  data-v2-conversation-clear-history="{{ t('messaging.v2.conversation.clear_history') }}"
+  data-v2-conversation-clear-history-question="{{ t('messaging.v2.conversation.clear_history_question') }}"
+  data-v2-conversation-clear-history-confirm="{{ t('messaging.v2.conversation.clear_history_confirm') }}"
+  data-v2-conversation-delete-for-me="{{ t('messaging.v2.conversation.delete_for_me') }}"
+  data-v2-conversation-delete-for-me-question="{{ t('messaging.v2.conversation.delete_for_me_question') }}"
+  data-v2-conversation-delete-for-me-confirm="{{ t('messaging.v2.conversation.delete_for_me_confirm') }}"
+  data-v2-conversation-secure-reset="{{ t('messaging.v2.conversation.secure_reset') }}"
+  data-v2-conversation-secure-reset-question="{{ t('messaging.v2.conversation.secure_reset_question') }}"
+  data-v2-conversation-secure-reset-confirm="{{ t('messaging.v2.conversation.secure_reset_confirm') }}"
+  data-v2-conversation-delete-for-everyone="{{ t('messaging.v2.conversation.delete_for_everyone') }}"
+  data-v2-conversation-delete-for-everyone-question="{{ t('messaging.v2.conversation.delete_for_everyone_question') }}"
+  data-v2-conversation-delete-for-everyone-confirm="{{ t('messaging.v2.conversation.delete_for_everyone_confirm') }}"
+  data-v2-conversation-action-title="{{ t('messaging.v2.conversation.action_title') }}"
+  data-v2-conversation-action-question="{{ t('messaging.v2.conversation.action_question') }}"
+  data-v2-conversation-action-confirm="{{ t('messaging.v2.conversation.action_confirm') }}"
+  data-v2-mailbox-lock-now="{{ t('messaging.v2.mailbox.lock_now') }}"
+  data-v2-mailbox-unlock="{{ t('messaging.v2.mailbox.unlock') }}"
+  data-v2-mailbox-locked-title="{{ t('messaging.v2.mailbox.locked_title') }}"
+  data-v2-mailbox-locked-hint="{{ t('messaging.v2.mailbox.locked_hint') }}"
+  data-v2-mailbox-password="{{ t('messaging.v2.mailbox.password') }}"
+  data-v2-mailbox-invalid-password="{{ t('messaging.v2.mailbox.invalid_password') }}"
+  data-v2-mailbox-rate-limited="{{ t('messaging.v2.mailbox.rate_limited') }}"
+  data-v2-attachment-file="{{ t('messaging.v2.attachment.file') }}"
+  data-v2-attachment-voice="{{ t('messaging.v2.attachment.voice') }}"
+  data-v2-attachment-location="{{ t('messaging.v2.attachment.location') }}"
+  data-v2-attachment-open-location="{{ t('messaging.v2.attachment.open_location') }}"
+  data-v2-attachment-speed="{{ t('messaging.v2.attachment.speed') }}"
+  data-v2-action-failed="{{ t('messaging.v2.action.failed') }}"
+  data-copy-loading="{{ t('assistant.common.loading') }}"
+  data-copy-error="{{ t('assistant.common.error') }}"
+  data-copy-empty="{{ t('assistant.network.empty') }}"
+  data-copy-no-results="{{ t('assistant.network.no_results') }}"
+  data-copy-add-friend="{{ t('assistant.network.add_friend') }}"
+  data-copy-accept="{{ t('assistant.network.accept') }}"
+  data-copy-reject="{{ t('assistant.network.reject') }}"
+  data-copy-chat="{{ t('assistant.network.chat') }}"
+  data-copy-you="{{ t('assistant.ai.you') }}"
+  data-copy-assistant="{{ t('assistant.ai.assistant') }}"
+  data-copy-sources="{{ t('assistant.ai.sources') }}"
+  data-copy-usage="{{ t('assistant.ai.usage') }}"
+  data-copy-quota-reset="{{ t('assistant.quota.reset') }}"
+  data-copy-ai-history-load-earlier="{{ t('assistant.ai.history_load_earlier') }}"
+  data-copy-ai-history-loading="{{ t('assistant.ai.history_loading') }}"
+  data-copy-image-selected="{{ t('assistant.composer.image_selected') }}"
+  data-copy-media-selected="{{ t('assistant.composer.media_selected') }}"
+  data-copy-image-alt="{{ t('assistant.composer.image') }}"
+  data-copy-media-retention="{{ t('assistant.media.retention') }}"
+  data-copy-media-expires="{{ t('assistant.media.expires') }}"
+  data-copy-media-expired="{{ t('assistant.media.expired') }}"
+  data-copy-audio-ready="{{ t('assistant.composer.audio_ready') }}"
+  data-copy-speech-read="{{ t('assistant.speech.read') }}"
+  data-copy-speech-stop="{{ t('assistant.speech.stop') }}"
+  data-copy-speech-unavailable="{{ t('assistant.speech.unavailable') }}"
+  data-copy-web-enabled="{{ t('assistant.ai.web_enabled') }}"
+  data-copy-translation-empty="{{ t('assistant.translate.empty') }}"
+  data-copy-translation-text-required="{{ t('assistant.translate.text_required') }}"
+  data-copy-preferences-saved="{{ t('assistant.alerts.preferences_saved') }}"
+  data-copy-rate-buy="{{ t('assistant.alerts.rate_buy') }}"
+  data-copy-rate-sell="{{ t('assistant.alerts.rate_sell') }}"
+  data-copy-rate-updated="{{ t('rates.public.updated') }}"
+  data-copy-alerts-empty="{{ t('assistant.alerts.empty') }}"
+  data-copy-inbox-empty="{{ t('assistant.alerts.notifications_empty') }}"
+  data-copy-mark-read="{{ t('assistant.alerts.mark_read') }}"
+  data-copy-delete="{{ t('assistant.alerts.delete') }}"
+  data-copy-incoming="{{ t('assistant.call.incoming') }}"
+  data-copy-media-denied="{{ t('assistant.call.permission') }}"
+  data-copy-call-notifications-enabled="{{ t('assistant.call.notifications_enabled') }}"
+  data-copy-call-notifications-denied="{{ t('assistant.call.notifications_denied') }}"
+  data-copy-ringtone-previewing="{{ t('assistant.call.ringtone_previewing') }}"
+  data-copy-ringtone-unavailable="{{ t('assistant.call.ringtone_unavailable') }}"
+  data-copy-call-offline-email="{{ t('assistant.call.offline_email') }}"
+  data-copy-call-active="{{ t('assistant.call.active') }}"
+  data-copy-call-mute="{{ t('assistant.call.mute') }}"
+  data-copy-call-unmute="{{ t('assistant.call.unmute') }}"
+  data-copy-call-camera-off="{{ t('assistant.call.camera_off') }}"
+  data-copy-call-camera-on="{{ t('assistant.call.camera_on') }}"
+  data-copy-call-minimize="{{ t('assistant.call.minimize') }}"
+  data-copy-call-maximize="{{ t('assistant.call.maximize') }}"
+  data-copy-translation-processing="{{ t('assistant.translate.processing') }}"
+  data-copy-translation-start-recording="{{ t('assistant.translate.start_recording') }}"
+  data-copy-translation-stop-recording="{{ t('assistant.translate.stop_recording') }}"
+  data-copy-translation-recording="{{ t('assistant.translate.recording') }}"
+  data-copy-translation-recording-empty="{{ t('assistant.call.translation.recording_empty') }}"
+  data-copy-translation-ready="{{ t('assistant.call.translation.ready') }}"
+  data-copy-translation-tap-listen="{{ t('assistant.translate.tap_to_listen') }}"
+  data-copy-translation-stop-listening="{{ t('assistant.translate.stop_listening') }}"
+  data-copy-translation-microphone-denied="{{ t('assistant.translate.microphone_denied') }}"
+  data-copy-translation-recording-unsupported="{{ t('assistant.translate.recording_unsupported') }}"
+  data-copy-translation-failed="{{ t('assistant.translate.translation_failed') }}"
+  data-copy-translation-speech-failed="{{ t('assistant.translate.speech_failed') }}"
+  data-copy-translation-speech-loading="{{ t('assistant.translate.speech_loading') }}"
+  data-copy-translation-same-language="{{ t('assistant.translate.same_language') }}"
+  data-copy-translation-remote-received="{{ t('assistant.call.translation.remote_received') }}"
+  data-copy-translation-call-ended="{{ t('assistant.call.translation.call_ended') }}"
+  data-copy-translation-muted="{{ t('assistant.call.translation.muted') }}"
+  data-copy-translation-track-restore-failed="{{ t('assistant.call.translation.track_restore_failed') }}"
+  data-copy-translation-sync-connected="{{ t('assistant.call.translation.sync_connected') }}"
+  data-copy-translation-syncing="{{ t('assistant.call.translation.syncing') }}"
+  data-copy-call-media-playback="{{ t('assistant.call.media_playback') }}"
+  data-copy-qr-ready="{{ t('assistant.network.qr_ready') }}"
+  data-copy-qr-unsupported="{{ t('assistant.network.qr_unsupported') }}"
+  data-copy-qr-invalid="{{ t('assistant.network.qr_invalid') }}"
+  data-copy-qr-permission="{{ t('assistant.network.qr_permission') }}"
+  data-copy-qr-resolving="{{ t('assistant.network.qr_resolving') }}"
+  data-copy-qr-member="{{ t('assistant.network.member') }}"
+  data-copy-qr-business="{{ t('assistant.network.business') }}"
+  data-copy-call-event-started="{{ t('assistant.call.event_started') }}"
+  data-copy-call-event-accepted="{{ t('assistant.call.event_accepted') }}"
+  data-copy-call-event-ended="{{ t('assistant.call.event_ended') }}"
+  data-copy-call-event-rejected="{{ t('assistant.call.event_rejected') }}"
+  data-copy-call-event-missed="{{ t('assistant.call.event_missed') }}"
+  data-copy-call-audio="{{ t('assistant.call.audio') }}"
+  data-copy-call-video="{{ t('assistant.call.video') }}"
+  data-copy-group-created="{{ t('assistant.communication.group_created') }}"
+  data-copy-group="{{ t('assistant.communication.group') }}"
+  data-copy-group-members-count="{{ t('assistant.communication.group_members_count') }}"
+  data-copy-group-connections-required="{{ t('assistant.communication.group_connections_required') }}"
+  data-copy-group-empty="{{ t('assistant.communication.group_empty') }}"
+  data-copy-group-open="{{ t('assistant.communication.group_open') }}"
+  data-copy-call-empty="{{ t('assistant.communication.call_empty') }}"
+  data-copy-call-open="{{ t('assistant.communication.call_open') }}"
+  data-copy-ptt-message="{{ t('assistant.communication.ptt_message') }}"
+  data-copy-copy-success="{{ t('assistant.network.copy_success') }}"
+  data-copy-share-qr="{{ t('assistant.network.share_qr') }}"
+  data-copy-share-success="{{ t('assistant.network.share_success') }}"
+>
+  <template data-icon-template="phone">{{ icon('phone') }}</template>
+  <template data-icon-template="video">{{ icon('video') }}</template>
+  <template data-icon-template="mic">{{ icon('mic') }}</template>
+  <div class="assistant-shell">
+    <header class="assistant-topbar">
+      <div class="assistant-heading">
+        <span class="assistant-avatar" aria-hidden="true">T</span>
+        <div class="assistant-heading-copy">
+          <p class="eyebrow">{{ t('assistant.eyebrow') }}</p>
+          <h1>{{ t('assistant.title') }}</h1>
+          <p>{{ t('assistant.subtitle') }}</p>
+        </div>
+      </div>
+      <div class="assistant-top-actions">
+        <span class="assistant-status-chip">{{ t('assistant.status.ready') }}</span>
+        <span class="assistant-security-chip">{{ icon('shield') }} {{ t('assistant.security') }}</span>
+        <button class="assistant-notification-button" type="button" data-open-notifications aria-label="{{ t('assistant.notification.label') }}">
+          {{ icon('bell') }}
+          <b class="assistant-badge" data-assistant-badge hidden>0</b>
+        </button>
+        <a class="assistant-notification-button" href="{{ url_for('assistant.app_settings', lang=current_locale) }}" aria-label="{{ t('assistant.settings.title') }}">
+          {{ icon('settings') }}
+        </a>
+      </div>
+    </header>
+
+    <nav class="assistant-mode-tabs" aria-label="{{ t('assistant.title') }}" role="tablist">
+      <button class="assistant-mode-tab" type="button" role="tab" data-mode-tab="ai" aria-controls="assistant-panel-ai">{{ icon('ai') }}<span>{{ t('assistant.mode.ai') }}</span></button>
+      <button class="assistant-mode-tab" type="button" role="tab" data-mode-tab="messages" aria-controls="assistant-panel-messages">{{ icon('message') }}<span>{{ t('assistant.mode.messages') }}</span><b class="assistant-list-count" data-message-tab-badge hidden>0</b></button>
+      <button class="assistant-mode-tab" type="button" role="tab" data-mode-tab="translate" aria-controls="assistant-panel-translate">{{ icon('translate') }}<span>{{ t('assistant.mode.translate') }}</span></button>
+      <button class="assistant-mode-tab" type="button" role="tab" data-mode-tab="alerts" aria-controls="assistant-panel-alerts">{{ icon('bell') }}<span>{{ t('assistant.mode.alerts') }}</span></button>
+    </nav>
+
+    <section class="assistant-quota-strip" data-assistant-quota aria-label="{{ t('assistant.quota.title') }}">
+      <div class="assistant-quota-heading">
+        <strong>{{ t('assistant.quota.title') }}</strong>
+        <small data-quota-reset-label>{{ t('assistant.quota.reset').replace('{date}', assistant_usage.reset_at) }}</small>
+      </div>
+      <div class="assistant-quota-grid">
+        {% for bucket_name, meter in assistant_usage.buckets.items() %}
+        <article class="assistant-quota-card" data-quota-card="{{ bucket_name }}">
+          <span>{{ t('assistant.quota.' ~ bucket_name) }}</span>
+          <strong data-quota-value>{{ meter.remaining }}/{{ meter.limit }}</strong>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <div class="assistant-panels">
+      <section class="assistant-mode-panel" id="assistant-panel-ai" role="tabpanel" data-mode-panel="ai">
+        <div class="assistant-ai-layout">
+          <aside class="assistant-side-panel">
+            <div class="assistant-section-title"><h2>{{ t('assistant.ai.new_chat') }}</h2></div>
+            <button class="assistant-conversation-preview is-active" type="button">
+              <span class="assistant-list-avatar">AI</span>
+              <span class="assistant-list-copy"><strong>{{ t('assistant.ai.title') }}</strong><small>{{ t('assistant.status.ready') }}</small></span>
+            </button>
+            <div class="assistant-note-card">{{ t('assistant.security') }}<br>{{ t('assistant.ai.intro') }}<br>{{ t('assistant.media.retention') }}</div>
+          </aside>
+
+          <section class="assistant-chat-column">
+            <header class="assistant-chat-header">
+              <div><h2>{{ t('assistant.ai.title') }}</h2><p data-assistant-usage>{{ t('assistant.ai.usage').replace('{remaining}', assistant_usage.remaining|string) }}</p></div>
+              <button class="assistant-icon-button assistant-mobile-context-toggle" type="button" data-context-toggle aria-label="{{ t('assistant.context.title') }}">{{ icon('settings') }}</button>
+            </header>
+            <div class="assistant-ai-history-pagination" data-ai-history-pagination hidden>
+              <button class="assistant-secondary-button" type="button" data-ai-history-load-earlier hidden>{{ t('assistant.ai.history_load_earlier') }}</button>
+            </div>
+            <div class="assistant-messages" data-ai-messages aria-live="polite">
+              <div class="assistant-empty-state" data-ai-empty>
+                <span class="assistant-avatar" aria-hidden="true">AI</span>
+                <h3>{{ t('assistant.ai.title') }}</h3>
+                <p>{{ t('assistant.ai.intro') }}</p>
+              </div>
+            </div>
+            <form class="assistant-composer" data-ai-form>
+              <div class="assistant-composer-box">
+                <div class="assistant-composer-tools">
+                  <label class="assistant-icon-button" title="{{ t('assistant.composer.media') }}">
+                    {{ icon('attach') }}
+                    <span class="assistant-sr-only">{{ t('assistant.composer.media') }}</span>
+                    <input class="assistant-sr-only" type="file" accept="image/jpeg,image/png,image/webp,audio/*,video/mp4,video/webm" data-ai-file>
+                  </label>
+                  <button class="assistant-icon-button" type="button" data-ai-record title="{{ t('assistant.composer.record') }}">{{ icon('mic') }}<span class="assistant-sr-only">{{ t('assistant.composer.record') }}</span></button>
+                  <button class="assistant-icon-button" type="button" data-ai-web aria-pressed="false" title="{{ t('assistant.composer.web') }}">{{ icon('globe') }}<span class="assistant-sr-only">{{ t('assistant.composer.web') }}</span></button>
+                </div>
+                <label class="assistant-sr-only" for="assistant-ai-input">{{ t('assistant.composer.placeholder') }}</label>
+                <textarea id="assistant-ai-input" rows="1" maxlength="12000" enterkeyhint="send" autocapitalize="sentences" spellcheck="true" data-ai-input placeholder="{{ t('assistant.composer.placeholder_mobile') }}"></textarea>
+                <button class="assistant-send-button" type="submit" data-ai-submit aria-label="{{ t('assistant.composer.send') }}">{{ icon('send') }}</button>
+              </div>
+              <p class="assistant-composer-meta" data-ai-meta></p>
+            </form>
+          </section>
+
+          <aside class="assistant-context-panel" data-context-panel>
+            <div class="assistant-section-title">
+              <h2>{{ t('assistant.context.title') }}</h2>
+              <button class="assistant-icon-button assistant-mobile-context-toggle" type="button" data-context-close aria-label="{{ t('assistant.common.close') }}">{{ icon('close') }}</button>
+            </div>
+            <form class="assistant-context-form" data-context-form>
+              <label>{{ t('assistant.context.title') }}
+                <select data-context-type>
+                  <option value="general">{{ t('assistant.context.none') }}</option>
+                  <option value="market">{{ t('assistant.context.market') }}</option>
+                  <option value="equities">{{ t('assistant.context.equities') }}</option>
+                </select>
+              </label>
+              <label data-country-field hidden>{{ t('assistant.context.country') }}
+                <select data-context-country>
+                  <option value="usa">{{ t('market.equities.country.usa') }}</option>
+                  <option value="taiwan">{{ t('market.equities.country.taiwan') }}</option>
+                  <option value="japan">{{ t('market.equities.country.japan') }}</option>
+                  <option value="hong_kong">{{ t('market.equities.country.hong_kong') }}</option>
+                  <option value="china">{{ t('market.equities.country.china') }}</option>
+                  <option value="vietnam">{{ t('market.equities.country.vietnam') }}</option>
+                </select>
+              </label>
+              <label data-symbol-field hidden>{{ t('assistant.context.symbol') }}
+                <input type="text" maxlength="24" data-context-symbol placeholder="AAPL / 2330.TW / VNM.VN">
+              </label>
+              <button class="assistant-secondary-button" type="submit">{{ t('assistant.context.apply') }}</button>
+            </form>
+            <div class="assistant-context-summary" data-context-summary>{{ t('assistant.context.none') }}</div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="assistant-mode-panel" id="assistant-panel-messages" role="tabpanel" data-mode-panel="messages">
+        <nav class="assistant-communication-tabs" role="tablist" aria-label="{{ t('assistant.communication.title') }}">
+          <button type="button" role="tab" aria-selected="true" class="is-active" data-communication-tab="conversations">{{ icon('message') }}<span>{{ t('assistant.communication.conversations') }}</span></button>
+          <button type="button" role="tab" aria-selected="false" data-communication-tab="groups">{{ icon('message') }}<span>{{ t('assistant.communication.groups') }}</span></button>
+          <button type="button" role="tab" aria-selected="false" data-communication-tab="calls">{{ icon('phone') }}<span>{{ t('assistant.communication.calls') }}</span></button>
+        </nav>
+        <div class="assistant-messages-layout" data-messaging-layout>
+          <aside class="assistant-contact-rail">
+            <div class="assistant-section-title"><h2>{{ t('assistant.network.title') }}</h2></div>
+            <form class="assistant-search-form" data-network-search>
+              <label for="assistant-network-query">{{ t('assistant.network.search_label') }}</label>
+              <input id="assistant-network-query" type="search" autocomplete="off" placeholder="{{ t('assistant.network.search_placeholder') }}" data-network-query>
+              <button class="assistant-primary-button" type="submit">{{ t('assistant.network.search') }}</button>
+            </form>
+            <div class="assistant-network-tools">
+              <button class="assistant-secondary-button" type="button" data-qr-scan>{{ t('assistant.network.scan_qr') }}</button>
+              <button class="assistant-secondary-button" type="button" data-call-notifications>{{ t('assistant.call.enable_notifications') }}</button>
+            </div>
+            <details class="assistant-call-sound-settings">
+              <summary>{{ t('assistant.call.ringtone_settings') }}</summary>
+              <div class="assistant-call-sound-fields">
+                <label class="assistant-call-sound-toggle">
+                  <input type="checkbox" data-ringtone-enabled>
+                  <span>{{ t('assistant.call.ringtone_enabled') }}</span>
+                </label>
+                <label>
+                  <span>{{ t('assistant.call.ringtone_volume') }} <output data-ringtone-volume-output>72%</output></span>
+                  <input type="range" min="5" max="100" step="5" value="72" data-ringtone-volume>
+                </label>
+                <label>
+                  <span>{{ t('assistant.call.ringtone_duration') }}</span>
+                  <select data-ringtone-duration>
+                    <option value="20000">{{ t('assistant.call.ringtone_duration_20') }}</option>
+                    <option value="35000">{{ t('assistant.call.ringtone_duration_35') }}</option>
+                    <option value="60000">{{ t('assistant.call.ringtone_duration_60') }}</option>
+                  </select>
+                </label>
+                <button class="assistant-secondary-button" type="button" data-ringtone-preview>{{ t('assistant.call.ringtone_preview') }}</button>
+              </div>
+            </details>
+            <article class="assistant-contact-qr">
+              <img src="{{ url_for('messaging.directory_me_qr', lang=current_locale) }}" alt="{{ t('assistant.network.my_qr_alt') }}" width="132" height="132" data-network-qr>
+              <div>
+                <strong>{{ t('assistant.network.my_id') }}</strong>
+                <code data-network-public-id>-</code>
+                <small>{{ t('assistant.network.my_qr_note') }}</small>
+                <div class="assistant-contact-qr-actions">
+                  <button class="assistant-secondary-button" type="button" data-network-copy-id>{{ t('assistant.network.copy_id') }}</button>
+                  <a class="assistant-secondary-button" href="{{ url_for('messaging.directory_me_qr', lang=current_locale) }}" download="timeblock-contact-qr.png" data-network-download-qr>{{ t('assistant.network.download_qr') }}</a>
+                  <button class="assistant-secondary-button" type="button" data-network-share-qr>{{ icon('send') }}<span>{{ t('assistant.network.share_qr') }}</span></button>
+                </div>
+              </div>
+            </article>
+            <p class="assistant-feedback" data-network-feedback></p>
+            <section class="assistant-rail-section">
+              <h3>{{ t('assistant.network.online') }} <span data-online-count>0</span></h3>
+              <div class="assistant-rail-list" data-online-list></div>
+            </section>
+            <section class="assistant-rail-section">
+              <h3>{{ t('assistant.network.connections') }} <span data-connection-count>0</span></h3>
+              <div class="assistant-rail-list" data-connection-list></div>
+            </section>
+            <section class="assistant-rail-section">
+              <h3>{{ t('assistant.network.conversations') }} <span data-conversation-count>0</span></h3>
+              <div class="assistant-rail-list" data-conversation-list></div>
+            </section>
+          </aside>
+
+          <section class="assistant-thread-column">
+            <header class="assistant-thread-header">
+              <div class="assistant-inline-actions">
+                <button class="assistant-icon-button assistant-thread-back" type="button" data-thread-back aria-label="{{ t('assistant.common.close') }}">{{ icon('back') }}</button>
+                <div><h2 data-thread-title>{{ t('assistant.network.select') }}</h2><p data-thread-subtitle>{{ t('assistant.network.select_hint') }}</p></div>
+              </div>
+              <div class="assistant-call-actions" data-call-actions hidden>
+                <button class="assistant-icon-button" type="button" data-call-start="audio" title="{{ t('assistant.call.audio') }}">{{ icon('phone') }}<span class="assistant-sr-only">{{ t('assistant.call.audio') }}</span></button>
+                <button class="assistant-icon-button" type="button" data-call-start="video" title="{{ t('assistant.call.video') }}">{{ icon('video') }}<span class="assistant-sr-only">{{ t('assistant.call.video') }}</span></button>
+                <button class="assistant-danger-button" type="button" data-call-end hidden>{{ t('assistant.call.end') }}</button>
+              </div>
+            </header>
+            <div class="assistant-incoming-call" data-incoming-call hidden>
+              <strong data-incoming-label>{{ t('assistant.call.incoming') }}</strong>
+              <button class="assistant-primary-button" type="button" data-call-answer>{{ t('assistant.call.answer') }}</button>
+              <button class="assistant-danger-button" type="button" data-call-reject>{{ t('assistant.call.reject') }}</button>
+            </div>
+            <section class="assistant-call-stage" data-call-stage hidden aria-live="polite">
+              <header class="assistant-call-stage-header">
+                <div>
+                  <span class="assistant-call-live-dot" aria-hidden="true"></span>
+                  <strong data-call-stage-title>{{ t('assistant.call.active') }}</strong>
+                </div>
+                <div class="assistant-call-stage-actions">
+                  <button class="assistant-call-control assistant-call-control-compact" type="button" data-call-translation-toggle title="{{ t('assistant.call.translation.open') }}" aria-label="{{ t('assistant.call.translation.open') }}" aria-expanded="false" hidden>{{ icon('translate') }}</button>
+                  <button class="assistant-call-control assistant-call-control-compact" type="button" data-call-minimize title="{{ t('assistant.call.minimize') }}" aria-label="{{ t('assistant.call.minimize') }}">{{ icon('minimize') }}</button>
+                  <button class="assistant-call-control assistant-call-control-compact" type="button" data-call-fullscreen title="{{ t('assistant.call.maximize') }}" aria-label="{{ t('assistant.call.maximize') }}">{{ icon('maximize') }}</button>
+                </div>
+              </header>
+              <div class="assistant-call-canvas" data-call-canvas>
+                <div class="assistant-call-placeholder" data-call-placeholder>
+                  <span class="assistant-avatar" aria-hidden="true">T</span>
+                  <strong>{{ t('assistant.call.active') }}</strong>
+                </div>
+                <video class="assistant-remote-media" autoplay playsinline data-remote-media></video>
+                <div class="assistant-local-media-wrap" data-local-media-wrap>
+                  <video class="assistant-local-media" autoplay muted playsinline data-local-media></video>
+                  <span>{{ t('assistant.call.you') }}</span>
+                </div>
+              </div>
+              <aside class="call-translation-panel" data-call-translation-panel hidden role="dialog" aria-modal="false" aria-labelledby="call-translation-title">
+                <header class="call-translation-panel-header">
+                  <div>
+                    <strong id="call-translation-title">{{ t('assistant.call.translation.title') }}</strong>
+                    <span>{{ t('assistant.call.translation.subtitle') }}</span>
+                    <span data-call-translation-sync-status data-state="syncing" role="status" aria-live="polite">{{ t('assistant.call.translation.syncing') }}</span>
+                  </div>
+                  <button class="assistant-icon-button" type="button" data-call-translation-close aria-label="{{ t('assistant.common.close') }}">{{ icon('close') }}</button>
+                </header>
+                <p class="call-translation-privacy">{{ t('assistant.call.translation.privacy') }}</p>
+                <section class="call-translation-quota" aria-label="{{ t('assistant.call.translation.quota') }}">
+                  <div class="call-translation-quota-heading"><span>{{ t('assistant.call.translation.quota') }}</span><small>{{ t('assistant.call.translation.quota_note') }}</small></div>
+                  <div class="call-translation-quota-grid">
+                    <div><span>{{ t('assistant.call.translation.quota_text') }}</span><strong data-call-translation-quota-text role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">—</strong></div>
+                    <div><span>{{ t('assistant.call.translation.quota_audio') }}</span><strong data-call-translation-quota-audio role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">—</strong></div>
+                    <div><span>{{ t('assistant.call.translation.quota_speech') }}</span><strong data-call-translation-quota-speech role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">—</strong></div>
+                  </div>
+                </section>
+                <div class="call-translation-languages">
+                  <label>
+                    <span>{{ t('assistant.call.translation.source') }}</span>
+                    <select data-call-translation-source>
+                      {% for code in ['vi', 'en', 'zh-TW', 'ja', 'ko', 'th', 'id'] %}
+                      <option value="{{ code }}"{% if code == 'vi' %} selected{% endif %}>{{ t('translator.language.' ~ code) }}</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                  <button class="call-translation-swap" type="button" data-call-translation-swap aria-label="{{ t('translator.swap') }}">{{ icon('translate') }}</button>
+                  <label>
+                    <span>{{ t('assistant.call.translation.target') }}</span>
+                    <select data-call-translation-target>
+                      {% for code in ['vi', 'en', 'zh-TW', 'ja', 'ko', 'th', 'id'] %}
+                      <option value="{{ code }}"{% if code == 'zh-TW' %} selected{% endif %}>{{ t('translator.language.' ~ code) }}</option>
+                      {% endfor %}
+                      </select>
+                  </label>
+                </div>
+                <form class="call-translation-text-form" data-call-translation-text-form>
+                  <label for="call-translation-text">{{ t('assistant.call.translation.text') }}</label>
+                  <textarea id="call-translation-text" maxlength="8000" rows="2" data-call-translation-text placeholder="{{ t('assistant.call.translation.placeholder') }}"></textarea>
+                  <button class="assistant-primary-button" type="submit" data-call-translation-submit>{{ t('assistant.call.translation.translate') }}</button>
+                </form>
+                <div class="call-translation-voice-row">
+                  <button class="assistant-secondary-button" type="button" data-call-translation-record aria-pressed="false">{{ t('assistant.call.translation.record') }}</button>
+                  <span data-call-translation-record-status role="status" aria-live="polite">{{ t('assistant.call.translation.ready') }}</span>
+                </div>
+                <label class="call-translation-auto-read"><input type="checkbox" data-call-translation-auto-read> <span>{{ t('assistant.call.translation.auto_read') }}</span></label>
+                <p class="call-translation-status" data-call-translation-status role="status" aria-live="polite"></p>
+                <section class="call-translation-result" data-call-translation-result aria-live="polite">
+                  <div class="call-translation-result-empty" data-call-translation-empty>{{ t('assistant.call.translation.empty') }}</div>
+                  <div class="call-translation-result-values" data-call-translation-values hidden>
+                    <small data-call-translation-direction></small>
+                    <div><span>{{ t('assistant.call.translation.original') }}</span><p data-call-translation-original>-</p></div>
+                    <div><span>{{ t('assistant.call.translation.result') }}</span><p data-call-translation-output>-</p></div>
+                    <div class="call-translation-result-actions">
+                      <button class="assistant-secondary-button" type="button" data-call-translation-listen disabled>{{ t('assistant.call.translation.listen') }}</button>
+                      <button class="assistant-primary-button" type="button" data-call-translation-send disabled>{{ t('assistant.call.translation.send_voice') }}</button>
+                    </div>
+                  </div>
+                </section>
+                <section class="call-translation-history">
+                  <div class="call-translation-history-heading"><span>{{ t('assistant.call.translation.history') }}</span><button class="assistant-secondary-button" type="button" data-call-translation-history-refresh>{{ t('assistant.call.translation.refresh') }}</button></div>
+                  <ol data-call-translation-history-list></ol>
+                  <button class="assistant-secondary-button" type="button" data-call-translation-history-more hidden>{{ t('assistant.call.translation.more') }}</button>
+                </section>
+              </aside>
+              <div class="assistant-call-control-dock">
+                <button class="assistant-call-control" type="button" data-call-toggle-mic title="{{ t('assistant.call.mute') }}" aria-label="{{ t('assistant.call.mute') }}" aria-pressed="false">
+                  <span data-control-on>{{ icon('mic') }}</span><span data-control-off>{{ icon('mic-off') }}</span>
+                  <small data-call-mic-label>{{ t('assistant.call.mute') }}</small>
+                </button>
+                <button class="assistant-call-control" type="button" data-call-toggle-camera title="{{ t('assistant.call.camera_off') }}" aria-label="{{ t('assistant.call.camera_off') }}" aria-pressed="false">
+                  <span data-control-on>{{ icon('video') }}</span><span data-control-off>{{ icon('video-off') }}</span>
+                  <small data-call-camera-label>{{ t('assistant.call.camera_off') }}</small>
+                </button>
+                <button class="assistant-call-control assistant-call-control-end" type="button" data-call-hangup title="{{ t('assistant.call.end') }}" aria-label="{{ t('assistant.call.end') }}">
+                  {{ icon('phone') }}<small>{{ t('assistant.call.end') }}</small>
+                </button>
+              </div>
+            </section>
+            <div class="assistant-thread-messages" data-thread-messages>
+              <div class="assistant-empty-state"><span class="assistant-avatar" aria-hidden="true">T</span><h3>{{ t('assistant.network.select') }}</h3><p>{{ t('assistant.network.select_hint') }}</p></div>
+            </div>
+            <form class="assistant-composer" data-message-form hidden>
+              <div class="assistant-composer-box">
+                <label class="assistant-icon-button" title="{{ t('assistant.composer.image') }}">
+                  {{ icon('attach') }}
+                  <span class="assistant-sr-only">{{ t('assistant.composer.image') }}</span>
+                  <input class="assistant-sr-only" type="file" accept="image/jpeg,image/png,image/webp" data-message-file>
+                </label>
+                <label class="assistant-sr-only" for="assistant-message-input">{{ t('assistant.network.message_placeholder') }}</label>
+                <textarea id="assistant-message-input" name="content" rows="1" maxlength="4000" enterkeyhint="send" autocapitalize="sentences" spellcheck="true" placeholder="{{ t('assistant.network.message_placeholder') }}" data-message-input></textarea>
+                <button class="assistant-send-button" type="submit" aria-label="{{ t('assistant.network.send') }}">{{ icon('send') }}</button>
+              </div>
+              <p class="assistant-composer-meta" data-call-status>{{ t('assistant.network.encryption_note') }}</p>
+            </form>
+          </section>
+        </div>
+        <section class="assistant-communication-workspace" data-communication-panel="groups" hidden>
+          <header class="assistant-communication-heading">
+            <div class="assistant-feature-icon">{{ icon('message') }}</div>
+            <div><h2>{{ t('assistant.communication.groups_title') }}</h2><p>{{ t('assistant.communication.groups_note') }}</p></div>
+          </header>
+          <div class="assistant-communication-grid">
+            <form class="assistant-card assistant-group-form" data-group-form>
+              <h3>{{ t('assistant.communication.group_create') }}</h3>
+              <label>{{ t('assistant.communication.group_name') }}
+                <input type="text" maxlength="80" required data-group-title placeholder="{{ t('assistant.communication.group_name_placeholder') }}">
+              </label>
+              <fieldset>
+                <legend>{{ t('assistant.communication.group_members') }}</legend>
+                <div class="assistant-group-member-list" data-group-members></div>
+              </fieldset>
+              <button class="assistant-primary-button" type="submit">{{ t('assistant.communication.group_create_action') }}</button>
+              <p class="assistant-feedback" data-group-feedback></p>
+            </form>
+            <article class="assistant-card assistant-group-directory">
+              <div class="assistant-section-title"><h3>{{ t('assistant.communication.my_groups') }}</h3><button class="assistant-secondary-button" type="button" data-group-refresh>{{ t('assistant.communication.refresh') }}</button></div>
+              <div class="assistant-communication-list" data-group-list></div>
+            </article>
+          </div>
+        </section>
+        <section class="assistant-communication-workspace" data-communication-panel="calls" hidden>
+          <header class="assistant-communication-heading">
+            <div class="assistant-feature-icon">{{ icon('phone') }}</div>
+            <div><h2>{{ t('assistant.communication.calls_title') }}</h2><p>{{ t('assistant.communication.calls_note') }}</p></div>
+          </header>
+          <article class="assistant-card assistant-call-history-card">
+            <div class="assistant-section-title"><h3>{{ t('assistant.communication.call_history') }}</h3><button class="assistant-secondary-button" type="button" data-call-history-refresh>{{ t('assistant.communication.refresh') }}</button></div>
+            <div class="assistant-communication-list" data-call-history></div>
+            <p class="assistant-feedback" data-call-history-feedback></p>
+          </article>
+        </section>
+        <div class="assistant-qr-modal" data-qr-modal hidden role="dialog" aria-modal="true" aria-labelledby="assistant-qr-title">
+          <div class="assistant-qr-dialog" data-qr-dialog>
+            <div class="assistant-section-title">
+              <h2 id="assistant-qr-title">{{ t('assistant.network.scan_qr') }}</h2>
+              <button class="assistant-icon-button" type="button" data-qr-close aria-label="{{ t('assistant.common.close') }}">{{ icon('close') }}</button>
+            </div>
+            <p class="assistant-qr-intro">{{ t('assistant.network.qr_camera_note') }}</p>
+            <video autoplay muted playsinline data-qr-video hidden></video>
+            <div class="assistant-qr-source-actions">
+              <button class="assistant-secondary-button" type="button" data-qr-camera>
+                {{ icon('video') }} <span>{{ t('assistant.network.qr_camera_start') }}</span>
+              </button>
+              <label class="assistant-secondary-button assistant-qr-upload">
+                {{ icon('attach') }} <span>{{ t('assistant.network.qr_upload') }}</span>
+                <input class="assistant-sr-only" type="file" accept="image/jpeg,image/png,image/webp" data-qr-file>
+              </label>
+            </div>
+            <form class="assistant-qr-manual" data-qr-manual-form>
+              <label for="assistant-qr-manual">{{ t('assistant.network.qr_manual_label') }}</label>
+              <div>
+                <input id="assistant-qr-manual" type="text" inputmode="text" autocomplete="off" maxlength="64" placeholder="{{ t('assistant.network.search_placeholder') }}" data-qr-manual>
+                <button class="assistant-secondary-button" type="submit">{{ t('assistant.network.qr_preview') }}</button>
+              </div>
+            </form>
+            <article class="assistant-qr-preview" data-qr-preview hidden>
+              <span class="assistant-list-avatar" data-qr-preview-avatar aria-hidden="true">T</span>
+              <span class="assistant-list-copy">
+                <strong data-qr-preview-name>-</strong>
+                <small><span data-qr-preview-type></span> · <code data-qr-preview-id>-</code></small>
+              </span>
+            </article>
+            <p class="assistant-feedback" data-qr-feedback></p>
+            <div class="assistant-qr-confirm-actions">
+              <button class="assistant-secondary-button" type="button" data-qr-cancel>{{ t('assistant.common.cancel') }}</button>
+              <button class="assistant-primary-button" type="button" data-qr-confirm disabled>{{ t('assistant.network.qr_confirm') }}</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="assistant-mode-panel" id="assistant-panel-translate" role="tabpanel" data-mode-panel="translate" data-live-translate>
+        <div class="assistant-live-translate">
+          <header class="assistant-live-translate-header">
+            <div>
+              <h2>{{ t('assistant.translate.live_title') }}</h2>
+              <p>{{ t('assistant.translate.live_subtitle') }}</p>
+            </div>
+            <span class="assistant-status-chip">{{ t('assistant.translate.mode_chip') }}</span>
+          </header>
+
+          <div class="assistant-live-translate-grid">
+            <article class="assistant-card assistant-live-translate-controls">
+              <form class="assistant-card-form" data-live-translate-form>
+                <div class="assistant-live-language-row">
+                  <label>
+                    <span>{{ t('assistant.translate.source') }}</span>
+                    <select data-live-translate-source>
+                      {% for code in ['vi', 'en', 'zh-TW', 'ja', 'ko', 'th', 'id'] %}
+                      <option value="{{ code }}"{% if code == 'vi' %} selected{% endif %}>{{ t('translator.language.' ~ code) }}</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                  <button class="assistant-swap-button" type="button" data-live-translate-swap aria-label="{{ t('translator.swap') }}">{{ icon('translate') }}</button>
+                  <label>
+                    <span>{{ t('assistant.translate.target') }}</span>
+                    <select data-live-translate-target>
+                      {% for code in ['vi', 'en', 'zh-TW', 'ja', 'ko', 'th', 'id'] %}
+                      <option value="{{ code }}"{% if code == 'zh-TW' %} selected{% endif %}>{{ t('translator.language.' ~ code) }}</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                </div>
+
+                <label class="assistant-live-text-field">
+                  <span>{{ t('assistant.translate.text') }}</span>
+                  <textarea maxlength="8000" data-live-translate-text placeholder="{{ t('assistant.translate.placeholder') }}"></textarea>
+                </label>
+
+                <div class="assistant-live-actions">
+                  <button class="assistant-primary-button" type="submit" data-live-translate-submit>{{ t('assistant.translate.submit') }}</button>
+                  <button class="assistant-secondary-button assistant-live-voice-button" type="button" data-live-translate-voice aria-pressed="false" aria-label="{{ t('assistant.translate.start_recording') }}">
+                    <span class="assistant-record-icon">{{ icon('mic') }}</span>
+                    <span>{{ t('assistant.translate.voice') }}</span>
+                    <small data-live-translate-voice-label>{{ t('assistant.translate.start_recording') }}</small>
+                  </button>
+                  <button class="assistant-secondary-button" type="button" data-live-translate-reset>{{ t('assistant.translate.reset') }}</button>
+                </div>
+
+                <div class="assistant-live-error-actions">
+                  <p class="assistant-feedback assistant-live-translate-status" data-live-translate-status role="status" aria-live="polite"></p>
+                  <button class="assistant-secondary-button" type="button" data-live-translate-retry hidden>{{ t('assistant.translate.retry') }}</button>
+                </div>
+              </form>
+            </article>
+
+            <article class="assistant-card assistant-live-translate-result">
+              <header>
+                <h2>{{ t('assistant.translate.result_title') }}</h2>
+                <p>{{ t('assistant.translate.privacy_note') }}</p>
+              </header>
+
+              <section class="assistant-live-result-block" data-live-translate-transcript hidden>
+                <strong>{{ t('assistant.translate.original_transcript') }}</strong>
+                <div class="assistant-note-card assistant-live-result-value" data-live-translate-transcript-value></div>
+              </section>
+
+              <section class="assistant-live-result-block">
+                <strong>{{ t('assistant.translate.result') }}</strong>
+                <div class="assistant-translation-output assistant-live-result-value" data-live-translate-output aria-live="polite">{{ t('assistant.translate.empty') }}</div>
+              </section>
+
+              <div class="assistant-live-actions">
+                <button class="assistant-speak-button" type="button" data-live-translate-tts disabled aria-pressed="false" aria-label="{{ t('assistant.translate.tap_to_listen') }}">
+                  {{ icon('volume') }}
+                  <span data-live-translate-tts-label>{{ t('assistant.translate.tap_to_listen') }}</span>
+                </button>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="assistant-mode-panel" id="assistant-panel-alerts" role="tabpanel" data-mode-panel="alerts">
+        <div class="assistant-alerts-layout">
+          <div>
+            <article class="assistant-card">
+              <header><h2>{{ t('assistant.alerts.title') }}</h2><p>{{ t('assistant.alerts.subtitle') }}</p></header>
+              <form class="assistant-card-form" data-preferences-form>
+                <label class="assistant-toggle-row"><span>{{ t('assistant.alerts.in_app') }}</span><input type="checkbox" data-pref="in_app_enabled"></label>
+                <label class="assistant-toggle-row"><span>{{ t('assistant.alerts.email') }}</span><input type="checkbox" data-pref="email_enabled"></label>
+                <label class="assistant-toggle-row"><span>{{ t('assistant.alerts.market_updates') }}</span><input type="checkbox" data-pref="market_alerts_enabled"></label>
+                <label class="assistant-toggle-row"><span>{{ t('assistant.alerts.exchange_rate_updates') }}</span><input type="checkbox" data-pref="exchange_rate_alerts_enabled"></label>
+                <label class="assistant-toggle-row"><span>{{ t('assistant.alerts.offline_call_email') }}</span><input type="checkbox" data-pref="offline_call_email_enabled"></label>
+                <button class="assistant-primary-button" type="submit">{{ t('assistant.alerts.save_preferences') }}</button>
+                <p class="assistant-feedback" data-preferences-feedback></p>
+              </form>
+            </article>
+            <div class="assistant-note-card">{{ t('assistant.alerts.manual_note') }}</div>
+            <article class="assistant-card assistant-rate-card">
+              <header><h3>{{ t('assistant.alerts.reference_rates') }}</h3><p>{{ t('assistant.alerts.reference_rates_note') }}</p></header>
+              <div class="assistant-rate-table" data-reference-rates aria-live="polite"></div>
+            </article>
+            <article class="assistant-card assistant-alert-list-card">
+              <header><h3>{{ t('assistant.alerts.notifications') }}</h3></header>
+              <div class="assistant-alert-list" data-notification-inbox></div>
+            </article>
+          </div>
+          <div>
+            <article class="assistant-card">
+              <header><h3>{{ t('assistant.alerts.create') }}</h3><p>{{ t('assistant.ai.intro') }}</p></header>
+              <form class="assistant-card-form" data-alert-form>
+                <div class="assistant-alert-grid">
+                  <label>{{ t('assistant.alerts.market') }}
+                    <select data-alert-market><option value="crypto">{{ t('assistant.alerts.crypto') }}</option><option value="equities">{{ t('assistant.alerts.equities') }}</option></select>
+                  </label>
+                  <label>{{ t('assistant.alerts.symbol') }}<input type="text" maxlength="24" data-alert-symbol placeholder="BTC / AAPL"></label>
+                  <label>{{ t('assistant.alerts.country') }}
+                    <select data-alert-country><option value="">-</option><option value="usa">{{ t('market.equities.country.usa') }}</option><option value="taiwan">{{ t('market.equities.country.taiwan') }}</option><option value="japan">{{ t('market.equities.country.japan') }}</option><option value="hong_kong">{{ t('market.equities.country.hong_kong') }}</option><option value="china">{{ t('market.equities.country.china') }}</option><option value="vietnam">{{ t('market.equities.country.vietnam') }}</option></select>
+                  </label>
+                  <label>{{ t('assistant.alerts.condition') }}
+                    <select data-alert-condition>
+                      <option value="action_buy">{{ t('assistant.alerts.action_buy') }}</option>
+                      <option value="action_sell">{{ t('assistant.alerts.action_sell') }}</option>
+                      <option value="rsi_gt" data-alert-scope="equities">{{ t('assistant.alerts.rsi_gt') }}</option>
+                      <option value="rsi_lt" data-alert-scope="equities">{{ t('assistant.alerts.rsi_lt') }}</option>
+                      <option value="direction_gt">{{ t('assistant.alerts.direction_gt') }}</option>
+                      <option value="direction_lt">{{ t('assistant.alerts.direction_lt') }}</option>
+                    </select>
+                  </label>
+                  <label>{{ t('assistant.alerts.threshold') }}<input type="number" min="0" max="100" step="1" value="60" data-alert-threshold></label>
+                </div>
+                <div class="assistant-inline-actions"><button class="assistant-primary-button" type="submit">{{ t('assistant.alerts.submit') }}</button><button class="assistant-secondary-button" type="button" data-alert-evaluate>{{ t('assistant.alerts.evaluate') }}</button></div>
+                <p class="assistant-feedback" data-alert-feedback></p>
+              </form>
+            </article>
+            <article class="assistant-card assistant-alert-list-card">
+              <header><h3>{{ t('assistant.alerts.list') }}</h3></header>
+              <div class="assistant-alert-list" data-alert-list></div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='vendor/jsqr/1.4.0/jsQR.min.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/qr_friend_scanner.js', v='uiux-20260729') }}" defer></script>
+  <script>window.__TIMEBLOCK_CALL_V1_ENABLED__ = true;</script>
+  <script src="{{ url_for('static', filename='js/call-v1/session.js', v='call-v1-hotfix-20260820b') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/media.js', v='call-v1-hotfix-20260820b') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/peer.js', v='call-v1-hotfix-20260820b') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/signaling.js', v='call-v1-hotfix-20260820b') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/ring-audio.js', v='call-v1-hotfix-20260820b') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/runtime.js', v='call-v1-hotfix-20260820b') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/translation_plugin.js', v='call-v1-translation-plugin-20260824-voice-task') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/bootstrap.js', v='call-v1-hotfix-20260820b') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/live_translate.js', v='live-translate-v1-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/assistant.js', v='call-v1-hotfix-20260820b') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/messaging_core_v2.js', v='uiux-20260729') }}" defer></script>
+  {% if config.MESSAGING_ADVANCED_ATTACHMENTS_ENABLED %}
+    <script src="{{ url_for('static', filename='js/messaging_composer_attachments_v2.js', v='uiux-20260729') }}" defer></script>
+  {% endif %}
+{% endblock %}

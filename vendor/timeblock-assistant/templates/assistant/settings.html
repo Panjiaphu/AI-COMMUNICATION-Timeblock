@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t('assistant.settings.page_title') }} | Timeblock{% endblock %}
+{% block body_class %}app-settings-page{% endblock %}
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app_settings.css') }}">
+{% endblock %}
+
+{% block content %}
+<section
+  class="app-settings"
+  id="app-settings"
+  data-locale="{{ current_locale }}"
+  data-copy-allowed="{{ t('assistant.settings.permission_allowed') }}"
+  data-copy-denied="{{ t('assistant.settings.permission_denied') }}"
+  data-copy-prompt="{{ t('assistant.settings.permission_prompt') }}"
+  data-copy-unavailable="{{ t('assistant.settings.permission_unavailable') }}"
+  data-copy-saved="{{ t('assistant.settings.saved') }}"
+  data-copy-test-sent="{{ t('assistant.settings.test_sent') }}"
+  data-copy-push-unavailable="{{ t('assistant.settings.push_unavailable') }}"
+  data-copy-push-requires-install="{{ t('assistant.settings.push_requires_install') }}"
+  data-copy-failed="{{ t('assistant.settings.operation_failed') }}"
+  data-copy-no-devices="{{ t('assistant.settings.no_devices') }}"
+  data-copy-revoke="{{ t('assistant.settings.revoke') }}"
+  data-copy-effective-on="{{ t('assistant.settings.effective_on') }}"
+  data-copy-effective-off="{{ t('assistant.settings.effective_off') }}"
+  data-copy-effective-blocked="{{ t('assistant.settings.effective_blocked') }}"
+  data-copy-audio-test="{{ t('assistant.settings.audio_test_started') }}"
+>
+  <header class="app-settings-header">
+    <a href="{{ url_for('assistant.workspace', lang=current_locale) }}" class="app-settings-back" aria-label="{{ t('assistant.settings.back') }}">‹</a>
+    <div>
+      <span class="app-settings-logo" aria-hidden="true">T</span>
+      <p>Timeblock</p>
+      <h1>{{ t('assistant.settings.title') }}</h1>
+      <span>{{ t('assistant.settings.subtitle') }}</span>
+    </div>
+  </header>
+
+  <div class="app-settings-grid">
+    <main>
+      <section class="settings-card install-card">
+        <div class="settings-card-heading">
+          <div>
+            <p class="settings-kicker">PWA</p>
+            <h2>{{ t('assistant.settings.install_title') }}</h2>
+            <p>{{ t('assistant.settings.install_description') }}</p>
+          </div>
+          <button
+            class="settings-primary-button"
+            type="button"
+            data-pwa-install
+            data-ready-text="{{ t('assistant.settings.install_ready') }}"
+            data-manual-text="{{ t('assistant.settings.install_manual') }}"
+            data-done-text="{{ t('assistant.settings.install_done') }}"
+            data-error-text="{{ t('assistant.settings.install_error') }}"
+          >{{ t('assistant.settings.install_action') }}</button>
+        </div>
+        <div class="install-status-row">
+          <span data-install-mode>{{ t('assistant.settings.status_browser') }}</span>
+          <span data-secure-status>{{ t('assistant.settings.status_secure') }}</span>
+          <span data-worker-status>{{ t('assistant.settings.status_service_worker') }}</span>
+        </div>
+        <p class="settings-status" data-pwa-install-status aria-live="polite"></p>
+        <aside class="ios-install-guide" data-ios-install-guide hidden>
+          <strong>iPhone / iPad</strong>
+          <p>{{ t('assistant.settings.ios_guide') }}</p>
+        </aside>
+      </section>
+
+      <section class="settings-section" aria-labelledby="access-title">
+        <h2 id="access-title">{{ t('assistant.settings.system_access') }}</h2>
+        <div class="ios-settings-list">
+          {% set permission_rows = [
+            ('contacts', '👤', 'assistant.settings.contacts'),
+            ('photos', '🌈', 'assistant.settings.photos'),
+            ('bluetooth', 'ᛒ', 'assistant.settings.bluetooth'),
+            ('microphone', '●', 'assistant.settings.microphone'),
+            ('camera', '◉', 'assistant.settings.camera'),
+            ('notifications', '●', 'assistant.settings.notifications')
+          ] %}
+          {% for permission, symbol, label in permission_rows %}
+          <div class="ios-settings-row" data-permission-row="{{ permission }}">
+            <span class="settings-icon settings-icon-{{ permission }}" aria-hidden="true">{{ symbol }}</span>
+            <span class="settings-row-copy">
+              <strong>{{ t(label) }}</strong>
+              {% if permission == 'notifications' %}<small>{{ t('assistant.settings.banners_sounds_badges') }}</small>{% endif %}
+            </span>
+            <span class="permission-state" data-permission-state="{{ permission }}">{{ t('assistant.settings.permission_unavailable') }}</span>
+            <button type="button" class="settings-text-button" data-request-permission="{{ permission }}" hidden>{{ t('assistant.settings.permission_request') }}</button>
+          </div>
+          {% endfor %}
+          {% set system_rows = [
+            ('assistant.settings.siri_search', '✦'),
+            ('assistant.settings.live_activities', '◷'),
+            ('assistant.settings.background_refresh', '↻'),
+            ('assistant.settings.cellular_data', '⌁'),
+            ('assistant.settings.tracking', '◎')
+          ] %}
+          {% for label, symbol in system_rows %}
+          <div class="ios-settings-row">
+            <span class="settings-icon settings-icon-system" aria-hidden="true">{{ symbol }}</span>
+            <span class="settings-row-copy"><strong>{{ t(label) }}</strong></span>
+            <span class="permission-state">{{ t('assistant.settings.permission_unavailable') }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        <p class="settings-limit-note">{{ t('assistant.settings.web_limit_note') }}</p>
+      </section>
+
+      <section class="settings-section" aria-labelledby="language-title">
+        <p class="settings-section-label">{{ t('assistant.settings.preferred_language') }}</p>
+        <div class="ios-settings-list">
+          <a class="ios-settings-row settings-language-link" href="#language-title">
+            <span class="settings-icon settings-icon-language" aria-hidden="true">◎</span>
+            <span class="settings-row-copy"><strong id="language-title">{{ t('assistant.settings.language') }}</strong></span>
+            <span class="permission-state">{{ t('assistant.settings.vietnamese') if current_locale == 'vi' else locale_label }}</span>
+            <span aria-hidden="true">›</span>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <aside class="notification-settings">
+      <form class="settings-card" data-notification-form>
+        <p class="settings-kicker">{{ t('assistant.settings.notifications_module') }}</p>
+        <h2>{{ t('assistant.settings.call_notifications_title') }}</h2>
+        <p>{{ t('assistant.settings.call_notifications_description') }}</p>
+
+        <div class="effective-state-grid" aria-live="polite">
+          <span>{{ t('assistant.settings.desired_state') }} <strong data-desired-state>—</strong></span>
+          <span>{{ t('assistant.settings.effective_state') }} <strong data-effective-state>—</strong></span>
+          <span>{{ t('assistant.settings.server_push_state') }} <strong data-server-push-state>—</strong></span>
+        </div>
+
+        <label class="settings-readonly-field">
+          <span>{{ t('assistant.settings.account_email') }}</span>
+          <input type="text" data-account-email readonly value="">
+        </label>
+
+        <fieldset class="call-preference-group">
+          <legend>{{ t('assistant.settings.notification_channels') }}</legend>
+          <label class="settings-toggle-row">
+            <span><strong>{{ t('assistant.settings.in_app_enable') }}</strong></span>
+            <input type="checkbox" name="in_app_enabled">
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="settings-toggle-row">
+            <span><strong>{{ t('assistant.settings.email_enable') }}</strong></span>
+            <input type="checkbox" name="email_enabled">
+            <i aria-hidden="true"></i>
+          </label>
+
+        <label class="settings-toggle-row">
+          <span><strong>{{ t('assistant.settings.push_enable') }}</strong></span>
+          <input type="checkbox" name="push_enabled" data-push-toggle>
+          <i aria-hidden="true"></i>
+        </label>
+        <label class="settings-toggle-row">
+          <span><strong>{{ t('assistant.settings.push_preview') }}</strong></span>
+          <input type="checkbox" name="message_preview_enabled">
+          <i aria-hidden="true"></i>
+        </label>
+        <label class="settings-toggle-row">
+          <span><strong>{{ t('assistant.settings.push_member') }}</strong></span>
+          <input type="checkbox" name="member_messages_enabled">
+          <i aria-hidden="true"></i>
+        </label>
+        <label class="settings-toggle-row">
+          <span><strong>{{ t('assistant.settings.push_business') }}</strong></span>
+          <input type="checkbox" name="business_messages_enabled">
+          <i aria-hidden="true"></i>
+        </label>
+        <label class="settings-toggle-row">
+          <span><strong>{{ t('assistant.settings.push_system') }}</strong></span>
+          <input type="checkbox" name="system_notifications_enabled">
+          <i aria-hidden="true"></i>
+        </label>
+        <label class="settings-toggle-row">
+          <span><strong>{{ t('assistant.settings.sound') }}</strong></span>
+          <input type="checkbox" name="in_app_sound_enabled">
+          <i aria-hidden="true"></i>
+        </label>
+        <label class="settings-toggle-row">
+          <span><strong>{{ t('assistant.settings.vibration') }}</strong></span>
+          <input type="checkbox" name="vibration_enabled">
+          <i aria-hidden="true"></i>
+        </label>
+        </fieldset>
+
+        <fieldset class="call-preference-group">
+          <legend>{{ t('assistant.settings.incoming_calls') }}</legend>
+          <label class="settings-toggle-row">
+            <span><strong>{{ t('assistant.settings.incoming_notification') }}</strong></span>
+            <input type="checkbox" name="incoming_call_notification_enabled">
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="settings-toggle-row">
+            <span><strong>{{ t('assistant.settings.audio_ringtone') }}</strong></span>
+            <input type="checkbox" name="incoming_call_sound_enabled">
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="settings-toggle-row">
+            <span><strong>{{ t('assistant.settings.video_ringtone') }}</strong></span>
+            <input type="checkbox" name="incoming_video_call_sound_enabled">
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="settings-range-row">
+            <span>{{ t('assistant.settings.ringtone_volume') }} <output data-call-volume-output>100%</output></span>
+            <input type="range" min="5" max="100" step="5" name="incoming_call_volume_percent" value="100">
+          </label>
+          <label class="settings-select-row">
+            <span>{{ t('assistant.settings.ringtone_duration') }}</span>
+            <select name="incoming_call_ring_duration_seconds">
+              <option value="20">20s</option>
+              <option value="35">35s</option>
+              <option value="60">60s</option>
+            </select>
+          </label>
+          <label class="settings-toggle-row">
+            <span><strong>{{ t('assistant.settings.call_vibration') }}</strong></span>
+            <input type="checkbox" name="incoming_call_vibration_enabled">
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="settings-toggle-row">
+            <span><strong>{{ t('assistant.settings.vibration_sync') }}</strong></span>
+            <input type="checkbox" name="incoming_call_vibration_sync_enabled">
+            <i aria-hidden="true"></i>
+          </label>
+          <button class="settings-secondary-button" type="button" data-test-ringtone>{{ t('assistant.settings.test_ringtone') }}</button>
+        </fieldset>
+
+        <fieldset class="call-preference-group">
+          <legend>{{ t('assistant.settings.outgoing_calls') }}</legend>
+          <label class="settings-toggle-row">
+            <span><strong>{{ t('assistant.settings.ringback_enable') }}</strong></span>
+            <input type="checkbox" name="outgoing_ringback_enabled">
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="settings-range-row">
+            <span>{{ t('assistant.settings.ringback_volume') }} <output data-ringback-volume-output>70%</output></span>
+            <input type="range" min="5" max="100" step="5" name="outgoing_ringback_volume_percent" value="70">
+          </label>
+          <button class="settings-secondary-button" type="button" data-test-ringback>{{ t('assistant.settings.test_ringback') }}</button>
+        </fieldset>
+
+        <fieldset class="call-preference-group">
+          <legend>{{ t('assistant.settings.missed_calls') }}</legend>
+          <label class="settings-toggle-row">
+            <span><strong>{{ t('assistant.settings.incoming_email_policy') }}</strong></span>
+            <input type="checkbox" name="offline_call_email_enabled">
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="settings-toggle-row">
+            <span><strong>{{ t('assistant.settings.missed_audio_email') }}</strong></span>
+            <input type="checkbox" name="missed_call_email_enabled">
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="settings-toggle-row">
+            <span><strong>{{ t('assistant.settings.missed_video_email') }}</strong></span>
+            <input type="checkbox" name="missed_video_call_email_enabled">
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="settings-toggle-row">
+            <span><strong>{{ t('assistant.settings.missed_chime_enable') }}</strong></span>
+            <input type="checkbox" name="missed_call_chime_enabled">
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="settings-range-row">
+            <span>{{ t('assistant.settings.missed_chime_volume') }} <output data-chime-volume-output>60%</output></span>
+            <input type="range" min="5" max="100" step="5" name="missed_call_chime_volume_percent" value="60">
+          </label>
+          <button class="settings-secondary-button" type="button" data-test-chime>{{ t('assistant.settings.test_missed_chime') }}</button>
+        </fieldset>
+
+        <fieldset class="quiet-hours">
+          <legend>{{ t('assistant.settings.quiet_hours') }}</legend>
+          <label>{{ t('assistant.settings.quiet_from') }}<input type="time" name="quiet_hours_start"></label>
+          <label>{{ t('assistant.settings.quiet_to') }}<input type="time" name="quiet_hours_end"></label>
+          <label class="timezone-field">{{ t('assistant.settings.timezone') }}<input type="text" name="timezone" value="Asia/Taipei" autocomplete="off"></label>
+        </fieldset>
+
+        <div class="settings-actions">
+          <button class="settings-primary-button" type="submit">{{ t('assistant.settings.save') }}</button>
+          <button class="settings-secondary-button" type="button" data-test-push>{{ t('assistant.settings.test') }}</button>
+        </div>
+        <p class="settings-status" data-settings-status role="status" aria-live="polite"></p>
+      </form>
+
+      <section class="settings-card device-card">
+        <h2>{{ t('assistant.settings.devices') }}</h2>
+        <div data-device-list><p>{{ t('assistant.settings.no_devices') }}</p></div>
+      </section>
+    </aside>
+  </div>
+  <input type="file" accept="image/*" data-photo-picker hidden>
+</section>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/app_settings.js') }}" defer></script>
+{% endblock %}

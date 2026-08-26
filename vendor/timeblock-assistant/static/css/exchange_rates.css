@@ -1,0 +1,450 @@
+.exchange-rate-band {
+  padding: 36px 7vw;
+  background: #ffffff;
+}
+
+.exchange-rate-dashboard {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.exchange-rate-dashboard__mobile-header,
+.exchange-rate-dashboard__tabs {
+  display: none;
+}
+
+.exchange-rate-dashboard__alert {
+  margin: 0 0 14px;
+}
+
+.exchange-rate-dashboard__panels {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+.exchange-rate-panel,
+.exchange-rate-panel * {
+  box-sizing: border-box;
+}
+
+.exchange-rate-panel {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex-direction: column;
+}
+
+.exchange-rate-panel.is-unavailable {
+  display: none;
+}
+
+.exchange-rate-card {
+  min-width: 0;
+  border: 1px solid rgba(20, 28, 45, 0.12);
+  border-radius: 10px;
+  padding: 22px;
+  color: #ffffff;
+  background: #101820;
+  box-shadow: 0 16px 38px rgba(20, 28, 45, 0.12);
+}
+
+.exchange-rate-heading {
+  min-width: 0;
+}
+
+.exchange-rate-heading h2 {
+  margin: 0 0 10px;
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  line-height: 1.06;
+}
+
+.exchange-rate-heading p,
+.exchange-rate-note {
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.55;
+}
+
+.exchange-rate-heading > p:last-child,
+.exchange-rate-live-status {
+  margin-bottom: 16px;
+}
+
+.exchange-rate-live-status {
+  display: grid;
+  gap: 3px;
+}
+
+.exchange-rate-live-clock {
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.exchange-rate-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.exchange-rate-grid article {
+  display: grid;
+  min-width: 0;
+  min-height: 98px;
+  align-content: center;
+  gap: 8px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.exchange-rate-grid span {
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 0.78rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.exchange-rate-grid strong {
+  min-width: 0;
+  font-size: clamp(1.45rem, 2.1vw, 2rem);
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.exchange-rate-note {
+  margin: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.exchange-rate-panel__footer {
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+.exchange-rate-contact-block {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.exchange-rate-contact-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-style: normal;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.exchange-rate-contact-strip a {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  padding: 12px;
+  color: #ffffff;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.exchange-rate-contact-strip a:hover,
+.exchange-rate-contact-strip a:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.exchange-rate-contact-strip span {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.exchange-rate-contact-strip strong {
+  min-width: 0;
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
+.exchange-rate-contact-status {
+  margin: 0;
+  border-left: 3px solid rgba(103, 232, 165, 0.9);
+  padding: 8px 10px;
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.rate-request-details {
+  padding: 18px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.rate-request-details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-weight: 900;
+  list-style: none;
+}
+
+.rate-request-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.exchange-request-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.rate-request-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.rate-request-grid label {
+  display: grid;
+  gap: 7px;
+  color: rgba(255, 255, 255, 0.76);
+  font-weight: 850;
+}
+
+.rate-side-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.rate-side-toggle legend {
+  grid-column: 1 / -1;
+  color: rgba(255, 255, 255, 0.76);
+  font-weight: 850;
+}
+
+.rate-side-toggle label {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+.rate-side-toggle input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.rate-side-toggle span {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #ffffff;
+  background: rgba(6, 12, 20, 0.46);
+  font-weight: 950;
+}
+
+.rate-side-toggle input:checked + span {
+  border-color: rgba(16, 185, 129, 0.9);
+  color: #072018;
+  background: #67e8a5;
+}
+
+.rate-side-toggle label:nth-of-type(2) input:checked + span {
+  border-color: rgba(248, 113, 113, 0.9);
+  color: #2b0707;
+  background: #fca5a5;
+}
+
+.rate-request-grid input,
+.rate-request-grid select,
+.rate-request-grid textarea {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  padding: 11px 12px;
+  color: #ffffff;
+  background: rgba(6, 12, 20, 0.54);
+  font: inherit;
+}
+
+.rate-request-grid textarea {
+  resize: vertical;
+}
+
+.member-shell .exchange-rate-band,
+.utilities-shell .exchange-rate-band {
+  padding: 0;
+  background: transparent;
+}
+
+.member-shell .exchange-rate-dashboard,
+.utilities-shell .exchange-rate-dashboard {
+  max-width: none;
+  margin: 0 0 24px;
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .exchange-rate-band {
+    padding: 28px 20px;
+  }
+
+  .exchange-rate-dashboard__panels {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    gap: 14px;
+  }
+
+  .exchange-rate-card {
+    padding: 16px;
+  }
+
+  .exchange-rate-heading h2 {
+    font-size: clamp(1.45rem, 2.7vw, 2.1rem);
+  }
+
+  .exchange-rate-grid article {
+    min-height: 84px;
+    padding: 12px;
+  }
+
+  .exchange-rate-grid strong {
+    font-size: clamp(1.25rem, 2.4vw, 1.7rem);
+  }
+
+  .exchange-rate-contact-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .exchange-rate-contact-strip a {
+    grid-template-columns: 64px minmax(0, 1fr);
+    align-items: center;
+  }
+}
+
+@media (max-width: 767px) {
+  .exchange-rate-band {
+    padding: 22px 14px;
+  }
+
+  .exchange-rate-dashboard {
+    border: 1px solid rgba(20, 28, 45, 0.12);
+    border-radius: 12px;
+    padding: 14px;
+    background: #101820;
+    box-shadow: 0 14px 32px rgba(20, 28, 45, 0.12);
+  }
+
+  .exchange-rate-dashboard__mobile-header {
+    display: block;
+    color: #ffffff;
+  }
+
+  .exchange-rate-dashboard__mobile-header h2 {
+    margin: 0 0 12px;
+    font-size: clamp(1.5rem, 7vw, 2rem);
+    line-height: 1.08;
+  }
+
+  .exchange-rate-dashboard__tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .exchange-rate-dashboard__tabs button {
+    min-height: 44px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    padding: 9px 10px;
+    color: rgba(255, 255, 255, 0.75);
+    background: rgba(255, 255, 255, 0.06);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 900;
+  }
+
+  .exchange-rate-dashboard__tabs button[aria-selected="true"] {
+    border-color: rgba(103, 232, 165, 0.92);
+    color: #072018;
+    background: #67e8a5;
+    box-shadow: inset 0 -3px 0 rgba(7, 32, 24, 0.25);
+  }
+
+  .exchange-rate-dashboard__tabs button:focus-visible {
+    outline: 3px solid #ffffff;
+    outline-offset: 2px;
+  }
+
+  .exchange-rate-dashboard__panels {
+    display: block;
+  }
+
+  .exchange-rate-panel {
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .exchange-rate-panel.is-tab-inactive {
+    display: none;
+  }
+
+  .exchange-rate-heading h2 {
+    font-size: clamp(1.45rem, 7vw, 2rem);
+  }
+
+  .exchange-rate-heading > p:last-child,
+  .exchange-rate-live-status {
+    margin-bottom: 12px;
+  }
+
+  .exchange-rate-grid article {
+    min-height: 82px;
+    padding: 12px;
+  }
+
+  .exchange-rate-grid strong {
+    font-size: clamp(1.25rem, 7vw, 1.7rem);
+  }
+
+  .exchange-rate-contact-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .exchange-rate-contact-strip a {
+    grid-template-columns: 62px minmax(0, 1fr);
+    align-items: center;
+    padding: 10px;
+  }
+
+  .exchange-rate-note {
+    font-size: 0.76rem;
+  }
+}
+
+@media (max-width: 340px) {
+  .exchange-rate-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .exchange-rate-dashboard__tabs {
+    grid-template-columns: 1fr;
+  }
+}

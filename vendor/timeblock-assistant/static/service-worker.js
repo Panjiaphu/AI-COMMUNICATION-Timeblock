@@ -1,4 +1,5 @@
-const CACHE_NAME = "timeblock-pwa-v15";
+const CACHE_NAME = "timeblock-pwa-v19";
+const CALL_V1_RUNTIME_VERSION = "call-v1-ring-owner-20260822";
 const CALL_VIBRATION_PATTERN = [
   320, 305, 120, 505, 120, 505, 120, 505,
   320, 305, 120, 505, 120, 505, 120, 505,
@@ -9,10 +10,22 @@ const MISSED_CALL_VIBRATION_PATTERN = [180, 120, 220];
 const CALL_RUNTIME_ASSETS = new Set([
   "/static/css/call_workspace.css",
   "/static/js/assistant.js",
+  "/static/js/messaging.js",
   "/static/js/messaging_core_v2.js",
   "/static/js/incoming_call_ringtone.js",
   "/static/js/timeblock_call_runtime.js",
-  "/static/js/call_answer_bootstrap.js",
+  "/static/js/call_audio_ownership.js",
+  "/static/js/call_audio_ownership_install.js",
+  "/static/css/call_v3.css",
+  "/static/js/call-v1/session.js",
+  "/static/js/call-v1/media.js",
+  "/static/js/call-v1/peer.js",
+  "/static/js/call-v1/signaling.js",
+  "/static/js/call-v1/ring-audio.js",
+  "/static/js/call-v1/runtime.js",
+  "/static/js/call-v1/translation_plugin.js",
+  "/static/js/call-v1/bootstrap.js",
+  "/static/css/call_translation_plugin.css",
 ]);
 const CORE_ASSETS = [
   "/static/css/main.css",
@@ -114,22 +127,70 @@ self.addEventListener("push", (event) => {
       callId,
     },
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil((async () => {
+    if (incomingCall) {
+      const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const foreground = clients.some((client) => {
+        if (client.visibilityState !== "visible") return false;
+        try { return new URL(client.url).pathname === "/assistant"; }
+        catch (_error) { return false; }
+      });
+      if (foreground) {
+        options.silent = true;
+        options.vibrate = undefined;
+      }
+    }
+    return self.registration.showNotification(title, options);
+  })());
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "call-terminal") return;
+  const callId = String(event.data?.callId || "");
+  if (!callId) return;
+  event.waitUntil(self.registration.getNotifications().then((notifications) => {
+    notifications.forEach((notification) => {
+      const notificationCallId = String(notification.data?.callId || "");
+      const tag = String(notification.tag || "");
+      if (notificationCallId === callId || tag.includes(callId)) notification.close();
+    });
+  }).catch(() => undefined));
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const requestedUrl = event.notification?.data?.url || "/assistant?mode=alerts";
-  const target = new URL(requestedUrl, self.location.origin);
-  if (target.origin !== self.location.origin) target.href = new URL("/assistant?mode=alerts", self.location.origin).href;
-  event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
+  event.waitUntil((async () => {
+    const callId = event.notification?.data?.callId;
+    const fallbackUrl = event.notification?.data?.url || "/assistant?mode=alerts";
+    let requestedUrl = fallbackUrl;
+    if (callId) {
+      try {
+        const response = await fetch(`/api/messaging/calls/${encodeURIComponent(callId)}`, {
+          credentials: "include",
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (payload.call?.id) {
+          const status = String(payload.call.status || "").toLowerCase();
+          requestedUrl = ["ended", "rejected", "cancelled", "missed"].includes(status)
+            ? `/assistant?mode=messages&call_id=${encodeURIComponent(payload.call.id)}`
+            : `/assistant?mode=messages&call_id=${encodeURIComponent(payload.call.id)}`;
+        }
+      } catch (_error) {
+        requestedUrl = `/assistant?mode=messages&call_id=${encodeURIComponent(callId)}`;
+      }
+    }
+    const target = new URL(requestedUrl, self.location.origin);
+    if (target.origin !== self.location.origin) target.href = new URL("/assistant?mode=alerts", self.location.origin).href;
+    const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     for (const client of clients) {
       if (!("focus" in client)) continue;
       if ("navigate" in client) await client.navigate(target.href);
       return client.focus();
     }
     return self.clients.openWindow ? self.clients.openWindow(target.href) : undefined;
-  }));
+  })());
 });
 
 self.addEventListener("pushsubscriptionchange", (event) => {

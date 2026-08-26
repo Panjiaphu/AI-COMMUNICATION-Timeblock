@@ -1,0 +1,10 @@
+{
+  "market.equities.workspace_page_title": "Equity Intelligence Workspace | Timeblock",
+  "market.equities.workspace_page_meta": "Country equity analysis with TradingView, qualified Top 10 buy/sell bias lists and a daily technical playbook.",
+  "market.equities.workspace_eyebrow": "Equity Intelligence",
+  "market.equities.workspace_title": "Country equity intelligence workspace",
+  "market.equities.workspace_note": "Review national indices, qualified buy/sell bias rankings, a TradingView chart and a technical playbook for each symbol. Market data may be delayed and is provided for reference only.",
+  "market.equities.workspace_coverage": "Symbols with data",
+  "market.equities.workspace_analysis_title": "Country signal rankings",
+  "market.equities.workspace_analysis_note": "Only symbols that meet the configured thresholds are shown. Neutral symbols are not added to fill the Top 10."
+}

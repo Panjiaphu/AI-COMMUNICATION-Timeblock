@@ -1,0 +1,274 @@
+.chat-shell {
+  display: grid;
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  gap: 24px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 56px 22px 84px;
+}
+
+.chat-sidebar,
+.chat-workspace {
+  min-width: 0;
+}
+
+.chat-brand-panel,
+.allowance-panel,
+.exchange-panel,
+.chat-policy {
+  border: 1px solid rgba(20, 28, 45, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 22px;
+  box-shadow: 0 14px 32px rgba(20, 28, 45, 0.08);
+}
+
+.chat-sidebar {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.chat-brand-panel h1 {
+  margin: 8px 0 12px;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  line-height: 1.05;
+}
+
+.chat-brand-panel p,
+.allowance-panel p,
+.exchange-panel p,
+.chat-policy p {
+  color: #526070;
+  line-height: 1.75;
+}
+
+.allowance-panel span {
+  color: #526070;
+  font-weight: 700;
+}
+
+.allowance-panel strong {
+  display: block;
+  margin: 10px 0;
+  font-size: 2.3rem;
+  color: #111827;
+}
+
+.exchange-panel h2,
+.chat-policy h2 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.exchange-panel button,
+.chat-composer button {
+  border: 0;
+  border-radius: 8px;
+  background: #111827;
+  color: #ffffff;
+  font-weight: 800;
+  padding: 12px 18px;
+  cursor: pointer;
+}
+
+.chat-workspace {
+  display: grid;
+  grid-template-rows: auto minmax(360px, 1fr) auto;
+  gap: 18px;
+  min-height: 680px;
+}
+
+.chat-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: auto;
+  min-height: 360px;
+  border: 1px solid rgba(20, 28, 45, 0.12);
+  border-radius: 8px;
+  background: #f7f9fc;
+  padding: 24px;
+  scroll-padding: 24px;
+}
+
+.chat-message {
+  max-width: min(720px, 92%);
+  border-radius: 8px;
+  padding: 14px 16px;
+  line-height: 1.7;
+}
+
+.chat-message span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #526070;
+}
+
+.chat-message p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.chat-message small {
+  display: block;
+  margin-top: 8px;
+  color: #64748b;
+}
+
+.chat-message.user {
+  align-self: flex-end;
+  background: #111827;
+  color: #ffffff;
+}
+
+.chat-message.user span,
+.chat-message.user small {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.chat-message.assistant {
+  align-self: flex-start;
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid rgba(20, 28, 45, 0.1);
+}
+
+.empty-chat {
+  margin: auto;
+  max-width: 560px;
+  padding: 36px 20px;
+  text-align: center;
+  color: #526070;
+}
+
+.empty-chat h2 {
+  color: #111827;
+  margin: 0 0 12px;
+  line-height: 1.25;
+}
+
+.empty-chat p {
+  margin: 0;
+  line-height: 1.8;
+}
+
+.chat-composer {
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(20, 28, 45, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 16px;
+}
+
+.chat-composer label[for="chat-message"] {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 800;
+}
+
+.chat-composer textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 1px solid rgba(20, 28, 45, 0.16);
+  border-radius: 8px;
+  padding: 14px;
+  font: inherit;
+}
+
+.composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.file-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(20, 28, 45, 0.16);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.file-picker span {
+  font-size: 1.2rem;
+}
+
+.chat-composer input[type="file"] {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.composer-actions small {
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.form-alert {
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-weight: 700;
+}
+
+.form-alert.error {
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.form-alert.success {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+@media (max-width: 860px) {
+  .chat-shell {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 28px 16px 112px;
+  }
+
+  .chat-workspace {
+    grid-template-rows: auto minmax(320px, auto) auto;
+    gap: 16px;
+    min-height: auto;
+  }
+
+  .chat-transcript {
+    min-height: 320px;
+    padding: 20px 16px;
+  }
+
+  .empty-chat {
+    padding: 28px 10px;
+  }
+
+  .chat-message {
+    max-width: 100%;
+  }
+
+  .composer-actions {
+    align-items: stretch;
+  }
+
+  .composer-actions button,
+  .file-picker {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .composer-actions small {
+    width: 100%;
+  }
+}

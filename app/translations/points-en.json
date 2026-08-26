@@ -1,0 +1,16 @@
+{
+  "points.history.page_title": "Timeblock points history｜Internal points ledger",
+  "points.history.eyebrow": "Internal points history",
+  "points.history.title": "Points history",
+  "points.history.intro": "Every internal points increase or adjustment is recorded in the ledger. Internal points are used only for Timeblock member features and internal benefits.",
+  "points.history.table_aria": "Member points ledger",
+  "points.history.column.time": "Time",
+  "points.history.column.source": "Source",
+  "points.history.column.delta": "Change",
+  "points.history.column.balance": "Balance",
+  "points.history.column.note": "Note",
+  "points.history.empty": "No points records yet.",
+  "points.source.mission": "Mission reward",
+  "points.source.default": "Points record",
+  "points.source.fgo_entitlement_conversion": "Internal FGO benefit request"
+}

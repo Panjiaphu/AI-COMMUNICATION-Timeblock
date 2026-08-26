@@ -1,0 +1,237 @@
+#assistant-panel-translate.is-active {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.assistant-live-translate {
+  display: grid;
+  min-height: 0;
+  gap: 1rem;
+}
+
+.assistant-live-translate-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.assistant-live-translate-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.assistant-live-translate-controls,
+.assistant-live-translate-result {
+  min-width: 0;
+}
+
+.assistant-live-language-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: .75rem;
+  align-items: end;
+}
+
+.assistant-live-language-row label,
+.assistant-live-text-field {
+  display: grid;
+  gap: .4rem;
+  font-weight: 650;
+}
+
+.assistant-live-language-row select,
+.assistant-live-text-field textarea {
+  width: 100%;
+}
+
+.assistant-live-text-field textarea {
+  min-height: 10rem;
+  resize: vertical;
+}
+
+.assistant-live-microphone-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, .75fr);
+  gap: .75rem;
+  align-items: end;
+}
+
+.assistant-live-device-field {
+  display: grid;
+  min-width: 0;
+  gap: .4rem;
+  font-weight: 650;
+}
+
+.assistant-live-device-field select {
+  width: 100%;
+}
+
+.assistant-live-microphone-status {
+  min-height: 2.7rem;
+  margin: 0;
+  padding: .65rem .75rem;
+  border: 1px solid #dcebe4;
+  border-radius: 10px;
+  color: #47615a;
+  background: #f7faf8;
+  font-size: .74rem;
+  line-height: 1.35;
+}
+
+.assistant-live-microphone-status.is-error {
+  border-color: #ecd2ce;
+  color: #a33c31;
+  background: #fff8f7;
+}
+
+.assistant-live-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem;
+  align-items: center;
+}
+
+.assistant-live-voice-button.is-recording {
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.assistant-live-voice-button.is-recording .assistant-record-icon {
+  animation: assistant-talk-ring 1.15s ease-in-out infinite;
+}
+
+.assistant-live-result-block {
+  display: grid;
+  gap: .45rem;
+}
+
+.assistant-live-result-block + .assistant-live-result-block {
+  margin-top: 1rem;
+}
+
+.assistant-live-result-value {
+  min-height: 5rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.assistant-live-error-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.assistant-live-translate-status {
+  min-height: 1.5rem;
+}
+
+.assistant-live-translate-status.is-error {
+  font-weight: 700;
+}
+
+.assistant-live-translate button:focus-visible,
+.assistant-live-translate select:focus-visible,
+.assistant-live-translate textarea:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px), (max-height: 500px) and (max-width: 900px) {
+  #assistant-panel-translate.is-active {
+    display: block;
+    height: 100%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .assistant-live-translate {
+    box-sizing: border-box;
+    height: auto;
+    min-height: 100%;
+    padding:
+      12px
+      max(10px, env(safe-area-inset-right, 0px))
+      16px
+      max(10px, env(safe-area-inset-left, 0px));
+    overflow: visible;
+  }
+
+  .assistant-live-translate-grid {
+    min-height: 0;
+  }
+
+  .assistant-live-text-field textarea {
+    min-height: clamp(7rem, 22dvh, 9rem);
+    max-height: 30dvh;
+  }
+
+  .assistant-live-translate-controls .assistant-live-actions > button {
+    min-height: 48px;
+  }
+
+  .assistant-shell:has(#assistant-panel-translate.is-active)
+    > .assistant-quota-strip
+    .assistant-quota-card[data-quota-card="image"],
+  .assistant-shell:has(#assistant-panel-translate.is-active)
+    > .assistant-quota-strip
+    .assistant-quota-card[data-quota-card="video"] {
+    display: none;
+  }
+
+  .assistant-shell:has(#assistant-panel-translate.is-active)
+    > .assistant-quota-strip
+    .assistant-quota-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .assistant-live-translate-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .assistant-live-translate-header {
+    display: grid;
+  }
+
+  .assistant-live-language-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .assistant-live-microphone-row {
+    grid-template-columns: 1fr;
+  }
+
+  .assistant-live-language-row label:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .assistant-live-translate-controls .assistant-live-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .assistant-live-translate-controls [data-live-translate-submit] {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .assistant-live-translate-controls [data-live-translate-voice] {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .assistant-live-translate-controls [data-live-translate-reset] {
+    min-width: 88px;
+  }
+}

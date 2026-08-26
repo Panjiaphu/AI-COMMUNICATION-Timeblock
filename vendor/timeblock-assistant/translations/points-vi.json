@@ -1,0 +1,16 @@
+{
+  "points.history.page_title": "Timeblock lịch sử điểm｜Chi tiết điểm nội bộ",
+  "points.history.eyebrow": "Lịch sử điểm nội bộ",
+  "points.history.title": "Lịch sử điểm",
+  "points.history.intro": "Mọi thay đổi điểm nội bộ đều được ghi vào lịch sử. Điểm nội bộ chỉ dùng trong chức năng và quyền lợi thành viên của Timeblock.",
+  "points.history.table_aria": "Lịch sử điểm thành viên",
+  "points.history.column.time": "Thời gian",
+  "points.history.column.source": "Nguồn",
+  "points.history.column.delta": "Thay đổi",
+  "points.history.column.balance": "Số dư",
+  "points.history.column.note": "Ghi chú",
+  "points.history.empty": "Hiện chưa có lịch sử điểm.",
+  "points.source.mission": "Thưởng nhiệm vụ",
+  "points.source.default": "Lịch sử điểm",
+  "points.source.fgo_entitlement_conversion": "Yêu cầu quyền lợi FGO nội bộ"
+}

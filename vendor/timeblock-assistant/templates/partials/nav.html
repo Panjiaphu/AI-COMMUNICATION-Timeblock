@@ -1,0 +1,87 @@
+<header class="site-header" data-header>
+  <a class="brand-mark" href="{{ url_for('home', lang=current_locale) }}" aria-label="{{ t('layout.default_title') }}">
+    <span class="brand-symbol"><img src="{{ url_for('static', filename='img/timeblock-icon.svg') }}" alt="" aria-hidden="true"></span>
+    <span>
+      <strong>{{ t('brand.name') }}</strong>
+      <small>{{ t('brand.tagline') }}</small>
+    </span>
+  </a>
+
+  <nav class="desktop-nav" aria-label="{{ t('nav.primary') }}">
+    <a class="nav-secondary" href="{{ url_for('business_auth.login', lang=current_locale) }}">{{ t('nav.business_login') }}</a>
+    <a href="{{ url_for('utilities.index', lang=current_locale) }}">{{ t('nav.utilities') }}</a>
+    <a href="{{ url_for('opportunities.index', lang=current_locale) }}">{{ t('nav.opportunities') }}</a>
+    <a href="{{ url_for('flights.index', lang=current_locale) }}">{{ t('nav.flights') }}</a>
+    <a href="{{ url_for('market.dashboard', lang=current_locale) }}">{{ t('nav.market') }}</a>
+    <a href="{{ url_for('equities.dashboard', lang=current_locale) }}">{{ t('nav.equities') }}</a>
+    <a href="{{ url_for('missions.list_missions', lang=current_locale) }}">{{ t('nav.missions') }}</a>
+    {% set nav_assistant_destination = url_for('assistant.workspace', lang=current_locale) %}
+    {% if not active_user or active_user.role in ['member', 'business'] %}<a href="{{ nav_assistant_destination if active_user else url_for('auth.login', next=nav_assistant_destination, lang=current_locale) }}">{{ t('assistant.title') }}</a>{% endif %}
+    <a href="{{ url_for('events.list_events', lang=current_locale) }}">{{ t('nav.events') }}</a>
+    <a class="nav-tertiary" href="{{ url_for('shop.affiliate', lang=current_locale) }}">{{ t('nav.shop') }}</a>
+    <a class="nav-tertiary" href="{{ url_for('redeem_shop.list_products', lang=current_locale) }}">{{ t('nav.redeem_shop') }}</a>
+    <a class="nav-tertiary" href="{{ url_for('block_ledger.public_explorer', lang=current_locale) }}">{{ t('nav.block_ledger') }}</a>
+    <a class="nav-secondary" href="{{ url_for('member.dashboard', lang=current_locale) }}">{{ t('nav.member_center') }}</a>
+  </nav>
+
+  <div class="nav-actions">
+    <nav class="language-switcher" aria-label="{{ t('language.label') }}">
+      {% for locale in supported_locales %}
+        <a class="ghost-link{% if locale.code == current_locale %} active{% endif %}" href="{{ localized_url(locale.code) }}" {% if locale.code == current_locale %}aria-current="true"{% endif %}>{{ t('language.' ~ locale.code, locale.label) }}</a>
+      {% endfor %}
+    </nav>
+    {% if active_user %}
+      {% if active_user.role == "admin" %}
+        <a class="ghost-link account-link" href="{{ url_for('admin.dashboard', lang=current_locale) }}">{{ t('nav.admin_center') }}</a>
+        <a class="primary-link" href="{{ url_for('auth.logout') }}">{{ t('nav.logout') }}</a>
+      {% elif active_user.role == "business" %}
+        <span class="account-chip" title="{{ active_user.email }}">{{ t('nav.business_account') }}</span>
+        <a class="ghost-link account-link" href="{{ url_for('business_auth.dashboard', lang=current_locale) }}">{{ t('nav.business_console') }}</a>
+        <a class="primary-link" href="{{ url_for('business_auth.logout') }}">{{ t('nav.logout') }}</a>
+      {% else %}
+        <span class="account-chip" title="{{ active_user.email }}">{{ active_user.display_name or active_user.email }}</span>
+        <a class="ghost-link account-link" href="{{ url_for('member.dashboard', lang=current_locale) }}">{{ t('nav.member_center') }}</a>
+        <a class="primary-link" href="{{ url_for('auth.logout') }}">{{ t('nav.logout') }}</a>
+      {% endif %}
+    {% else %}
+      <a class="ghost-link" href="{{ url_for('business_auth.login', lang=current_locale) }}">{{ t('nav.business_login') }}</a>
+      <a class="ghost-link" href="{{ url_for('auth.login', lang=current_locale) }}">{{ t('nav.member_login') }}</a>
+      <a class="primary-link" href="{{ url_for('checkout.pricing', tab='business', lang=current_locale) }}">{{ t('nav.view_business_plans') }}</a>
+    {% endif %}
+  </div>
+</header>
+
+<nav class="mobile-bottom-nav" aria-label="{{ t('nav.mobile') }}">
+  <a href="{{ url_for('home', lang=current_locale) }}" class="{% if request.endpoint == 'home' %}active{% endif %}" aria-label="{{ t('nav.home') }}">
+    <span>T</span>
+    {{ t('nav.home') }}
+  </a>
+  <a href="{{ url_for('market.dashboard', lang=current_locale) }}" class="{% if request.endpoint and request.endpoint.startswith('market.') %}active{% endif %}" aria-label="{{ t('nav.market') }}">
+    <span>M</span>
+    {{ t('nav.market') }}
+  </a>
+  <a href="{{ url_for('flights.index', lang=current_locale) }}" class="{% if request.endpoint and request.endpoint.startswith('flights.') %}active{% endif %}" aria-label="{{ t('nav.flights') }}">
+    <span>✈</span>
+    {{ t('nav.flights') }}
+  </a>
+  {% if active_user and active_user.role in ['member', 'business'] %}
+  <a href="{{ url_for('assistant.workspace', lang=current_locale) }}" class="assistant-mobile-nav-link{% if request.endpoint and request.endpoint.startswith('assistant.') %} active{% endif %}" aria-label="{{ t('assistant.mode.messages') }}">
+    <span>AI</span>
+    {{ t('assistant.mode.messages') }}
+    <b class="assistant-nav-badge" data-global-assistant-badge hidden>0</b>
+  </a>
+  {% else %}
+  <a href="{{ url_for('auth.login', next=url_for('assistant.workspace'), lang=current_locale) }}" class="assistant-mobile-nav-link" aria-label="{{ t('assistant.mode.messages') }}">
+    <span>AI</span>
+    {{ t('assistant.mode.messages') }}
+  </a>
+  {% endif %}
+  <a href="{{ url_for('equities.dashboard', lang=current_locale) }}" class="{% if request.endpoint and request.endpoint.startswith('equities.') %}active{% endif %}" aria-label="{{ t('nav.equities') }}">
+    <span>STK</span>
+    {{ t('nav.equities') }}
+  </a>
+  <a href="{% if active_user and active_user.role == 'member' %}{{ url_for('member.dashboard', lang=current_locale) }}{% elif active_user and active_user.role == 'business' %}{{ url_for('business_auth.dashboard', lang=current_locale) }}{% elif active_user and active_user.role == 'admin' %}{{ url_for('admin.dashboard', lang=current_locale) }}{% else %}{{ url_for('auth.login', lang=current_locale) }}{% endif %}" class="{% if request.endpoint and (request.endpoint.startswith('member.') or request.endpoint.startswith('business_auth.') or request.endpoint.startswith('admin.')) %}active{% endif %}" aria-label="{{ t('nav.account_center') }}">
+    <span>ME</span>
+    {% if active_user and active_user.role == "admin" %}{{ t('nav.admin_short') }}{% elif active_user and active_user.role == "business" %}{{ t('nav.business_short') }}{% else %}{{ t('nav.member_short') }}{% endif %}
+  </a>
+</nav>

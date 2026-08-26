@@ -6,18 +6,20 @@ Write-Host "Python=$((python --version) -join ' ')"
 
 python -m compileall app
 python scripts/check_legacy_runtime_absence.py
+python scripts/verify_assistant_source_lock.py
 
 $node = Get-Command node -ErrorAction SilentlyContinue
 if ($node) {
-      node --check app/static/communication.js
-      node --check app/static/assistant_shell.js
-      node --check app/static/service-worker.js
+  $nodePath = $node.Source
 } else {
   $bundled = "C:\Users\inett\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe"
   if (-not (Test-Path -LiteralPath $bundled)) { throw "Node.js is required for JavaScript syntax QA." }
-      & $bundled --check app/static/communication.js
-      & $bundled --check app/static/assistant_shell.js
-      & $bundled --check app/static/service-worker.js
+  $nodePath = $bundled
+}
+
+$jsFiles = Get-ChildItem -LiteralPath "app/static" -Recurse -File -Filter "*.js" | Sort-Object FullName
+foreach ($jsFile in $jsFiles) {
+  & $nodePath --check $jsFile.FullName
 }
 
 $env:PYTHONPATH = "."

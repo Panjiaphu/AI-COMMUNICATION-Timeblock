@@ -1,18 +1,20 @@
 services:
   - type: web
-    name: guilua
+    name: AI-COMMUNICATION-Timeblock
+    branch: main
+    autoDeployTrigger: off
     runtime: python
-    plan: standard
+    plan: starter
     buildCommand: bash scripts/build_render.sh
     startCommand: bash scripts/start_render.sh
-    healthCheckPath: /healthz/
+    healthCheckPath: /readyz/
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.13
       - key: APP_ENV
         value: production
       - key: DEBUG
-        value: false
+        value: "false"
       - key: PUBLIC_BASE_URL
         value: https://guilua.onrender.com
       - key: TIMEBLOCK_APP_URL
@@ -23,24 +25,42 @@ services:
         sync: false
       - key: TIMEBLOCK_API_KEY
         sync: false
+      - key: TIMEBLOCK_TIMEOUT_SECONDS
+        value: 5
+      - key: TIMEBLOCK_PROXY_TIMEOUT_SECONDS
+        value: 120
       - key: GUILUA_CLIENT_ID
         value: guilua
       - key: GUILUA_SESSION_COOKIE
         value: guilua_session
+      - key: GUILUA_PENDING_AUTHORIZATION_COOKIE
+        value: guilua_auth_nonce
       - key: GUILUA_SESSION_TTL_SECONDS
         value: 14400
       - key: GUILUA_PENDING_AUTHORIZATION_TTL_SECONDS
         value: 120
       - key: GUILUA_SESSION_MAX_ENTRIES
         value: 10000
+      - key: GUILUA_PENDING_AUTHORIZATION_MAX_ENTRIES
+        value: 2000
+      - key: GUILUA_AUTHORIZATION_START_RATE_LIMIT_COUNT
+        value: 12
+      - key: GUILUA_AUTHORIZATION_START_RATE_LIMIT_WINDOW_SECONDS
+        value: 60
       - key: ALLOW_MISSING_BFF_ORIGIN
-        value: false
+        value: "false"
+      - key: MESSAGING_REALTIME_ENABLED
+        value: "true"
+      - key: MESSAGING_MAILBOX_LOCK_ENABLED
+        value: "true"
+      - key: MESSAGING_ADVANCED_ATTACHMENTS_ENABLED
+        value: "true"
       - key: ALLOWED_WEBSOCKET_ORIGINS
         value: https://guilua.onrender.com
       - key: ALLOWED_TIMEBLOCK_HANDOFF_ORIGINS
         value: https://timeblock-commercial-pro.onrender.com,https://fumapgo.com
       - key: ALLOW_MISSING_WEBSOCKET_ORIGIN
-        value: false
+        value: "false"
       - key: WEBSOCKET_AUTH_TIMEOUT_SECONDS
         value: 5
       - key: MAX_AUTH_EVENT_BYTES

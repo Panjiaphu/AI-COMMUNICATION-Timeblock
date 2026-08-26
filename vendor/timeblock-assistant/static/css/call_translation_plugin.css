@@ -1,0 +1,388 @@
+/* Call V1 Live Translation plugin: a bounded child surface, never a second call surface. */
+
+.call-translation-panel {
+  position: absolute;
+  z-index: 8;
+  top: 74px;
+  right: 18px;
+  bottom: 98px;
+  display: flex;
+  flex-direction: column;
+  width: min(420px, calc(100% - 36px));
+  min-height: 0;
+  gap: 11px;
+  padding: 15px;
+  box-sizing: border-box;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  border: 1px solid rgba(190, 237, 217, 0.24);
+  border-radius: 20px;
+  color: #eaf8f1;
+  background:
+    linear-gradient(145deg, rgba(7, 47, 37, 0.4), rgba(2, 21, 16, 0.24)),
+    rgba(3, 25, 20, 0.2);
+  box-shadow:
+    0 22px 65px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px) saturate(135%);
+  -webkit-backdrop-filter: blur(10px) saturate(135%);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.68);
+}
+
+.call-translation-panel[hidden] { display: none; }
+.call-translation-panel > * { box-sizing: border-box; min-width: 0; flex: 0 0 auto; }
+.call-translation-panel-header,
+.call-translation-history-heading,
+.call-translation-voice-row,
+.call-translation-result-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+}
+
+.call-translation-panel-header > div { display: grid; min-width: 0; gap: 3px; }
+.call-translation-panel-header strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.call-translation-panel-header span { min-width: 0; overflow-wrap: anywhere; }
+.call-translation-panel-header span,
+.call-translation-status,
+.call-translation-voice-row > span,
+.call-translation-history-heading,
+.call-translation-result small {
+  color: #acd0bf;
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+.call-translation-panel-header [data-call-translation-sync-status] {
+  color: #f4d994;
+  font-weight: 800;
+}
+
+.call-translation-panel-header [data-call-translation-sync-status][data-state="connected"] { color: #8ceab9; }
+
+.call-translation-panel .assistant-icon-button {
+  min-width: 44px;
+  min-height: 44px;
+  flex: 0 0 auto;
+  color: #eaf8f1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.call-translation-privacy {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(237, 197, 112, 0.33);
+  border-radius: 10px;
+  color: #f4d994;
+  background: rgba(108, 82, 29, 0.2);
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+.call-translation-quota {
+  display: grid;
+  gap: 7px;
+  padding: 9px 10px;
+  border: 1px solid rgba(190, 237, 217, 0.16);
+  border-radius: 11px;
+  background: rgba(5, 33, 26, 0.24);
+}
+
+.call-translation-quota-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 9px;
+}
+
+.call-translation-quota-heading span,
+.call-translation-quota-grid span {
+  color: #b9d9ca;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.call-translation-quota-heading small { color: #9ebdb0; font-size: 0.62rem; }
+.call-translation-quota-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.call-translation-quota-grid > div { display: grid; gap: 4px; min-width: 0; }
+.call-translation-quota-grid strong {
+  position: relative;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: #effbf5;
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.call-translation-quota-grid strong::after {
+  display: block;
+  height: 3px;
+  margin-top: 4px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #72dfb1 var(--call-translation-quota-progress, 0%), rgba(255, 255, 255, 0.12) var(--call-translation-quota-progress, 0%));
+  content: "";
+}
+
+.call-translation-languages {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
+  align-items: end;
+  gap: 7px;
+}
+
+.call-translation-languages > label,
+.call-translation-text-form,
+.call-translation-text-form > label {
+  min-width: 0;
+}
+
+.call-translation-languages label,
+.call-translation-text-form,
+.call-translation-auto-read {
+  display: grid;
+  gap: 5px;
+}
+
+.call-translation-languages span,
+.call-translation-text-form > label,
+.call-translation-auto-read span,
+.call-translation-result-values > div > span {
+  color: #b9d9ca;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.call-translation-panel select,
+.call-translation-panel textarea {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  border: 1px solid rgba(190, 237, 217, 0.25);
+  border-radius: 10px;
+  color: #effbf5;
+  background: rgba(255, 255, 255, 0.1);
+  font: inherit;
+}
+
+.call-translation-panel select { min-height: 44px; padding: 0 9px; }
+.call-translation-panel textarea { min-height: 66px; resize: vertical; padding: 9px; line-height: 1.45; }
+.call-translation-panel select { color-scheme: dark; }
+.call-translation-panel select:focus-visible,
+.call-translation-panel textarea:focus-visible,
+.call-translation-panel button:focus-visible,
+.call-translation-panel input:focus-visible {
+  outline: 3px solid rgba(120, 235, 196, 0.72);
+  outline-offset: 2px;
+}
+
+.call-translation-swap {
+  box-sizing: border-box;
+  flex: 0 0 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid rgba(190, 237, 217, 0.25);
+  border-radius: 10px;
+  color: #d9f9e9;
+  background: rgba(255, 255, 255, 0.09);
+  cursor: pointer;
+}
+
+.call-translation-swap svg { width: 18px; height: 18px; }
+.call-translation-text-form .assistant-primary-button,
+.call-translation-voice-row .assistant-secondary-button,
+.call-translation-result-actions button,
+.call-translation-history-heading .assistant-secondary-button,
+.call-translation-history > .assistant-secondary-button {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.call-translation-voice-row { align-items: flex-start; flex-wrap: wrap; }
+.call-translation-voice-row > span { min-width: 120px; flex: 1 1 120px; padding-top: 7px; overflow-wrap: anywhere; }
+.call-translation-auto-read { grid-template-columns: 20px minmax(0, 1fr); align-items: start; }
+.call-translation-auto-read input { width: 18px; height: 18px; margin: 0; accent-color: #72dfb1; }
+.call-translation-status { min-height: 20px; margin: 0; }
+.call-translation-status.is-error { color: #ffc1b8; }
+
+.call-translation-result {
+  min-height: 0;
+  padding: 11px;
+  border: 1px solid rgba(190, 237, 217, 0.16);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(5, 35, 27, 0.3);
+}
+
+.call-translation-result-empty { color: #9ebdb0; font-size: 0.75rem; line-height: 1.5; }
+.call-translation-result-values { display: grid; gap: 8px; }
+.call-translation-result-values > div:not(.call-translation-result-actions) { display: grid; gap: 3px; }
+.call-translation-result-values p { min-width: 0; margin: 0; color: #f1fff8; overflow-wrap: anywhere; word-break: break-word; line-height: 1.45; }
+.call-translation-result-values [data-call-translation-output] { color: #b6f6d4; font-size: 1rem; font-weight: 800; }
+.call-translation-result-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+.call-translation-result-actions button { min-width: 0; width: 100%; white-space: normal; line-height: 1.25; }
+
+.call-translation-history { min-height: 80px; border-top: 1px solid rgba(190, 237, 217, 0.14); padding-top: 10px; }
+.call-translation-history-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; font-weight: 800; }
+.call-translation-history-heading > span { min-width: 0; overflow-wrap: anywhere; }
+.call-translation-history-heading .assistant-secondary-button { min-height: 36px; padding: 0 9px; font-size: 0.65rem; }
+.call-translation-history ol { display: grid; gap: 7px; max-height: 150px; min-height: 0; margin: 8px 0; padding: 0; overflow: auto; list-style: none; }
+.call-translation-history li { padding: 8px; border-radius: 9px; background: rgba(255, 255, 255, 0.06); font-size: 0.68rem; line-height: 1.4; }
+.call-translation-history li strong { display: block; color: #9ef0c8; }
+.call-translation-history li span { display: block; color: #b3cdbf; overflow-wrap: anywhere; }
+.call-translation-history > .assistant-secondary-button { width: 100%; min-height: 36px; padding: 0 9px; font-size: 0.65rem; }
+
+.call-translation-panel .assistant-primary-button,
+.call-translation-panel .assistant-secondary-button,
+.call-translation-panel .assistant-icon-button {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+/* Desktop/tablet containment. The smartphone sheet below remains unchanged. */
+@media (min-width: 768px) {
+  .call-translation-panel {
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .call-translation-quota-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .call-translation-quota-heading span {
+    min-width: 0;
+    flex: 1 1 150px;
+  }
+
+  .call-translation-quota-heading small {
+    min-width: 0;
+    flex: 1 1 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .call-translation-panel select {
+    font-size: clamp(0.78rem, 1.1vw, 0.92rem);
+    text-overflow: ellipsis;
+  }
+
+  .call-translation-result {
+    flex: 0 0 auto;
+    min-height: 104px;
+    max-height: min(30dvh, 236px);
+    overflow: auto;
+  }
+
+  .call-translation-result-actions { gap: 8px; }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .call-translation-panel {
+    right: 2.5%;
+    width: clamp(340px, 42%, 430px);
+    max-width: none;
+    overflow: auto;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) and (orientation: landscape) {
+  .assistant-call-stage.has-call-translation {
+    --call-translation-tablet-width: clamp(340px, 42%, 430px);
+    padding-right: 0;
+  }
+  .assistant-call-stage.has-call-translation .call-translation-panel {
+    top: 74px;
+    right: 18px;
+    bottom: 98px;
+    width: var(--call-translation-tablet-width);
+    max-width: none;
+  }
+  .assistant-call-stage.has-call-translation .assistant-call-control-dock {
+    right: 72.5%;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) and (orientation: portrait) {
+  .call-translation-panel {
+    top: auto;
+    right: 0;
+    bottom: calc(124px + env(safe-area-inset-bottom, 0px));
+    left: 0;
+    width: 100%;
+    max-width: none;
+    height: min(58dvh, 620px);
+    max-height: 58dvh;
+    padding: 12px 16px calc(84px + env(safe-area-inset-bottom, 0px));
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 20px 20px 0 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .call-translation-panel {
+    top: auto;
+    right: 0;
+    bottom: calc(124px + env(safe-area-inset-bottom, 0px));
+    left: 0;
+    width: 100%;
+    height: min(68dvh, 680px);
+    max-height: 68dvh;
+    padding: 12px max(12px, env(safe-area-inset-right, 0px)) calc(84px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .call-translation-panel.is-expanded { height: min(86dvh, 820px); max-height: 86dvh; }
+  .call-translation-history ol { max-height: 100px; }
+}
+
+@media (max-width: 900px) and (max-height: 500px) and (orientation: landscape) {
+  .call-translation-panel { top: 52px; right: 10px; bottom: 58px; width: min(390px, 46%); max-height: none; padding: 9px; }
+  .call-translation-panel .call-translation-privacy,
+  .call-translation-history { display: none; }
+}
+
+@media (min-width: 1200px) {
+  .assistant-call-stage.has-call-translation { padding-right: 0; }
+
+  .assistant-call-stage.has-call-translation .call-translation-panel {
+    top: 74px;
+    right: 18px;
+    bottom: 98px;
+    width: min(420px, calc(100% - 36px));
+    border-radius: 20px;
+    overflow: auto;
+  }
+
+  .call-translation-result {
+    flex: 0 0 auto;
+  }
+
+  .call-translation-history {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    flex: 0 0 auto;
+    min-height: 92px;
+    max-height: 150px;
+    overflow: hidden;
+  }
+
+  .call-translation-history ol {
+    max-height: none;
+    overflow: auto;
+  }
+
+  .assistant-call-stage.has-call-translation .assistant-call-control-dock { right: 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .call-translation-panel,
+  .call-translation-panel * { scroll-behavior: auto; transition: none; }
+}

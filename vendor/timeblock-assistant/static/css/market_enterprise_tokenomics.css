@@ -1,0 +1,152 @@
+.market-tokenomics-board {
+  overflow: hidden;
+}
+
+.market-tokenomics-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.market-tokenomics-counts span,
+.market-tokenomics-flags span {
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.market-tokenomics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.market-tokenomics-card {
+  min-width: 0;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 18px;
+  padding: 0.9rem;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.market-tokenomics-top,
+.market-tokenomics-card dl div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.market-tokenomics-top span,
+.market-tokenomics-top strong,
+.market-tokenomics-card dd,
+.market-tokenomics-flags span {
+  overflow-wrap: anywhere;
+}
+
+.market-tokenomics-top span {
+  color: #0f4f44;
+  font-weight: 850;
+}
+
+.market-tokenomics-top strong {
+  border-radius: 999px;
+  padding: 0.28rem 0.55rem;
+  font-size: 0.74rem;
+  background: rgba(15, 23, 42, 0.07);
+}
+
+.market-tokenomics-card dl {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.75rem 0;
+}
+
+.market-tokenomics-card dt {
+  color: rgba(15, 23, 42, 0.58);
+  font-size: 0.76rem;
+}
+
+.market-tokenomics-card dd {
+  margin: 0;
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+
+.market-tokenomics-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.market-tokenomics-flags span {
+  background: rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.72);
+}
+
+.tokenomics-low,
+.market-tokenomics-card.tokenomics-low {
+  border-color: rgba(20, 184, 166, 0.26);
+}
+
+.tokenomics-medium,
+.market-tokenomics-card.tokenomics-medium {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.tokenomics-high,
+.market-tokenomics-card.tokenomics-high {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.tokenomics-incomplete,
+.market-tokenomics-card.tokenomics-incomplete,
+.market-tokenomics-card.tokenomics-not_rated {
+  border-color: rgba(148, 163, 184, 0.32);
+}
+
+.market-tokenomics-counts .tokenomics-low {
+  color: #047857;
+  background: rgba(209, 250, 229, 0.84);
+}
+
+.market-tokenomics-counts .tokenomics-medium {
+  color: #92400e;
+  background: rgba(254, 243, 199, 0.86);
+}
+
+.market-tokenomics-counts .tokenomics-high {
+  color: #991b1b;
+  background: rgba(254, 226, 226, 0.86);
+}
+
+.market-tokenomics-counts .tokenomics-incomplete,
+.market-tokenomics-counts .tokenomics-not_rated {
+  color: #475569;
+  background: rgba(241, 245, 249, 0.9);
+}
+
+@media (max-width: 1100px) {
+  .market-tokenomics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .market-tokenomics-grid {
+    display: flex;
+    overflow-x: auto;
+    gap: 0.75rem;
+    scroll-snap-type: x proximity;
+    padding-bottom: 0.25rem;
+  }
+
+  .market-tokenomics-card {
+    flex: 0 0 min(78vw, 280px);
+    scroll-snap-align: start;
+  }
+}

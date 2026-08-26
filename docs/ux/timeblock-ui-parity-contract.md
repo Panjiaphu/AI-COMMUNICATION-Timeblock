@@ -1,6 +1,19 @@
 # Timeblock UI Parity Contract — Guilua
 
-## Source lock
+> Historical Stage A contract: the current candidate supersedes this source
+> lock with canonical snapshot
+> `Panjiaphu/fumap-bot-life@16a83643b77afd20feb6d7b7f7366702d25fd87d`.
+> Current status is `UI_PARITY=LOCAL_QA_PASS` for bounded local QA and
+> `CAPABILITY_PARITY=BLOCKED_BY_TIMEBLOCK_CONTRACT_V2` for production. This is
+> not a Render/live claim; see `../phase-status.md`.
+
+## Historical Stage A ledger
+
+Everything below this heading is retained only as the dated Stage A design
+record. Its `NOT_SUPPORTED`, pending-QA and deployment statements do not
+describe the current source-locked Assistant candidate.
+
+### Source lock
 
 - GUILUA_REPO: `Panjiaphu/AI-COMMUNICATION-Timeblock`
 - GUILUA_MAIN_SHA: `28bd691f4ff7e9ba115d425df110d83bf65b5ce4`
@@ -15,7 +28,7 @@
 
 This branch is stacked on the exact validated Phase 2A secure-handoff head. It must not modify PR #2, `main`, Timeblock source, deployment settings, or the secure browser handoff contract.
 
-## Product interpretation
+### Product interpretation
 
 Guilua is the Timeblock Communication Runtime/PWA presentation layer. Parity means visual and interaction parity for communication surfaces that Guilua actually supports. It does not mean copying the complete Timeblock application.
 
@@ -31,7 +44,7 @@ The reference shown in the current Timeblock Assistant uses a light enterprise s
 
 Guilua must use these values instead of its previous unrelated dark-blue visual identity.
 
-## Non-negotiable security boundary
+### Non-negotiable security boundary
 
 The UX layer must preserve:
 
@@ -53,7 +66,7 @@ Required invariants:
 - `CLIENT_AUTHORITY=false`
 - `SERVER_AUTHORITY=true`
 
-## Supported-surface parity matrix
+### Supported-surface parity matrix
 
 | Surface | Classification | Stage A target |
 |---|---|---|
@@ -81,7 +94,7 @@ Required invariants:
 | Transcript persistence | FUTURE_PHASE | no fake backend |
 | Translation provider | FUTURE_PHASE | provider is not connected |
 
-## Visual implementation rules
+### Visual implementation rules
 
 1. Use Timeblock green `#0f6858` as the primary accent.
 2. Use white and `#f7faf9` surfaces; no unrelated dark-blue application shell.
@@ -93,7 +106,7 @@ Required invariants:
 8. Do not add fake Timeblock global navigation, contacts, unread counts, groups, messages, rooms, or AI capabilities.
 9. Do not add a new framework, webfont, icon package, or backend dependency for visual parity.
 
-## Stage A gate
+### Stage A gate
 
 Stage A may finish with `STATUS=WAITING_FOR_TIMEBLOCK` while Timeblock PR #42 remains Draft.
 

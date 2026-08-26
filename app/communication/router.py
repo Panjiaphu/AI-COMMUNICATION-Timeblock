@@ -8,14 +8,15 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from app.communication.manager import RoomManagerError
 from app.communication.schemas import AuthenticationEnvelope, EventEnvelope, EventName
 from app.core.communication_i18n import communication_copy
-from app.core.i18n import resolve_locale
+from app.core.timeblock_i18n import resolve_timeblock_locale
+from app.core.timeblock_templates import render_timeblock_assistant, render_timeblock_settings
 from app.integrations.timeblock.client import TimeblockIntegrationError
 
 logger = logging.getLogger('guilua.communication')
@@ -48,13 +49,44 @@ def log_event(result: str, **fields) -> None:
     logger.info('communication_runtime', extra={'result': result, **fields})
 
 
-@router.get('/', response_class=HTMLResponse)
-async def home(request: Request) -> HTMLResponse:
+async def _assistant_page(
+    request: Request,
+    *,
+    initial_mode: str | None = None,
+    conversation_id: str = '',
+) -> HTMLResponse:
     settings = request.app.state.settings
-    locale = resolve_locale(request)
+    locale = resolve_timeblock_locale(request, settings.default_locale)
     session = request.app.state.bff_session_store.get(
         request.cookies.get(settings.guilua_session_cookie)
     )
+    if session:
+        usage = None
+        try:
+            usage_result = await request.app.state.timeblock_client.client_get(
+                '/api/assistant/usage',
+                session.timeblock_token,
+            )
+            if isinstance(usage_result, dict) and isinstance(usage_result.get('usage'), dict):
+                usage = usage_result['usage']
+        except TimeblockIntegrationError:
+            # Rendering remains available during an upstream outage. Canonical
+            # actions still surface the authoritative upstream error directly.
+            usage = None
+        return render_timeblock_assistant(
+            request,
+            session,
+            locale=locale,
+            initial_mode=initial_mode,
+            conversation_id=conversation_id,
+            assistant_usage=usage,
+        )
+
+    legacy_mode = {
+        'messages': 'communication',
+        'translate': 'translation',
+        'alerts': 'notifications',
+    }.get(initial_mode or request.query_params.get('mode', ''), initial_mode or request.query_params.get('mode', ''))
     return templates.TemplateResponse(
         request=request,
         name='assistant.html',
@@ -62,31 +94,74 @@ async def home(request: Request) -> HTMLResponse:
             'locale': locale,
             'copy': communication_copy(locale),
             'session': session,
-            'initial_mode': request.query_params.get('mode') if request.query_params.get('mode') in {'ai', 'communication', 'translation', 'notifications'} else 'ai',
-            'initial_conversation_id': request.query_params.get('conversation_id', ''),
+            'initial_mode': legacy_mode if legacy_mode in {'ai', 'communication', 'translation', 'notifications'} else 'ai',
+            'initial_conversation_id': conversation_id or request.query_params.get('conversation_id', ''),
         },
     )
 
 
+@router.get('/', response_class=HTMLResponse)
+async def home(request: Request) -> HTMLResponse:
+    return await _assistant_page(request)
+
+
+@router.get('/assistant', response_class=HTMLResponse)
+async def assistant_workspace(request: Request) -> HTMLResponse:
+    return await _assistant_page(request)
+
+
 @router.get('/ai', response_class=HTMLResponse)
 async def assistant_deep_link(request: Request) -> HTMLResponse:
-    return await home(request)
+    return await _assistant_page(request, initial_mode='ai')
 
 
 @router.get('/translate', response_class=HTMLResponse)
 async def translation_deep_link(request: Request) -> HTMLResponse:
-    return await home(request)
+    return await _assistant_page(request, initial_mode='translate')
 
 
 @router.get('/notifications', response_class=HTMLResponse)
 async def notifications_deep_link(request: Request) -> HTMLResponse:
-    return await home(request)
+    return await _assistant_page(request, initial_mode='alerts')
 
 
 @router.get('/conversations/{conversation_id}', response_class=HTMLResponse)
 async def conversation_deep_link(request: Request, conversation_id: int) -> HTMLResponse:
-    request.scope['query_string'] = f'mode=communication&conversation_id={conversation_id}'.encode()
-    return await home(request)
+    return await _assistant_page(
+        request,
+        initial_mode='messages',
+        conversation_id=str(conversation_id),
+    )
+
+
+@router.get('/app-settings', response_class=HTMLResponse)
+async def app_settings(request: Request):
+    settings = request.app.state.settings
+    locale = resolve_timeblock_locale(request, settings.default_locale)
+    session = request.app.state.bff_session_store.get(
+        request.cookies.get(settings.guilua_session_cookie)
+    )
+    if not session:
+        return RedirectResponse(f'/?lang={locale}', status_code=303)
+    return render_timeblock_settings(request, session, locale=locale)
+
+
+@router.get('/logout', include_in_schema=False)
+async def local_logout(request: Request) -> RedirectResponse:
+    settings = request.app.state.settings
+    locale = resolve_timeblock_locale(request, settings.default_locale)
+    session = request.app.state.bff_session_store.get(
+        request.cookies.get(settings.guilua_session_cookie)
+    )
+    if session:
+        try:
+            await request.app.state.timeblock_client.revoke_guilua_session(session.timeblock_token)
+        except TimeblockIntegrationError:
+            pass
+        request.app.state.bff_session_store.delete(session.session_id)
+    response = RedirectResponse(f'/?lang={locale}', status_code=303)
+    response.delete_cookie(settings.guilua_session_cookie, path='/')
+    return response
 
 
 @router.get('/calls/{call_id}', response_class=HTMLResponse)
@@ -97,7 +172,7 @@ async def call_deep_link(request: Request, call_id: str) -> HTMLResponse:
 @router.get('/communication', response_class=HTMLResponse)
 async def communication(request: Request) -> HTMLResponse:
     settings = request.app.state.settings
-    locale = resolve_locale(request)
+    locale = resolve_timeblock_locale(request, settings.default_locale)
     copy = communication_copy(locale)
     runtime_config = {
         'handoff_event': 'timeblock.communication.handoff.v1',

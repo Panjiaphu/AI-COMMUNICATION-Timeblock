@@ -1,0 +1,35 @@
+{
+  "vi": {
+    "markAllRead": "Đánh dấu tất cả đã đọc",
+    "allRead": "Tất cả thông báo đã đọc",
+    "readAllFailed": "Không thể đánh dấu tất cả thông báo đã đọc. Vui lòng thử lại.",
+    "imagesSelected": "Đã chọn {count}/10 ảnh",
+    "maxImages": "Mỗi tin nhắn được gửi tối đa 10 ảnh.",
+    "tooManyImages": "Chỉ được chọn tối đa 10 ảnh. Các ảnh đã chọn trước đó được giữ nguyên.",
+    "removeImage": "Xóa ảnh {index}",
+    "invalidImage": "Chỉ hỗ trợ ảnh JPEG, PNG hoặc WebP.",
+    "imageGallery": "Bộ sưu tập ảnh"
+  },
+  "en": {
+    "markAllRead": "Mark all as read",
+    "allRead": "All notifications read",
+    "readAllFailed": "Could not mark all notifications as read. Please try again.",
+    "imagesSelected": "{count}/10 images selected",
+    "maxImages": "Each message can contain up to 10 images.",
+    "tooManyImages": "You can select up to 10 images. Your existing selection was kept.",
+    "removeImage": "Remove image {index}",
+    "invalidImage": "Only JPEG, PNG, or WebP images are supported.",
+    "imageGallery": "Image gallery"
+  },
+  "zh-TW": {
+    "markAllRead": "全部標示為已讀",
+    "allRead": "所有通知皆已讀",
+    "readAllFailed": "無法將所有通知標示為已讀，請再試一次。",
+    "imagesSelected": "已選擇 {count}/10 張圖片",
+    "maxImages": "每則訊息最多可傳送 10 張圖片。",
+    "tooManyImages": "最多只能選擇 10 張圖片，原本已選的圖片會保留。",
+    "removeImage": "移除第 {index} 張圖片",
+    "invalidImage": "僅支援 JPEG、PNG 或 WebP 圖片。",
+    "imageGallery": "圖片集"
+  }
+}

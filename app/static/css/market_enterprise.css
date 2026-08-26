@@ -1,0 +1,295 @@
+.market-enterprise-quality {
+  position: relative;
+  overflow: hidden;
+}
+
+.market-data-quality-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.market-data-quality-card {
+  min-width: 0;
+  border: 1px solid rgba(15, 79, 68, 0.14);
+  border-radius: 18px;
+  padding: 0.9rem;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
+}
+
+.market-data-quality-card span,
+.market-data-quality-card strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.market-data-quality-card span {
+  color: rgba(15, 23, 42, 0.62);
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.market-data-quality-card strong {
+  margin-top: 0.35rem;
+  color: #0f172a;
+  font-size: 0.92rem;
+  line-height: 1.22;
+}
+
+.market-data-quality-card.quality-live,
+.market-data-quality-card.quality-configured {
+  border-color: rgba(20, 184, 166, 0.3);
+  background: linear-gradient(135deg, rgba(236, 253, 245, 0.92), rgba(255, 255, 255, 0.9));
+}
+
+.market-data-quality-card.quality-partial,
+.market-data-quality-card.quality-proxy {
+  border-color: rgba(59, 130, 246, 0.28);
+  background: linear-gradient(135deg, rgba(239, 246, 255, 0.92), rgba(255, 255, 255, 0.9));
+}
+
+.market-data-quality-card.quality-fallback,
+.market-data-quality-card.quality-external_required,
+.market-data-quality-card.quality-disabled {
+  border-color: rgba(245, 158, 11, 0.32);
+  background: linear-gradient(135deg, rgba(255, 251, 235, 0.92), rgba(255, 255, 255, 0.9));
+}
+
+.market-data-quality-card.quality-error {
+  border-color: rgba(239, 68, 68, 0.32);
+  background: linear-gradient(135deg, rgba(254, 242, 242, 0.92), rgba(255, 255, 255, 0.9));
+}
+
+.market-data-quality-warning {
+  margin: 0.9rem 0 0;
+  padding: 0.8rem 1rem;
+  border-radius: 14px;
+  color: #7c2d12;
+  background: rgba(255, 247, 237, 0.92);
+  border: 1px solid rgba(251, 146, 60, 0.28);
+}
+
+.market-shell {
+  overflow-x: clip;
+}
+
+.market-panel,
+.market-priority-board,
+.market-disclaimer,
+.market-hero-copy,
+.market-strategy-card {
+  min-width: 0;
+}
+
+.market-panel > *,
+.market-priority-board > * {
+  min-width: 0;
+}
+
+.market-hot-card,
+.market-flow-chain-card,
+.market-flow-sector-card,
+.market-tokenomics-card,
+.market-opportunity-card,
+.market-sentiment-grid article,
+.market-data-quality-card {
+  height: 100%;
+}
+
+.market-hot-grid,
+.market-flow-chain-grid,
+.market-flow-sector-grid,
+.market-tokenomics-grid,
+.market-opportunity-grid,
+.market-sentiment-grid,
+.market-data-quality-grid {
+  align-items: stretch;
+}
+
+.market-hot-card a,
+.market-opportunity-card a,
+.market-table-chart-button,
+.market-table-tv-link,
+.market-symbol-chip,
+.coin-group-leaders button,
+.lab-actions a,
+.lab-actions button {
+  min-height: 40px;
+  touch-action: manipulation;
+}
+
+.market-chart-workbench,
+.tradingview-frame,
+.signal-table-wrap,
+.market-symbol-selector,
+.market-lab-assets {
+  max-width: 100%;
+}
+
+.market-chart-workbench {
+  isolation: isolate;
+}
+
+.tradingview-frame iframe,
+#timeblock-tradingview iframe {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  display: block;
+}
+
+.signal-table-wrap {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.signal-table th {
+  top: 0;
+}
+
+.market-symbol-selector,
+.market-lab-assets {
+  scrollbar-width: thin;
+}
+
+.market-enterprise-quality,
+.market-hot-trend-board,
+.market-money-flow-map,
+.market-tokenomics-board,
+.market-opportunity-board,
+.market-sentiment-board {
+  scroll-margin-top: 96px;
+}
+
+@media (max-width: 1100px) {
+  .market-data-quality-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .market-chart-grid {
+    min-height: auto;
+  }
+
+  .tradingview-frame {
+    min-height: 560px;
+  }
+
+  .market-chart-side {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 680px) {
+  .market-data-quality-grid {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    scroll-snap-type: x proximity;
+  }
+
+  .market-data-quality-card {
+    flex: 0 0 min(74vw, 260px);
+    scroll-snap-align: start;
+  }
+
+  .market-enterprise-quality,
+  .market-hot-trend-board,
+  .market-money-flow-map,
+  .market-tokenomics-board,
+  .market-opportunity-board,
+  .market-sentiment-board {
+    border-radius: 16px;
+  }
+
+  .market-panel-header .market-note {
+    width: 100%;
+    justify-content: flex-start;
+    white-space: normal;
+  }
+
+  .market-hot-grid,
+  .market-flow-layout,
+  .market-tokenomics-grid,
+  .market-opportunity-grid,
+  .market-sentiment-grid {
+    max-width: 100%;
+  }
+
+  .market-hot-card,
+  .market-flow-chain-card,
+  .market-flow-sector-card,
+  .market-tokenomics-card,
+  .market-opportunity-card {
+    min-width: 0;
+  }
+
+  .tradingview-frame,
+  .market-chart-grid {
+    min-height: 500px;
+  }
+
+  .market-symbol-selector {
+    max-height: 280px;
+  }
+
+  .market-symbol-chip {
+    min-height: 48px;
+  }
+}
+
+@media (max-width: 420px) {
+  .market-shell {
+    width: calc(100% - 2px);
+  }
+
+  .market-panel,
+  .market-priority-board,
+  .market-disclaimer {
+    padding: 16px;
+  }
+
+  .tradingview-frame,
+  .market-chart-grid {
+    min-height: 460px;
+  }
+}
+
+/* TradingView workspace sizing is owned here because this stylesheet loads last. */
+.market-panel.market-chart-workbench {
+  padding: 0;
+}
+
+.market-chart-workbench .market-chart-grid {
+  min-height: 0;
+}
+
+.market-chart-workbench .tradingview-frame {
+  height: clamp(680px, 80vh, 980px);
+  height: clamp(680px, 80dvh, 980px);
+  min-height: 680px;
+}
+
+@media (max-width: 900px) {
+  .market-chart-workbench .tradingview-frame {
+    height: max(540px, calc(var(--market-visual-viewport-height) - var(--market-fixed-top-chrome) - var(--market-fixed-bottom-chrome) - 16px));
+    min-height: 540px;
+  }
+}
+
+@media (max-width: 760px) and (min-height: 760px) {
+  .market-chart-workbench .tradingview-frame {
+    height: max(630px, calc(var(--market-visual-viewport-height) - var(--market-fixed-top-chrome) - var(--market-fixed-bottom-chrome) - 16px));
+    min-height: 630px;
+  }
+}
+
+@media (max-width: 760px) and (orientation: landscape) {
+  .market-chart-workbench .tradingview-frame {
+    height: calc(var(--market-visual-viewport-height) - var(--market-fixed-top-chrome) - var(--market-fixed-bottom-chrome) - 12px);
+    min-height: 360px;
+  }
+}

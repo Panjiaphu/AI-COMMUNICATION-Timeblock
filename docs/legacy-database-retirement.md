@@ -71,4 +71,6 @@ Legacy URLs return 404 because their routers and Django URL configuration are re
 
 ## Decision
 
-Do not delete legacy production data in PR #1. Perform retirement only in a separately reviewed migration after backup, live-schema inspection, consumer verification, and explicit approval.
+Do not delete legacy production data in this Assistant release. Perform
+retirement only in a separately reviewed migration after backup, live-schema
+inspection, consumer verification, and explicit approval.

@@ -1,0 +1,14 @@
+# Canonical runtime bytes are compared directly with the pinned Timeblock Git
+# blobs. Disable line-ending filters and whitespace diagnostics for those exact
+# source-locked payloads; generated metadata remains normal LF text below.
+/vendor/timeblock-assistant/** -text -whitespace
+/app/static/css/** -text -whitespace
+/app/static/js/** -text -whitespace
+/app/static/i18n/** -text -whitespace
+/app/static/img/** -text -whitespace
+/app/static/vendor/** -text -whitespace
+/app/static/manifest.webmanifest -text -whitespace
+/app/static/service-worker.js -text -whitespace
+/app/translations/** -text -whitespace
+/vendor/timeblock-assistant/README.md text eol=lf -whitespace
+/vendor/timeblock-assistant/SOURCE_LOCK.json text eol=lf -whitespace

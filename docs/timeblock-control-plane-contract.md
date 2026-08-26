@@ -1,5 +1,12 @@
 # Timeblock control-plane contract status
 
+> Historical Contract V1 compatibility record. It remains relevant only to the
+> existing `/communication` WebRTC runtime. The current canonical Assistant
+> release gate is Timeblock Client Contract V2 plus the authenticated
+> `/api/guilua/v2/capabilities` manifest; see `phase-status.md`. All SHA and
+> dependency statements below describe the 2026-08-07 V1 snapshot, not current
+> production state.
+
 Status: `CONTRACT_V1_IMPLEMENTED_AND_CONSUMED`
 
 Verified against Timeblock source repository `Panjiaphu/fumap-bot-life` at main SHA `28476fe50d7e02486be190b7e895ce7832382102` on 2026-08-07.
@@ -102,9 +109,11 @@ A static `development-session` credential is permitted only when all explicit no
 
 Production configuration rejects development fallback.
 
-## Cross-repository dependency
+## Historical Phase 2A cross-repository dependency
 
-This Guilua Phase 2A branch implements and tests the receiving side of the secure handoff. Timeblock still needs a browser sender integration that:
+At the recorded V1 snapshot, the Guilua Phase 2A branch implemented and tested
+the receiving side of the secure handoff, while Timeblock still needed a
+browser sender integration that:
 
 - calls its existing `/api/communication/bootstrap` endpoint;
 - opens/embeds `runtime_url` without appending secrets;

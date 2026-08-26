@@ -6,13 +6,39 @@ Timeblock remains the Control Plane and durable System of Record for identity, w
 
 ## Current phase
 
-The Assistant Client Contract V2 is being delivered across the two repositories. Timeblock owns identity, profile, entitlement, quota, AI history, directory, connections, presence, conversations, messages, media, calls, notifications, and audit. Guilua owns only the browser shell and a bounded process-local BFF session that stores an opaque browser cookie plus the server-side Timeblock session credential.
+The canonical Assistant UI snapshot is vendored from
+`Panjiaphu/fumap-bot-life@16a83643b77afd20feb6d7b7f7366702d25fd87d`.
+Its templates, static assets, runtime asset graph and vi / zh-TW / en resources
+are present locally. For this candidate, `UI_PARITY=LOCAL_QA_PASS` means the
+canonical snapshot and its local runtime adapters passed the bounded local
+pytest, JavaScript syntax, Chromium and WebKit gates recorded in
+`docs/phase-status.md`; it is not a merge, Render deployment or
+production-live claim.
+
+The same-origin BFF registers 120 explicit method/path route specifications for
+the canonical Assistant, messaging/contact/events, Call V1, Live Translate,
+internal-message and notification/settings APIs. It has no catch-all proxy.
+Timeblock owns identity, profile, entitlement, quota, AI history, directory,
+connections, presence, conversations, messages, media, calls, notifications
+and audit. Guilua owns only the browser shell and a bounded process-local BFF
+session that stores an opaque browser cookie plus the server-side Timeblock
+session credential.
+
+`CAPABILITY_PARITY=BLOCKED_BY_TIMEBLOCK_CONTRACT_V2`: production capability
+parity still requires the Timeblock Client Contract V2 principal/session
+middleware and endpoints to be merged and deployed on the Timeblock control
+plane, followed by paired configuration and end-to-end QA. No Render/live state
+is asserted by this repository snapshot.
 
 The root `/` route is the Assistant PWA. `/communication` remains a compatibility route for the existing WebRTC/interpreter runtime. `/ai`, `/translate`, `/notifications`, `/conversations/<id>`, and `/calls/<id>` are supported deep-link entry points.
 
-The Timeblock Communication Contract V1 is implemented on the Timeblock control plane and consumed by Guilua.
+The Timeblock Communication Contract V1 remains the compatibility contract for
+the existing `/communication` WebRTC runtime. The current Assistant release
+boundary is Client Contract V2: authenticated canonical API coverage plus the
+`/api/guilua/v2/capabilities` manifest required by `/readyz/`.
 
-Phase 2A adds a production-safe session boundary:
+The historical Phase 2A compatibility flow uses this production-safe session
+boundary:
 
 1. an authenticated Timeblock browser calls its existing `/api/communication/bootstrap` endpoint;
 2. Timeblock opens or embeds token-free Guilua `/communication`;
@@ -28,15 +54,16 @@ the Timeblock Communication presentation layer, a unique `Timeblock Chat` PWA
 manifest, and a static-shell-only service worker. A standalone launch never
 restores a session credential; it waits for a fresh exact-origin handoff.
 
-The Messaging Core V2 UI is not enabled against fake data. Guilua will only
-enable directory, conversation, message, media, and call client surfaces after
-the Timeblock-owned Communication Client Contract is available.
+The canonical Messaging Core V2 and call/translation UI code is present, but it
+is not enabled against fake authority or durable local data. Its same-origin
+capability calls fail closed until the Timeblock-owned Client Contract V2 is
+available to authenticate the forwarded client session.
 
-## Zero-cost Render architecture
+## Render architecture
 
 The current foundation intentionally uses:
 
-- one existing Render Standard Web Service;
+- one existing Render Web Service;
 - one instance and one Gunicorn/Uvicorn worker;
 - one public port for HTTP and WebSocket;
 - in-memory room, connection, sequence, and reconnect state;
@@ -68,7 +95,8 @@ Open:
 - `/` — Timeblock AI Communication landing page.
 - `/communication` — responsive call/interpreter shell.
 - `/ws/communication/{session_id}` — token-free communication WebSocket; authentication is the first frame.
-- `/healthz/` — runtime health.
+- `/healthz/` — process liveness only.
+- `/readyz/` — release readiness; requires the live Timeblock Client Contract V2 manifest.
 
 For explicit local/test fallback, the browser QA may supply only `session` and `participant` query values. Guilua creates the static `development-session` credential internally. Production configuration rejects this fallback and never reads a session credential from the page URL.
 
@@ -77,7 +105,7 @@ For explicit local/test fallback, the browser QA may supply only `session` and `
 ```text
 Build Command: bash scripts/build_render.sh
 Start Command: bash scripts/start_render.sh
-Health Check Path: /healthz/
+Health Check Path: /readyz/
 ```
 
 Required production environment:
@@ -88,7 +116,10 @@ DEBUG=false
 SECRET_KEY=<random secret, at least 32 characters>
 PUBLIC_BASE_URL=https://guilua.onrender.com
 TIMEBLOCK_API_URL=<Timeblock control-plane API>
-TIMEBLOCK_API_KEY=<server credential>
+TIMEBLOCK_APP_URL=https://timeblock-commercial-pro.onrender.com
+TIMEBLOCK_API_KEY=<server credential, at least 32 bytes>
+ALLOW_DEVELOPMENT_SESSION_FALLBACK=false
+ALLOW_MISSING_BFF_ORIGIN=false
 ALLOWED_TIMEBLOCK_HANDOFF_ORIGINS=https://timeblock-commercial-pro.onrender.com,https://fumapgo.com
 ALLOWED_WEBSOCKET_ORIGINS=https://guilua.onrender.com
 ALLOW_MISSING_WEBSOCKET_ORIGIN=false
@@ -120,14 +151,14 @@ See `docs/timeblock-control-plane-contract.md` for the exact Contract V1 boundar
 ## Testing
 
 ```bash
-# Phase 8 only; do not run before the phase gate.
 pwsh -File scripts/local_full_qa.ps1
 ```
 
-The local Phase 8 gate covers Python compile/import, JavaScript syntax, the
-default suite, rendered Chromium/WebKit browser QA, fake-media two-context
-WebRTC, reconnect/hangup cleanup, URL-secret assertions, and browser artifact
-privacy/identity checks. GitHub Actions workflows are manual-only.
+The local release gate verifies the 214-source / 420-destination source lock,
+all runtime JavaScript files, the default suite, rendered Chromium/WebKit
+browser QA, fake-media two-context WebRTC, reconnect/hangup cleanup, URL-secret
+assertions, and browser artifact privacy/identity checks. GitHub Actions
+workflows are manual-only.
 
 Hosted browser QA is not a claim of physical iOS/Android validation.
 
@@ -141,6 +172,8 @@ Legacy BO, rates, member, wallet, point, treasury, affiliate, referral, and sett
 - One worker does not support horizontal scaling.
 - P2P calls can fail on strict NAT without TURN.
 - Physical-device and strict-NAT validation remain separate gates.
-- STT, realtime translation, glossary application, translated captions from a real provider, TTS, durable result orchestration, and usage retry are Phase 2B or later concerns.
-- Messaging Client Contract V2 and the Timeblock browser sender for the
-  standalone chat PWA are not yet implemented; see `docs/phase-status.md`.
+- Provider-backed STT/translation/TTS and durable orchestration remain
+  Timeblock-owned production dependencies and require paired live acceptance.
+- The local canonical BFF compatibility layer is implemented, but production
+  capability parity remains blocked until Timeblock Client Contract V2 is
+  merged, configured and deployed; see `docs/phase-status.md`.

@@ -24,12 +24,22 @@ class Settings(BaseSettings):
     timeblock_api_key: str | None = None
     guilua_client_id: str = 'guilua'
     guilua_session_cookie: str = 'guilua_session'
+    guilua_pending_authorization_cookie: str = 'guilua_auth_nonce'
     guilua_session_ttl_seconds: int = Field(default=14400, ge=300, le=86400)
     guilua_pending_authorization_ttl_seconds: int = Field(default=120, ge=60, le=600)
     guilua_session_max_entries: int = Field(default=10000, ge=100, le=100000)
+    guilua_pending_authorization_max_entries: int = Field(default=2000, ge=100, le=20000)
+    guilua_authorization_start_rate_limit_count: int = Field(default=12, ge=2, le=120)
+    guilua_authorization_start_rate_limit_window_seconds: int = Field(
+        default=60, ge=10, le=300
+    )
     allow_missing_bff_origin: bool = True
     timeblock_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
+    timeblock_proxy_timeout_seconds: float = Field(default=120.0, gt=1, le=300)
     allow_development_session_fallback: bool = False
+    messaging_realtime_enabled: bool = True
+    messaging_mailbox_lock_enabled: bool = True
+    messaging_advanced_attachments_enabled: bool = True
 
     allowed_websocket_origins: str = 'http://127.0.0.1:8000,http://localhost:8000'
     allowed_timeblock_handoff_origins: str = 'http://127.0.0.1:5000,http://localhost:5000'
@@ -79,6 +89,10 @@ class Settings(BaseSettings):
 
     @model_validator(mode='after')
     def validate_production_settings(self):
+        if not self.guilua_session_cookie.strip() or not self.guilua_pending_authorization_cookie.strip():
+            raise ValueError('GUILUA session and pending cookie names must be non-empty')
+        if self.guilua_session_cookie == self.guilua_pending_authorization_cookie:
+            raise ValueError('GUILUA session and pending cookie names must be distinct')
         if self.is_production and self.secret_key in {'', 'change-me', 'dev-only-change-me'}:
             raise ValueError('SECRET_KEY must be set to a strong value in production')
         if self.is_production and self.allow_development_session_fallback:

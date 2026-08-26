@@ -4,7 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.communication.manager import RoomManager
@@ -12,7 +12,7 @@ from app.communication.router import router as communication_router
 from app.bff.router import router as bff_router
 from app.bff.session_store import SessionStore
 from app.core.config import BASE_DIR, Settings, get_settings
-from app.integrations.timeblock.client import TimeblockClient
+from app.integrations.timeblock.client import TimeblockClient, TimeblockIntegrationError
 from app.telemetry.logging import configure_logging
 
 configure_logging()
@@ -44,6 +44,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         session_ttl_seconds=runtime_settings.guilua_session_ttl_seconds,
         pending_ttl_seconds=runtime_settings.guilua_pending_authorization_ttl_seconds,
         max_entries=runtime_settings.guilua_session_max_entries,
+        max_pending_entries=runtime_settings.guilua_pending_authorization_max_entries,
+        pending_rate_limit_count=runtime_settings.guilua_authorization_start_rate_limit_count,
+        pending_rate_limit_window_seconds=(
+            runtime_settings.guilua_authorization_start_rate_limit_window_seconds
+        ),
     )
     application.mount('/static', StaticFiles(directory=BASE_DIR / 'app' / 'static'), name='static')
 
@@ -60,6 +65,35 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @application.get('/healthz/')
     async def healthz() -> dict[str, str]:
         return {'status': 'ok', 'service': 'guilua-communication-runtime'}
+
+    @application.get('/readyz/')
+    async def readyz():
+        if runtime_settings.development_session_fallback_enabled:
+            return {
+                'status': 'ready',
+                'service': 'guilua-communication-runtime',
+                'authority': 'development',
+                'deployment_version': runtime_settings.deployment_version,
+            }
+        try:
+            manifest = await application.state.timeblock_client.contract_capabilities()
+        except TimeblockIntegrationError:
+            return JSONResponse(
+                {
+                    'status': 'not_ready',
+                    'service': 'guilua-communication-runtime',
+                    'dependency': 'timeblock_client_contract_v2',
+                    'deployment_version': runtime_settings.deployment_version,
+                },
+                status_code=503,
+            )
+        return {
+            'status': 'ready',
+            'service': 'guilua-communication-runtime',
+            'authority': manifest['authority'],
+            'contract_version': manifest['contract_version'],
+            'deployment_version': runtime_settings.deployment_version,
+        }
 
     return application
 

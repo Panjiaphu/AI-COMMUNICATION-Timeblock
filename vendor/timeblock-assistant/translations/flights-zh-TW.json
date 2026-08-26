@@ -1,0 +1,22 @@
+{
+  "nav.flights": "找機票",
+  "admin.module.flights.label": "機票合作夥伴",
+  "admin.module.flights.summary": "設定合作夥伴導流、聯盟連結與搜尋追蹤。",
+  "flights.page_title": "台灣－越南機票搜尋",
+  "flights.meta_description": "一次輸入需求，到合法合作夥伴查詢台灣－越南機票並於合作夥伴網站付款。",
+  "flights.eyebrow": "TIMEBLOCK TRAVEL CONNECT",
+  "flights.title": "搜尋台灣－越南機票，行李與付款責任清楚",
+  "flights.intro": "Timeblock 整理你的需求並導向合作夥伴，由合作夥伴確認最終價格、訂位、付款與售後服務。",
+  "flights.trust_label": "安全界線", "flights.trust.no_payment": "Timeblock 不收取機票款", "flights.trust.no_passport": "不收護照或信用卡資料", "flights.trust.partner_checkout": "合作夥伴確認價格並開票",
+  "flights.form.title": "一次輸入資料", "flights.form.trip_type": "行程類型", "flights.trip.round_trip": "來回", "flights.trip.one_way": "單程", "flights.form.origin": "台灣出發地", "flights.form.destination": "越南目的地", "flights.form.departure": "出發日期", "flights.form.return": "回程日期", "flights.form.adults": "成人", "flights.form.children": "兒童", "flights.form.infants": "嬰兒", "flights.form.baggage": "希望托運行李", "flights.baggage.none": "不指定", "flights.form.submit": "前往合作夥伴查詢",
+  "flights.form.notice": "目前 MVP 尚未串接即時票價 API；導流後由合作夥伴確認票價、機位、稅費與其他費用。",
+  "flights.results.eyebrow": "合作夥伴選項", "flights.results.open_partner": "開啟合作夥伴網站", "flights.results.partner_confirms": "搜尋與付款均在合作夥伴網站完成。",
+  "flights.provider.global": "國際", "flights.provider.vietnam": "越南語支援", "flights.provider.taiwan": "台灣合作夥伴", "flights.provider.taiwan_support": "台灣在地支援",
+  "flights.provider.description.trip": "Trip.com 多語言航班搜尋與合作夥伴結帳。", "flights.provider.description.traveloka": "越南旅客熟悉的選項，航線與付款方式以合作夥伴確認為準。", "flights.provider.description.lion": "提供繁體中文服務的台灣旅遊合作夥伴。", "flights.provider.description.colatour": "查詢國際行程的另一個台灣選項。", "flights.provider.description.ezfly": "適合需要機票諮詢或越捷台灣支援的在地管道。",
+  "flights.disclosure.title": "連結透明聲明", "flights.disclosure.body": "Timeblock 是搜尋與轉介平台。部分連結可能為聯盟連結，符合條件的訂單可能讓 Timeblock 獲得佣金，但不會增加你的費用。價格、付款、開票、改退票與售後由合作夥伴負責。",
+  "flights.guide.eyebrow": "TIMEBLOCK 加值內容", "flights.guide.title": "訂票前的六項檢查", "flights.guide.intro": "Timeblock 提供原創指引，說明在台越南旅客最容易忽略的成本與風險。",
+  "flights.guide.total_price.title": "確認總價", "flights.guide.total_price.body": "比較包含稅金、附加費與付款費用的最終總額。", "flights.guide.baggage.title": "逐段確認行李", "flights.guide.baggage.body": "低成本或跨航空公司行程尤其要確認手提與托運額度。", "flights.guide.flexible_dates.title": "比較鄰近日期", "flights.guide.flexible_dates.body": "若日期彈性，可比較前後一至三天的總成本。", "flights.guide.self_transfer.title": "自行轉機警示", "flights.guide.self_transfer.body": "分開購票可能要重新領行李、入境並承擔錯過轉機風險。", "flights.guide.support.title": "選擇合適客服", "flights.guide.support.body": "優先選擇在台灣可使用且語言合適的服務管道。", "flights.guide.after_sales.title": "閱讀改退票規則", "flights.guide.after_sales.body": "確認費用、期限、未搭乘規則與班表異動處理方。",
+  "flights.audience.title": "為在台越南社群設計", "flights.audience.intro": "不同族群有不同需求；Timeblock 只儲存搜尋條件，不儲存旅行證件。", "flights.audience.student.title": "留學生", "flights.audience.student.body": "重視彈性日期、較低總價與長假行李。", "flights.audience.worker.title": "越南移工", "flights.audience.worker.body": "操作簡單、總價清楚並有台灣在地支援。", "flights.audience.family.title": "越台家庭", "flights.audience.family.body": "特別注意兒童、嬰兒、座位、行李與改期條件。",
+  "flights.admin.eyebrow": "TRAVEL PARTNER OPERATIONS", "flights.admin.title": "機票合作夥伴", "flights.admin.intro": "啟用合作夥伴並設定已核准的聯盟 URL；URL 中不得放 API key 或密碼。", "flights.admin.searches": "搜尋次數", "flights.admin.clickouts": "導流次數", "flights.admin.active_providers": "啟用夥伴", "flights.admin.provider": "夥伴", "flights.admin.booking_url": "官方 URL", "flights.admin.affiliate_url": "已核准聯盟 URL", "flights.admin.action": "設定", "flights.admin.enabled": "啟用", "flights.admin.save": "儲存夥伴", "flights.admin.saved": "已儲存機票合作夥伴設定。", "flights.admin.security_note": "僅接受允許清單中的合作夥伴 HTTPS 網域；追蹤 ID 不含 Email、電話或帳號 ID。",
+  "flights.error.trip_type": "行程類型無效。", "flights.error.route": "請選擇台灣與越南之間的有效航線。", "flights.error.date": "旅行日期無效。", "flights.error.passengers": "旅客人數無效。", "flights.error.infants": "嬰兒人數不可超過成人。", "flights.error.baggage": "行李選項無效。", "flights.error.provider": "此合作夥伴目前無法使用。", "flights.error.provider_url": "聯盟 URL 必須使用 HTTPS 且屬於允許的合作夥伴網域。"
+}
