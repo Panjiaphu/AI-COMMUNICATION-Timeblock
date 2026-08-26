@@ -1,12 +1,15 @@
 # AI Communication / Timeblock Assistant delivery status
 
-Last updated: 2026-08-26 Asia/Taipei. This is a local working-tree status, not a
-GitHub merge, Render deployment or production verification record.
+Last updated: 2026-08-26 Asia/Taipei. This is a pushed feature-branch candidate
+status, not a protected-main merge, Render deployment or production
+verification record.
 
 ## Candidate identity
 
 - Repository: `Panjiaphu/AI-COMMUNICATION-Timeblock`
 - Working branch: `codex/timeblock-ai-parity-16a83643`
+- Implementation commit: `0f79cbace6cfde663a92a7ea3e185739bbc3d0b8`
+- Draft pull request: `https://github.com/Panjiaphu/AI-COMMUNICATION-Timeblock/pull/6`
 - Starting committed HEAD: `d1ac5d96854853bc0a1bab5aae295843a981d3bf`
 - Canonical UI source: `Panjiaphu/fumap-bot-life@16a83643b77afd20feb6d7b7f7366702d25fd87d`
 - Source lock: `vendor/timeblock-assistant/SOURCE_LOCK.json`
@@ -20,10 +23,23 @@ GitHub merge, Render deployment or production verification record.
 | BFF compatibility | `LOCAL_QA_PASS` | 120 explicit method/path route specifications; canonical paths remain unchanged upstream; no open/catch-all proxy; focused BFF/parity suite passed 61 tests. |
 | `CAPABILITY_PARITY` | `BLOCKED_BY_TIMEBLOCK_CONTRACT_V2` | Production principal/session authentication for canonical handlers still depends on Timeblock Client Contract V2 being merged and deployed. |
 | Target QA | `PASS_LOCAL` | Default pytest: 109 passed, 4 skipped, 1 warning; focused parity/BFF: 61 passed; source-lock verifier: 214 source files / 420 destinations; all 59 runtime JavaScript files passed `node --check`; browser suite: 16 passed on Chromium 149 and WebKit 26.5 with fake media. |
-| Timeblock contract QA | `FOCUSED_PASS_FULL_SUITE_RED` | Contract V2 focused suite: 17 passed. Current branch full suite: 775 passed, 74 failed, 3 xfailed. A clean `16a83643` sample reproduced 3/3 representative failures, but the 74 failures have not all been individually classified as baseline. |
-| Render Blueprint | `LOCAL_SCHEMA_PASS` | One service and 32 environment variables validated with zero targeted errors against the official Render YAML schema. Name and Starter plan match the existing AI service; branch is `main`, auto-deploy is off and health check is `/readyz/`. Render CLI validation was unavailable. |
-| GitHub feature branch | `PENDING_COMMIT_PUSH` | Local changes have not yet been represented as a pushed candidate commit by this document. Protected `main` merge is a separate pending gate. |
+| Timeblock contract QA | `FOCUSED_PASS_FULL_SUITE_RED` | Contract V2 focused suite: 18 passed at `d4fd397b03257142c7daee169b5d6ef863d76602`. The exact-head local full repository run completed with 793 passed, 79 failed and 3 xfailed in 2229.47 seconds; GitHub run `32939899515` completed with 796 passed, 76 failed and 3 xfailed in 1741.86 seconds. Neither run reported a Contract V2 test failure. Exact-main comparison runs reproduced the Contact V1 failure and the Chromium mobile/desktop `flag=true` failures; an additional PR WebKit image-decode timeout is outside the Contract V2 diff and is recorded as unresolved/flaky rather than hidden. |
+| Render Blueprint | `LOCAL_SCHEMA_AND_BUILD_PASS` | One service and 32 environment variables validated with zero targeted errors against the official Render YAML schema. Name and Starter plan match the existing AI service; branch is `main`, auto-deploy is off and health check is `/readyz/`. The exact Render build script, environment gate, source-lock verifier, compile step and `pip check` passed locally. Render CLI validation was unavailable. |
+| GitHub feature branch | `FEATURE_BRANCH_PUSHED_DRAFT_PRS` | AI implementation commit `0f79cba` is pushed in draft PR #6. Timeblock dependency commit `d4fd397` is pushed in draft PR #92, based on current `origin/main` `f6aad9c`. Both are mergeable; protected-main merge remains a separate gate. |
 | Render/live | `READ_ONLY_VERIFIED_UNCHANGED` | AI service `srv-d93hlhtaeets73dohu0g` remains on deploy `dep-d9sa54ijnfac73953mhg`, SHA `d1ac5d96854853bc0a1bab5aae295843a981d3bf`; no mutation was made. Timeblock live SHA `f6aad9c52daa212802ca72f87bb9add874ea42f6` does not contain Contract V2 and its canonical capability URL returns 404, so the candidate `/readyz/` would return 503. |
+
+## GitHub comparison evidence
+
+- PR #92 Full Repository QA run `32939899515` checked out exact head
+  `d4fd397b03257142c7daee169b5d6ef863d76602`; it remained red on legacy
+  repository tests, while the focused Contract V2 suite passed locally.
+- Exact-main Contact V1 comparison run `32939572018` failed at
+  `f6aad9c52daa212802ca72f87bb9add874ea42f6`.
+- Exact-main Mobile Browser QA comparison run `32939569118` failed Chromium
+  mobile and desktop `flag=true` jobs at the same main SHA. The PR-only WebKit
+  failure was a three-second image-decode fallback timeout in an unchanged
+  browser test; it remains an unresolved/flaky CI observation, not a green
+  claim.
 
 ## Implemented locally
 
@@ -42,6 +58,9 @@ GitHub merge, Render deployment or production verification record.
   form, multipart, binary responses and SSE without exposing browser cookies or
   the server API key.
 - Admin and scheduler paths remain intentionally outside the allowlist.
+- The Timeblock dependency preserves authenticated server-to-server access to
+  the capability manifest across its canonical-host redirect while browser
+  authorization continues to redirect normally.
 
 ## Production dependency
 
