@@ -7,3 +7,4 @@ guilua.db
 staticfiles/
 media/
 artifacts/
+qa-artifacts/

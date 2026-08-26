@@ -139,7 +139,7 @@ button:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid rgba
   .eyebrow,.call-subtitle,.call-header-note{display:none}
   .call-header h1{font-size:1.05rem}
   .communication-workspace{border-radius:16px}
-  .video-stage{min-height:max(390px,calc(100dvh - 465px));max-height:58dvh}
+  .video-stage{min-height:max(360px,calc(100dvh - 485px));max-height:58dvh}
   .local-frame{top:10px;right:10px;width:min(32vw,140px);border-radius:13px}
   .caption-layer{bottom:70px;width:calc(100% - 24px)}
   .caption-layer small{display:none}

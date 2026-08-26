@@ -107,6 +107,27 @@ def test_responsive_surface_and_interpreter_states(
             "local_preview_controls": boxes_intersect(local_box, controls_box),
             "panel_controls": boxes_intersect(panel_box, controls_box),
         }
+        diagnostic_screenshot = artifact_dir / "screenshots" / f"{name}.png"
+        diagnostic_screenshot.parent.mkdir(parents=True, exist_ok=True)
+        page.screenshot(path=str(diagnostic_screenshot), full_page=False)
+        write_json(
+            artifact_dir / "evidence" / f"{name}.json",
+            {
+                "viewport": viewport,
+                "metrics": metrics,
+                "caption_box": caption_box,
+                "panel_box": panel_box,
+                "controls_box": controls_box,
+                "local_box": local_box,
+                "remote_box": remote_box,
+                "horizontal_overflow": metrics["scrollWidth"] > metrics["width"] + 1,
+                "all_inside_viewport_results": inside_viewport_results,
+                "all_intersection_results": intersection_results,
+                "page_url_token_free": True,
+                "console": evidence,
+                "physical_device": False,
+            },
+        )
         assert all(inside_viewport_results.values())
         assert not any(intersection_results.values())
 
