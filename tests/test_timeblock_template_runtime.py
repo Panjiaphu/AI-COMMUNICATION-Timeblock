@@ -125,6 +125,10 @@ def test_authenticated_assistant_renders_canonical_vendor_dom_and_locale(runtime
     assert 'data-mode-tab="ai"' in response.text
     assert 'data-mode-panel="messages"' in response.text
     assert 'href="/static/css/assistant.css?' in response.text
+    assert (
+        'href="/static/css/assistant_runtime_adapter.css?v=20260826-composer-grid-1" '
+        "data-guilua-assistant-runtime-adapter"
+    ) in response.text
     assert 'src="/static/js/call-v1/bootstrap.js?' in response.text
     assert 'src="/static/js/messaging_contact_v1.js?' in response.text
     assert 'href="/static/manifest.webmanifest"' in response.text
@@ -234,9 +238,25 @@ def test_request_facade_keeps_local_routes_local_and_navigation_absolute():
     assert facade.url_for("assistant.workspace", lang="vi") == "/assistant?lang=vi"
     assert facade.url_for("assistant.app_settings", lang="en") == "/app-settings?lang=en"
     assert facade.url_for("auth.logout") == "/logout"
-    assert facade.url_for("market.dashboard", lang="zh-TW") == (
-        "https://timeblock.example/market?lang=zh-TW"
-    )
+    timeblock_navigation = {
+        "home": "/",
+        "business_auth.login": "/business/login",
+        "utilities.index": "/utilities",
+        "opportunities.index": "/opportunities",
+        "flights.index": "/flights",
+        "market.dashboard": "/market",
+        "equities.dashboard": "/equities",
+        "missions.list_missions": "/missions",
+        "events.list_events": "/events",
+        "shop.affiliate": "/shop/affiliate",
+        "redeem_shop.list_products": "/redeem-shop",
+        "block_ledger.public_explorer": "/blocks",
+        "member.dashboard": "/member/dashboard",
+    }
+    for endpoint, path in timeblock_navigation.items():
+        assert facade.url_for(endpoint, lang="zh-TW") == (
+            f"https://timeblock.example{path}?lang=zh-TW"
+        )
     assert facade.url_for("static", filename="js/assistant.js", v="locked") == (
         "/static/js/assistant.js?v=locked"
     )

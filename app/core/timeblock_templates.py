@@ -53,6 +53,11 @@ _TIMEBLOCK_ENDPOINTS = {
 }
 
 _ASSISTANT_BUCKETS = ("text", "image", "audio", "video", "speech")
+_ASSISTANT_RUNTIME_ADAPTER = (
+    '<link rel="stylesheet" '
+    'href="/static/css/assistant_runtime_adapter.css?v=20260826-composer-grid-1" '
+    'data-guilua-assistant-runtime-adapter>'
+)
 
 
 def _safe_base_url(value: str) -> str:
@@ -210,6 +215,15 @@ def _canonical_url(settings: Settings, path: str, locale: str) -> str:
     return f"{base_url}{path}?{urlencode({'lang': locale})}"
 
 
+def _inject_assistant_runtime_adapter(html: str) -> str:
+    """Append Guilua-only CSS without modifying the exact Timeblock vendor mirror."""
+
+    marker = "</head>"
+    if marker not in html:
+        raise ValueError("source-locked assistant template is missing </head>")
+    return html.replace(marker, f"    {_ASSISTANT_RUNTIME_ADAPTER}\n  {marker}", 1)
+
+
 def _base_context(
     request: Request,
     session: Any,
@@ -272,9 +286,8 @@ def render_timeblock_assistant(
     # above, while Starlette's TemplateResponse reserves that key for its ASGI
     # Request object. Render through the same configured Jinja environment and
     # return HTML directly so neither framework contract is impersonated.
-    response = HTMLResponse(
-        timeblock_templates.get_template("assistant/index.html").render(context)
-    )
+    vendor_html = timeblock_templates.get_template("assistant/index.html").render(context)
+    response = HTMLResponse(_inject_assistant_runtime_adapter(vendor_html))
     response.headers["Cache-Control"] = "no-store"
     response.headers["Permissions-Policy"] = (
         "camera=(self), microphone=(self), speaker-selection=(self), geolocation=()"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -52,6 +53,38 @@ def _authenticated_vendor_html(path: str) -> str:
 def _set_source_locked_content(page, html: str, base_url: str) -> None:
     document = html.replace("<head>", f'<head><base href="{base_url}/">', 1)
     page.set_content(document, wait_until="networkidle")
+
+
+def _without_runtime_scripts(html: str) -> str:
+    return re.sub(r"<script\b[^>]*>.*?</script>", "", html, flags=re.IGNORECASE | re.DOTALL)
+
+
+def _show_enhanced_message_composer(page, *, mobile: bool) -> None:
+    page.eval_on_selector(
+        "#assistant-panel-messages",
+        """(panel, mobile) => {
+          panel.hidden = false;
+          panel.classList.add("is-active");
+          if (mobile) document.body.classList.add("timeblock-mobile-immersive-conversation");
+          else panel.dataset.enterpriseLayoutMode = "two";
+          panel.querySelector(".assistant-messages-layout")?.classList.add("has-thread");
+          const form = panel.querySelector("[data-message-form]");
+          form.hidden = false;
+          const box = form.querySelector(".assistant-composer-box");
+          const originalAttachment = box.querySelector("[data-message-file]")?.closest("label");
+          if (originalAttachment) originalAttachment.hidden = true;
+          const attachments = document.createElement("div");
+          attachments.className = "messaging-composer-v2";
+          attachments.innerHTML = '<button class="messaging-composer-v2-add" type="button">+</button>';
+          box.prepend(attachments);
+          const voice = document.createElement("button");
+          voice.className = "assistant-icon-button messaging-enterprise-voice-button";
+          voice.type = "button";
+          voice.textContent = "MIC";
+          attachments.after(voice);
+        }""",
+        mobile,
+    )
 
 
 def _assert_viewport_containment(page, selector: str) -> None:
@@ -155,5 +188,60 @@ def test_canonical_assistant_and_settings_are_contained_on_mobile_and_desktop(
                 )
 
         assert not failed_static
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize(
+    ("viewport", "minimum_input_width"),
+    [
+        ({"width": 1440, "height": 900}, 420),
+        ({"width": 390, "height": 844}, 160),
+    ],
+)
+def test_enhanced_message_composer_keeps_a_writable_flexible_input_column(
+    chromium_browser,
+    base_url: str,
+    artifact_dir,
+    viewport: dict[str, int],
+    minimum_input_width: int,
+):
+    assistant_html = _without_runtime_scripts(
+        _authenticated_vendor_html("/assistant?lang=vi&mode=messages")
+    )
+    context = chromium_browser.new_context(viewport=viewport, base_url=base_url)
+    page = context.new_page()
+    try:
+        _set_source_locked_content(page, assistant_html, base_url)
+        _show_enhanced_message_composer(page, mobile=viewport["width"] <= 760)
+
+        composer = page.locator("#assistant-message-input")
+        composer.fill("Kiểm tra vùng nhập")
+        expect(composer).to_have_value("Kiểm tra vùng nhập")
+
+        geometry = composer.evaluate(
+            """element => {
+              const rect = element.getBoundingClientRect();
+              const box = element.closest(".assistant-composer-box");
+              const styles = getComputedStyle(box);
+              return {
+                width: rect.width,
+                height: rect.height,
+                gridColumns: styles.gridTemplateColumns.split(" ").filter(Boolean).length,
+                hitTargetIsInput: document.elementFromPoint(
+                  rect.x + rect.width / 2,
+                  rect.y + rect.height / 2,
+                ) === element,
+              };
+            }"""
+        )
+        assert geometry["gridColumns"] == 4
+        assert geometry["width"] >= minimum_input_width
+        assert geometry["height"] >= 38
+        assert geometry["hitTargetIsInput"] is True
+        page.screenshot(
+            path=artifact_dir / f"message-composer-{viewport['width']}x{viewport['height']}.png",
+            full_page=False,
+        )
     finally:
         context.close()
