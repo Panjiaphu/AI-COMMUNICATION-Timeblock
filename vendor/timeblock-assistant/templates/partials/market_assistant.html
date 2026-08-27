@@ -1,0 +1,29 @@
+{% macro market_assistant_mark(extra_class="") -%}
+  <svg class="market-assistant-brand-icon {{ extra_class }}" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+    <path class="market-assistant-mark-letter" d="M17 16h30v9H37v25H27V25H17z"></path>
+    <path class="market-assistant-mark-base" d="M18 48h18"></path>
+    <path class="market-assistant-mark-trend" d="M35 47l11-11m0 0h-7m7 0v7"></path>
+  </svg>
+{%- endmacro %}
+
+{% if (not active_user or active_user.role in ["member", "business"]) and request.endpoint != "assistant.workspace" %}
+  {% set assistant_destination = url_for('assistant.workspace', mode='ai', lang=current_locale, context_type='equities' if request.endpoint and request.endpoint.startswith('equities.') else 'market', country=request.args.get('country', ''), symbol=request.args.get('symbol', '')) %}
+  <aside
+    class="market-assistant"
+    data-market-assistant
+    data-assistant-locale="{{ current_locale }}"
+    data-assistant-authenticated="{{ 'true' if active_user and active_user.role in ['member', 'business'] else 'false' }}"
+    aria-label="{{ t('assistant.title') }}"
+  >
+    <a
+      class="market-assistant-pet"
+      data-assistant-hub-link
+      href="{{ assistant_destination if active_user else url_for('auth.login', next=assistant_destination, lang=current_locale) }}"
+      title="{{ t('assistant.launcher.open') }}"
+      aria-label="{{ t('assistant.launcher.open') }}"
+    >
+      {{ market_assistant_mark("market-assistant-launcher-icon") }}
+      <b data-assistant-unread hidden>0</b>
+    </a>
+  </aside>
+{% endif %}

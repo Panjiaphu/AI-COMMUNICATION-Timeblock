@@ -1,189 +1,124 @@
 # Guilua Project Memory
 
-Last verified update: 2026-07-31 (Asia/Taipei)
+Last verified update: 2026-08-07 (Asia/Taipei)
 
 ## Project identity
 
-- Repository: `Panjiaphu/guilua`
-- Baseline/current main SHA: `c6c83c60f190506afec21cfb750ee5acd5e27932`
-- Archive branch: `archive/legacy-point-platform-before-communication-runtime` at the same baseline
-- Working branch: `refactor/communication-runtime-foundation`
-- Validated Communication Runtime code head: `f07f80ceb4d5cc972ed7dd855413f1e49e334fa1`
-- Pull request: `#1` (open, draft, mergeable, not merged)
-- Render service: `srv-d93hlhtaeets73dohu0g`, Singapore
-- Production deployment: unchanged; deployed SHA and health were not verified through Render read access in this closure
+- Repository: `Panjiaphu/AI-COMMUNICATION-Timeblock`
+- Current `main` baseline: `28bd691f4ff7e9ba115d425df110d83bf65b5ce4`
+- Active Phase 2A branch: `feat/contract-v1-secure-handoff-20260807`
+- Timeblock source repository: `Panjiaphu/fumap-bot-life`
+- Timeblock source SHA used for Contract V1 verification: `28476fe50d7e02486be190b7e895ce7832382102`
+- Render service identity recorded by the project: `srv-d93hlhtaeets73dohu0g`, Singapore
 
 ## Locked architecture
 
-Guilua is the ephemeral realtime communication runtime for Timeblock: one existing Render Standard Web Service, one instance, one Gunicorn/Uvicorn worker, HTTP and WebSocket on one public port, in-memory runtime state, and WebRTC P2P for initial 1:1 calls.
+Guilua is the ephemeral realtime Communication Runtime for Timeblock. Timeblock owns durable identity, workspace membership, permissions, entitlement/quota, glossary master data, transcript/results, usage, billing, audit, and retention.
 
-Do not add Redis, Postgres, workers, cron, persistent disk, a second service, horizontal scaling, SFU/MCU, dedicated TURN, local Whisper/LLM, GPU, or media transcoding during the foundation phase. Timeblock owns durable identity, workspace, permission, entitlement, transcript, usage, billing, audit, and retention data.
+Guilua currently owns realtime WebSocket lifecycle, WebRTC P2P signaling, participant/reconnect state, temporary media state, and browser call UI.
 
-## Implemented runtime foundation
+The zero-cost foundation remains one existing Render web service, one runtime instance/worker, in-memory room state, and WebRTC P2P for initial 1:1 calls. Phase 2A does not add Redis, Postgres, background workers, a second Render service, horizontal scaling, SFU, TURN, local Whisper/LLM, GPU, or media transcoding.
 
-- FastAPI app factory and lifespan-managed in-memory `RoomManager`.
-- `/`, `/communication`, `/healthz/`, and `/ws/communication/{session_id}`.
-- `RoomState`, `ParticipantState`, `ConnectionState`, and `ReconnectState`.
-- Settings-driven stale, reconnect, ended-room, and idempotency TTLs.
-- Event allowlist and typed payload validation.
-- Participant/connection/session binding, duplicate and out-of-order protection.
-- Per-connection in-memory rate limits.
-- Production origin fail-closed policy.
-- One-time reconnect token hashing, expiry, rotation, and participant replacement.
-- Targeted offer, answer, and ICE forwarding for a maximum of two participants.
-- Browser WebSocket, `RTCPeerConnection`, ICE queue, remote-stream assignment, bounded reconnect backoff, and cleanup paths.
-- Provisional typed Timeblock boundary: authorize, refresh, glossary, session result, and usage callbacks with idempotency keys.
+## Contract V1 state
 
-## Legacy removal
+Timeblock Communication Contract V1 is no longer provisional.
 
-Removed active BO/SLBO, Rapid, rates, crypto dashboard, old admin/member/auth, wallets/points/transfers/treasury, referral/commission, Django `odds`, database models/session, legacy services, templates, tests, and static assets.
+Verified Timeblock endpoints:
 
-`app/core/security.py` was removed because it was a database-backed legacy auth module with no Communication Runtime consumer. Historical Alembic files remain only as schema evidence and are not imported or executed by the runtime. Production tables have not been dropped.
+- `POST /api/communication/bootstrap`
+- `POST /api/communication/sessions/{session_id}/authorize`
+- `POST /api/communication/sessions/{session_id}/refresh`
+- `POST /api/communication/glossary`
+- `POST /api/communication/session-results`
+- `POST /api/communication/usage`
 
-## Browser, WebRTC, and logging closure
+Timeblock bootstrap returns a short-lived opaque `session_token` plus immutable session/participant/workspace metadata, `runtime_url`, and a token-free `websocket_url`.
 
-Validated code commits:
+## Phase 2A — secure handoff
 
-- `e3df7501a100f8990951c5bae4633fd202db7eec` — responsive geometry, rejected-authorization media cleanup, reconnect peer reset, structured Gunicorn logs, exact-head artifact identity, privacy/completeness gates, and expanded browser evidence.
-- `f07f80ceb4d5cc972ed7dd855413f1e49e334fa1` — reconnect browser test now waits for protocol evidence `session.authorized(reconnected=true)` instead of requiring the transient `Reconnected` label.
+Phase 2A moves Guilua from the original runtime foundation to a Contract V1 integrated runtime with production-safe browser handoff.
 
-Closure behavior now includes:
+Implemented on the active branch:
 
-- responsive desktop, tablet, mobile portrait, and mobile landscape geometry assertions;
-- interpreter `expanded`, `collapsed`, and `hidden` interaction checks;
-- caption, interpreter, local-preview, and call-control non-overlap checks;
-- initial WebSocket authorization rejection stops local tracks, closes peers, clears timers, and resets controls;
-- reconnect closes the stale peer, rotates connection/reconnect state, renegotiates offer/answer/ICE, and restores decoded remote audio/video;
-- third participant is rejected without disrupting the existing call and its local media is stopped;
-- end-call cleanup closes WebSockets and peers and ends local/remote tracks;
-- application, Uvicorn, and Gunicorn lifecycle logs use one allowlisted JSON object per line;
-- WebSocket request targets are sanitized and raw session/reconnect tokens, SDP, and ICE candidates are excluded from artifacts;
-- browser artifacts are accepted only when checked-out SHA, deployment version, and expected PR head are identical.
+- production page no longer requires a secret query parameter;
+- production browser identity is received from Timeblock instead of generated by Guilua;
+- Timeblock-to-Guilua browser handoff uses typed `postMessage` data with an exact sender-origin allowlist;
+- Timeblock session credential is kept in browser memory and is not written to localStorage/sessionStorage;
+- canonical WebSocket URL contains no Timeblock session token or Guilua reconnect token;
+- WebSocket opens in an unauthenticated state and requires a typed `session.authenticate` first frame;
+- unauthenticated sockets have a bounded authentication timeout and frame-size limit;
+- `RoomManager` state is created only after Timeblock authorize/refresh succeeds;
+- optional workspace/issuer/audience claims are comparison-only and are rebound to the Timeblock response;
+- existing P2P signaling, two-participant limit, reconnect-token hashing/rotation, media cleanup, and terminal hangup behavior are preserved;
+- development static-session fallback remains explicit and non-production only.
 
-## Exact-head validation evidence
+## Browser sender dependency
 
-### Communication Runtime workflow
+Guilua implements the receiver. Timeblock still needs the corresponding browser sender integration in `Panjiaphu/fumap-bot-life`:
 
-- Commit: `f07f80ceb4d5cc972ed7dd855413f1e49e334fa1`
-- GitHub Actions run: `30607269845`
-- Job: `91082076396`
-- Conclusion: `success`
-- Legacy absence gate: passed
-- `python -m compileall app`: passed
-- `PYTHONPATH=. pytest -q`: `17 passed, 2 skipped, 1 warning in 0.70s`
-- Build environment check: passed
-- Application import smoke: passed
-- Warning: FastAPI/Starlette TestClient deprecation warning; it did not fail the workflow
+1. authenticated browser calls existing `/api/communication/bootstrap`;
+2. opens/embeds token-free Guilua `/communication`;
+3. sends `timeblock.communication.handoff.v1` with the bootstrap data to the exact Guilua origin;
+4. does not persist or log the bootstrap credential.
 
-### Communication Browser QA workflow
+Do not fake completion of this cross-repository dependency in the Guilua PR.
 
-- Commit: `f07f80ceb4d5cc972ed7dd855413f1e49e334fa1`
-- GitHub Actions run: `30607270158`
-- Job: `91082077398`
-- Conclusion: `success`
-- Exact checkout identity gate: passed
-- Browser test JUnit: `12 tests`, `0 failures`, `0 errors`, `0 skipped`
-- Playwright: `1.61.0`
-- Chromium: `149.0.7827.55`
-- WebKit: `26.5`
-- Physical device: false
-- Fake media: true
-- Artifact privacy and completeness gate: passed
-- Artifact upload: passed
+## Current validation state
 
-Artifact:
+The previous foundation exact-head evidence remains historical evidence for `f07f80ceb4d5cc972ed7dd855413f1e49e334fa1` and the merged foundation. It is not evidence for Phase 2A.
 
-- ID: `8784077659`
-- Name: `communication-browser-qa-f07f80ceb4d5cc972ed7dd855413f1e49e334fa1`
-- GitHub artifact digest: `sha256:4a4918c95b07196b88303d223e4f6b1adefa08842449cf21a1bb17262c371907`
-- Retention expiry: 2026-08-14
+Phase 2A must obtain new exact-head evidence after the branch changes are complete:
 
-Direct artifact inspection verified:
+- Communication Runtime workflow;
+- default pytest suite;
+- compile/import/environment checks;
+- Chromium/WebKit browser QA;
+- two-context WebRTC and reconnect;
+- privacy/artifact gate;
+- exact checked-out SHA and deployment version identity.
 
-- `build-identity.json` records expected PR head, checked-out SHA, and deployment version as `f07f80ceb4d5cc972ed7dd855413f1e49e334fa1`;
-- all eight required viewport evidence files report no horizontal overflow, every required box inside the viewport, and every tested intersection as false;
-- Chromium and WebKit mobile screenshots render the communication surface without visible control/caption/interpreter overlap;
-- fake-media permission grant, synthetic permission denial, two-context offer/answer/ICE, reconnect recovery, third-participant rejection, and final cleanup evidence are present;
-- reconnect evidence contains one active non-closed peer per participant, one live remote audio track, one live remote video track, decoded video dimensions, hidden placeholder, no duplicate remote track IDs, zero active reconnect timers, and one reconnect-token rotation for the reconnecting participant;
-- rejected third-participant evidence contains two ended local tracks, no active peer, no local video tracks, and no active timer;
-- `server.log` contains 31 non-empty lines, all valid allowlisted JSON objects, zero plaintext lines, zero privacy-pattern violations, and redacted WebSocket query tokens.
+Until those gates pass, Phase 2A is implementation-in-progress and must not be described as production-validated.
 
-## Production and database impact
+## Production impact for Phase 2A so far
 
 - Production database changed: false
-- Destructive DDL run: false
-- Alembic run: false
-- Render deployed or restarted: false
-- Render plan changed: false
-- Render environment variables changed: false
-- Production Render deployed SHA, health, and real traffic: not verified
+- Destructive DDL: false
+- Alembic migration: false
+- Timeblock repository modified by this Guilua branch: false
+- STT/translation/TTS added: false
+- TURN/SFU added: false
 
-## Remaining risks and unknowns
+Deployment is permitted only for an exact validated commit SHA and should retain the previous main SHA as the immediate rollback target.
 
-- Timeblock endpoint paths and schemas remain `PROVISIONAL_CONTRACT` until supplied or approved by the Timeblock control-plane team.
-- In-memory sessions are lost on Render restart.
-- WebRTC P2P can fail on strict NAT without TURN.
-- Automated QA used hosted Chromium/WebKit with fake media, not physical devices.
-- Real-device WebRTC, strict-NAT/TURN, long-call behavior, network handoff, screen lock, and production-call traffic remain unverified.
-- STT, translation provider, captions pipeline, glossary fallback, TTS, durable result callbacks, and usage retry orchestration are outside this foundation closure.
+## Known remaining platform risks
 
-## Decision log
+- in-memory sessions are lost on runtime restart;
+- P2P can fail on strict NAT without TURN;
+- hosted browser QA is not physical-device validation;
+- physical iOS/Android, network handoff, screen lock, long calls, and strict-NAT behavior remain unverified;
+- STT, translation, captions, glossary application, TTS, durable result orchestration, and usage retry belong to Phase 2B or later.
 
-### 2026-07-30 — Safe backup
+## Next phase after Phase 2A
 
-Archive branch retained at the original main SHA because tag creation was not exposed by the connector.
+Only after secure handoff and exact-head gates are stable, proceed to Realtime AI Translation MVP:
 
-### 2026-07-30 — Non-destructive cleanup
+`audio → VAD → STT → partial/final transcript → translation → glossary → translated caption → optional TTS → Timeblock result/usage callback`
 
-Application code was removed without accessing or mutating the production database. Destructive retirement remains a separate backup-gated migration.
+Do not combine that provider integration with the authentication-boundary PR.
 
-### 2026-07-30 — Final legacy security residue
+## 2026-08-09 ?? PWA hardening candidate
 
-Deleted `app/core/security.py` rather than allowlisting it or restoring SQLAlchemy/passlib/itsdangerous. Timeblock remains the identity and authorization boundary.
-
-### 2026-07-31 — Browser and WebRTC evidence gate
-
-Added exact-head browser QA with required responsive screenshots, traces, JUnit, reconnect evidence, third-participant cleanup, and privacy-safe structured logs. Workflow success alone is insufficient; artifact completeness and identity must also pass.
-
-### 2026-07-31 — Reconnect assertion semantics
-
-Reconnect completion is proven by `session.authorized` with `reconnected=true`, connection/reconnect-token rotation, participant notification, renewed offer/answer/ICE, and usable decoded remote media. The transient UI label is not treated as the protocol source of truth.
-
-### 2026-07-31 — P1 foundation remediation staged
-
-Technical self-audit review `4828674968` identified four P1 findings at starting head `201c7b1e291ca4f80aab6b7c95983ba7c9b09ee4`:
-
-1. development-session fallback could run under production-classified settings;
-2. Timeblock authorize/refresh responses were not rebound to the requested session and participant;
-3. reconnect exhaustion left local media and runtime state active;
-4. one-sided `session.ended` did not terminally clean the remaining participant.
-
-The staged remediation adds an explicit production-safe fallback gate, authority-response identity binding, terminal reconnect-exhaustion cleanup, and server-owned one-sided hangup propagation with remote cleanup. Runtime tests cover fallback classification, boundary mismatch, room/workspace reconnect mismatch, rejected-state cleanup, terminal event delivery, and leave-versus-end behavior. Browser tests add deterministic reconnect-exhaustion and one-sided-hangup evidence.
-
-Files changed are limited to runtime configuration/integration/router/frontend cleanup, environment examples, browser workflow/evidence gates, focused tests, and this memory. No Timeblock provisional paths, signaling schemas, participant limit, infrastructure, database behavior, landing-page design, or Contract V1 implementation are changed.
-
-The pre-remediation runs `30607539178` and `30607539138`, and artifact `8784174718`, are historical and are not evidence for the new head. New exact-head Runtime and Browser QA identifiers remain pending until the foundation branch is updated and workflows finish.
-
-Contract V1 remains blocked. External review by a reviewer other than `Panjiaphu` remains required. Unified UI implementation remains unauthorized. No merge, deployment, Render operation, production database access, migration, or DDL was performed.
-
-### 2026-07-31 — Exact browser failure diagnosis and reclosure correction
-
-Exact Browser QA run `30635372352`, job `91171514309`, failed only `tests/browser/test_p1_remediation.py::test_reconnect_exhaustion_terminal_cleanup_and_restart`: `13 passed, 1 failed`. All reconnect-exhaustion terminal cleanup, zero-active-timer, no-seventh-socket, control-reset, fresh-Start, and no-old-reconnect-token assertions passed before the final console assertion. The remaining evidence contained five intentional WebSocket handshake rejections with HTTP 403 on `/ws/communication/reconnect-exhaustion`.
-
-The failure is classified as `TEST_EXPECTATION_FAILURE + BROWSER_EVIDENCE_PRIVACY_FAILURE`: the test required zero browser errors even though the reconnect-exhaustion scenario intentionally produces rejected reconnect handshakes, and browser console capture stored full URLs containing raw session and reconnect tokens in JUnit and `reconnect-exhaustion.json`. Runtime CI had already passed. This correction is limited to browser evidence sanitization, narrow expected-403 classification, privacy regression tests, and this memory entry; runtime, protocol, product UI, Contract V1, infrastructure, database, Render, and production behavior remain unchanged.
-
-Contract V1 remains blocked, external foundation review remains pending, and Unified UI remains unauthorized. No merge, deployment, Render action, production database access, migration, or DDL was performed. New exact-head Runtime and Browser QA evidence is pending and must not be assumed successful.
-
-## Current review state
-
-P1 remediation is implemented on an isolated staging branch and remains subject to staging source review plus new exact-head Runtime and Browser QA. PR #1 must remain draft. The remediation does not constitute independent approval.
-
-## Next action
-
-Complete staging source review, create one clean browser correction commit with parent `c777a5eaa3ec3337623b44840b97c358021d1e27`, fast-forward the foundation branch with `force=false`, and obtain exact-head Runtime, Browser QA, artifact identity, and privacy evidence. If all gates pass, request external foundation review.
-
-```text
-DO NOT MERGE
-DO NOT DEPLOY
-KEEP PR AS DRAFT
-```
+- Working branch: `agent/timeblock-chat-pwa-final`, based on PR #3 head
+  `ab52967a060e5510636a879cd71c8e1406760518`.
+- Timeblock presentation source is pinned to current main
+  `1ca83486c8985f2c28d60a767be9b30a68701dae` in
+  `vendor/timeblock-communication/SOURCE_LOCK.json`.
+- Added a unique Timeblock Chat manifest, static-only service worker,
+  fail-closed PWA re-entry state, localized standalone runtime copy, exact
+  production handoff settings, manual-only QA workflows, and local Phase 8
+  scripts.
+- Messaging Core V2 is intentionally not enabled in Guilua: the existing
+  Contract V1 is call-session scoped, and no secure Timeblock browser sender
+  plus client contract for directory/conversations/messages/media exists yet.
+- Do not claim full Communication/Chat parity or production messaging
+  completion until that cross-repository contract is implemented and tested.

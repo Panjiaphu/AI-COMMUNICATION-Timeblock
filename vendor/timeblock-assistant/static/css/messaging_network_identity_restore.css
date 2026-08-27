@@ -1,0 +1,9 @@
+/* Compatibility boundary for the legacy network markup.
+   Pane ownership and surface visibility belong to messaging_enterprise_workspace.css. */
+
+#assistant-panel-messages .messaging-enterprise-contact-rail {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+}

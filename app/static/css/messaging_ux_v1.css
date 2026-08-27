@@ -1,0 +1,137 @@
+.messaging-ux-notification-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.messaging-ux-read-all {
+  flex: 0 0 auto;
+}
+
+.assistant-alert-list-card [data-notification-inbox] {
+  max-height: min(48vh, 560px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-bottom: 8px;
+}
+
+.messaging-ux-multi-preview {
+  margin: 0 0 8px;
+  padding: 10px;
+  border: 1px solid var(--assistant-border, rgba(15, 23, 42, 0.12));
+  border-radius: 14px;
+  background: var(--assistant-surface, #fff);
+}
+
+.messaging-ux-preview-grid,
+.messaging-ux-image-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.messaging-ux-preview-item,
+.messaging-ux-image-item {
+  position: relative;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  aspect-ratio: 1 / 1;
+  background: rgba(15, 23, 42, 0.06);
+}
+
+.messaging-ux-preview-item img,
+.messaging-ux-image-item img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.messaging-ux-preview-remove {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.84);
+  color: #fff;
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.messaging-ux-preview-status {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  opacity: 0.78;
+}
+
+.messaging-ux-preview-status.is-error {
+  color: var(--assistant-danger, #b42318);
+  opacity: 1;
+}
+
+.messaging-ux-image-grid {
+  width: min(100%, 620px);
+  margin: 6px 0;
+}
+
+.messaging-ux-image-grid.is-count-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.messaging-ux-image-grid .assistant-thread-image {
+  width: auto;
+  max-width: none;
+}
+
+@media (max-width: 1024px) {
+  .messaging-ux-preview-grid,
+  .messaging-ux-image-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .assistant-alert-list-card [data-notification-inbox] {
+    max-height: none;
+    overflow-y: visible;
+    overscroll-behavior: auto;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .messaging-ux-notification-header {
+    align-items: stretch;
+  }
+
+  .messaging-ux-read-all {
+    min-height: 44px;
+  }
+
+  .messaging-ux-preview-grid,
+  .messaging-ux-image-grid,
+  .messaging-ux-image-grid.is-count-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .messaging-ux-multi-preview {
+    margin-inline: 4px;
+  }
+
+  .messaging-ux-preview-remove {
+    width: 40px;
+    height: 40px;
+  }
+
+  .messaging-ux-image-grid {
+    width: 100%;
+  }
+}

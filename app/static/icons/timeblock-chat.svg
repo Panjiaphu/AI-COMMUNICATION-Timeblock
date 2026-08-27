@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Timeblock Chat</title>
+  <desc id="desc">Timeblock T mark on a green background</desc>
+  <rect width="512" height="512" rx="112" fill="#0f6858"/>
+  <path fill="#fff" d="M128 126h256v62h-94v198h-68V188h-94z"/>
+  <circle cx="384" cy="382" r="28" fill="#e7f4ef"/>
+</svg>

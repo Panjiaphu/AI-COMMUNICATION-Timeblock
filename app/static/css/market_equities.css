@@ -1,0 +1,372 @@
+.market-equities-board {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.market-equities-board .market-panel-header {
+  align-items: flex-start;
+}
+
+.market-equities-note {
+  max-width: 72ch;
+  margin: 8px 0 0;
+  color: #60716b;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.market-equities-workspace-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border: 1px solid #0f6a58;
+  border-radius: 999px;
+  color: #0f6a58;
+  background: #f7fbf9;
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.market-equities-workspace-link:hover,
+.market-equities-workspace-link:focus-visible {
+  color: #fff;
+  background: #0f6a58;
+  outline: none;
+}
+
+.market-equities-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 14px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.market-equities-tabs button {
+  min-width: 118px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid #d4e1da;
+  border-radius: 999px;
+  color: #50645c;
+  background: #fff;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.market-equities-tabs button.active {
+  border-color: #0f6a58;
+  color: #fff;
+  background: #0f6a58;
+}
+
+.market-equities-tabs button:focus-visible {
+  outline: 3px solid rgba(15, 106, 88, 0.24);
+  outline-offset: 2px;
+}
+
+.market-equities-status {
+  margin: 0 0 16px;
+  color: #52645e;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.market-equities-board[aria-busy="true"] .market-equities-status::before {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #c58b28;
+  content: "";
+}
+
+.market-equities-overview {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.8fr) minmax(0, 1.2fr);
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.market-equities-action-panel,
+.market-equities-index-panel {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #dce6e0;
+  border-radius: 12px;
+  background: #fbfdfc;
+}
+
+.market-equities-subheading {
+  margin-bottom: 12px;
+}
+
+.market-equities-subheading h3 {
+  margin: 4px 0 0;
+  color: #14231e;
+  font-size: 1rem;
+}
+
+.market-equities-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.market-equity-action-lane {
+  min-width: 0;
+  border: 1px solid #e0e9e4;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.market-equity-action-lane > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e8efeb;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.market-equity-action-lane.is-buy > header { color: #087f5b; background: #edf9f4; }
+.market-equity-action-lane.is-sell > header { color: #b42318; background: #fff2f0; }
+
+.market-equity-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 54px;
+  padding: 8px 11px;
+  border-bottom: 1px solid #edf2ef;
+  color: #14231e;
+  text-decoration: none;
+}
+
+.market-equity-action-row:last-child { border-bottom: 0; }
+.market-equity-action-row:hover,
+.market-equity-action-row:focus-visible { background: #f2f8f5; outline: none; }
+
+.market-equity-action-row span,
+.market-equity-action-row strong,
+.market-equity-action-row small {
+  display: block;
+  min-width: 0;
+}
+
+.market-equity-action-row span:last-child { text-align: right; }
+.market-equity-action-row strong { font-size: 0.78rem; }
+.market-equity-action-row small {
+  margin-top: 2px;
+  overflow: hidden;
+  color: #71817b;
+  font-size: 0.66rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.market-equities-indices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.market-equity-index-card {
+  display: flex;
+  min-width: 0;
+  min-height: 112px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px;
+  border: 1px solid #e0e9e4;
+  border-radius: 10px;
+  color: #14231e;
+  background: #fff;
+  text-decoration: none;
+}
+
+.market-equity-index-card:hover,
+.market-equity-index-card:focus-visible { border-color: #0f6a58; outline: none; }
+.market-equity-index-card > span { color: #6b7d75; font-size: 0.68rem; font-weight: 800; }
+.market-equity-index-card > strong { margin: 6px 0; font-size: 0.8rem; line-height: 1.35; }
+.market-equity-index-card > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.market-equity-index-card b { font-size: 0.9rem; }
+.market-equity-index-card small { font-size: 0.7rem; font-weight: 900; }
+.market-equity-index-card .positive { color: #087f5b; }
+.market-equity-index-card .negative { color: #b42318; }
+.market-equity-index-card .muted { color: #7c8a84; }
+
+.market-equities-grid {
+  min-width: 0;
+}
+
+.market-equities-board[aria-busy="true"] .market-equities-grid {
+  min-height: 160px;
+  border: 1px dashed #dce6e0;
+  border-radius: 12px;
+  background: linear-gradient(100deg, #f7faf8 30%, #eef5f1 50%, #f7faf8 70%);
+  background-size: 220% 100%;
+  animation: market-equities-loading 1.4s linear infinite;
+}
+
+@keyframes market-equities-loading {
+  to { background-position-x: -220%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .market-equities-board[aria-busy="true"] .market-equities-grid { animation: none; }
+}
+
+.market-equity-region {
+  min-width: 0;
+  border: 1px solid #dce6e0;
+  border-radius: 12px;
+  background: #fbfdfc;
+  overflow: hidden;
+}
+
+.market-equity-region-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid #e3ebe6;
+}
+
+.market-equity-region-heading div,
+.market-equity-region-heading span,
+.market-equity-region-heading strong { display: block; }
+
+.market-equity-region-heading span {
+  color: #0f6a58;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.market-equity-region-heading strong {
+  margin-top: 4px;
+  color: #14231e;
+  font-size: 1rem;
+}
+
+.market-equity-region-heading small {
+  color: #687873;
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.market-equity-table-wrap {
+  max-height: 620px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.market-equity-table-wrap:focus-visible { outline: 3px solid rgba(15, 106, 88, 0.24); outline-offset: -3px; }
+
+.market-equity-table-wrap table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.market-equity-table-wrap th,
+.market-equity-table-wrap td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e8efeb;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.market-equity-table-wrap th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: #5d7068;
+  background: #f2f7f4;
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.market-equity-table-wrap tbody tr:hover { background: #f5faf7; }
+.market-equity-table-wrap td > span,
+.market-equity-table-wrap td > small { display: block; }
+.market-equity-table-wrap td > small { margin-top: 2px; color: #687873; font-size: 0.68rem; }
+.market-equity-table-wrap td strong,
+.market-equity-table-wrap .equity-price,
+.market-equity-table-wrap .equity-score { color: #14231e; font-weight: 900; }
+.market-equity-table-wrap a { color: #0f6a58; font-weight: 900; text-decoration: none; }
+.market-equity-table-wrap a:hover,
+.market-equity-table-wrap a:focus-visible { text-decoration: underline; }
+.market-equity-table-wrap .equity-change.positive { color: #087f5b; font-weight: 900; }
+.market-equity-table-wrap .equity-change.negative { color: #b42318; font-weight: 900; }
+.market-equity-table-wrap .equity-change.muted { color: #7c8a84; }
+
+.market-equity-action-badge {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.market-equity-action-badge.is-buy { color: #087f5b; background: #e9f8f2; }
+.market-equity-action-badge.is-sell { color: #b42318; background: #fff0ee; }
+.market-equity-action-badge.is-observe { color: #695a21; background: #fff8dc; }
+
+.market-equities-empty {
+  margin: 0;
+  padding: 14px;
+  color: #71817b;
+  font-size: 0.78rem;
+}
+
+.market-equities-disclaimer {
+  margin: 14px 0 0;
+  color: #6a7b74;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 1050px) {
+  .market-equities-overview { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 680px) {
+  .market-equities-board .market-panel-header { gap: 12px; }
+  .market-equities-workspace-link { width: 100%; }
+  .market-equities-tabs { margin-inline: -2px; padding: 2px; }
+  .market-equities-tabs button { flex: 0 0 auto; min-width: 108px; }
+  .market-equities-action-panel,
+  .market-equities-index-panel { padding: 12px; }
+  .market-equities-actions { grid-template-columns: 1fr; }
+  .market-equities-indices {
+    display: flex;
+    margin-inline: -12px;
+    padding: 0 12px 4px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+  .market-equity-index-card { flex: 0 0 210px; scroll-snap-align: start; }
+  .market-equity-region-heading { padding: 14px; }
+  .market-equity-table-wrap { max-height: 520px; }
+}

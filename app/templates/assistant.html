@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="{{ locale }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#f6f8fb">
+    <title>Timeblock AI Assistant</title>
+    <link rel="manifest" href="/static/manifest.webmanifest">
+    <link rel="stylesheet" href="/static/assistant_shell.css?v=1">
+  </head>
+  <body class="assistant-shell-page">
+    <header class="assistant-topbar">
+      <a class="assistant-brand" href="/?lang={{ locale }}">Timeblock <span>AI</span></a>
+      <div class="assistant-topbar-actions">
+        <span class="assistant-authority">{{ copy.get('authority', 'Timeblock authority') }}</span>
+        {% if session %}
+          <span class="assistant-principal">{{ session.principal.display_name }}</span>
+          <button class="assistant-quiet-button" type="button" data-session-logout>{{ copy.get('logout', 'Log out') }}</button>
+        {% else %}
+          <a class="assistant-primary-button compact" href="/api/session/start">{{ copy.get('sign_in', 'Sign in with Timeblock') }}</a>
+        {% endif %}
+      </div>
+    </header>
+
+    {% if not session %}
+      <main class="assistant-auth-stage">
+        <section class="assistant-auth-card">
+          <p class="assistant-eyebrow">Timeblock AI Assistant</p>
+          <h1>{{ copy.get('welcome_title', 'One workspace for AI, communication and translation') }}</h1>
+          <p>{{ copy.get('welcome_body', 'Sign in through Timeblock to use your account, quota, history and conversations. Guilua does not create a second data authority.') }}</p>
+          <a class="assistant-primary-button" href="/api/session/start">{{ copy.get('sign_in', 'Sign in with Timeblock') }}</a>
+          <p class="assistant-security-note">{{ copy.get('secure_session', 'Secure server session · no Timeblock token in browser storage') }}</p>
+        </section>
+      </main>
+    {% else %}
+      <main class="assistant-workspace" data-assistant-shell data-initial-mode="{{ initial_mode }}" data-initial-conversation-id="{{ initial_conversation_id }}">
+        <aside class="assistant-sidebar" aria-label="{{ copy.get('navigation', 'Assistant navigation') }}">
+          <p class="assistant-sidebar-label">{{ copy.get('workspace', 'Workspace') }}</p>
+          <button class="assistant-mode-button active" type="button" data-mode="ai"><span>✦</span>{{ copy.get('ai', 'AI Assistant') }}</button>
+          <button class="assistant-mode-button" type="button" data-mode="communication"><span>◎</span>{{ copy.get('communication', 'Communication') }}</button>
+          <button class="assistant-mode-button" type="button" data-mode="translation"><span>文</span>{{ copy.get('translation', 'Translation') }}</button>
+          <button class="assistant-mode-button" type="button" data-mode="notifications"><span>◌</span>{{ copy.get('notifications', 'Notifications') }}</button>
+          <div class="assistant-sidebar-foot">
+            <span class="assistant-status-dot"></span>{{ copy.get('connected_to_timeblock', 'Connected to Timeblock') }}
+          </div>
+        </aside>
+
+        <section class="assistant-content">
+          <section class="assistant-panel active" data-panel="ai">
+            <header class="assistant-panel-heading">
+              <div><p class="assistant-eyebrow">Timeblock AI</p><h1>{{ copy.get('ai_title', 'What should we work on?') }}</h1><p>{{ copy.get('ai_subtitle', 'Use Timeblock identity, quota and private history through the secure client contract.') }}</p></div>
+              <div class="assistant-contract-badge">V2 · {{ copy.get('server_authority', 'Server authority') }}</div>
+            </header>
+            <div class="assistant-ai-grid">
+              <article class="assistant-card assistant-composer-card">
+                <form data-ai-form>
+                  <label for="assistant-prompt">{{ copy.get('prompt', 'Your request') }}</label>
+                  <textarea id="assistant-prompt" name="text" rows="8" maxlength="12000" placeholder="{{ copy.get('prompt_placeholder', 'Ask Timeblock AI to analyze, summarize or plan...') }}"></textarea>
+                  <div class="assistant-form-row"><label class="assistant-inline-label"><input type="checkbox" name="web_search"> {{ copy.get('web_search', 'Use web context when available') }}</label><button class="assistant-primary-button" type="submit" data-ai-submit>{{ copy.get('send', 'Send to Timeblock AI') }}</button></div>
+                  <p class="assistant-feedback" data-ai-feedback></p>
+                </form>
+              </article>
+              <article class="assistant-card assistant-usage-card"><p class="assistant-card-kicker">{{ copy.get('quota', 'AI quota') }}</p><strong data-ai-quota>—</strong><span>{{ copy.get('quota_note', 'Quota is owned and calculated by Timeblock.') }}</span><button class="assistant-quiet-button" type="button" data-ai-history>{{ copy.get('history', 'Load private history') }}</button></article>
+            </div>
+            <article class="assistant-card assistant-answer-card"><div class="assistant-card-heading"><h2>{{ copy.get('answer', 'Assistant response') }}</h2><span data-ai-status>{{ copy.get('ready', 'Ready') }}</span></div><div class="assistant-answer" data-ai-answer aria-live="polite">{{ copy.get('empty_answer', 'Your Timeblock AI response will appear here.') }}</div><div class="assistant-history" data-ai-history-list hidden></div></article>
+          </section>
+
+          <section class="assistant-panel" data-panel="communication" hidden>
+            <header class="assistant-panel-heading"><div><p class="assistant-eyebrow">Timeblock Communication</p><h1>{{ copy.get('communication_title', 'People and conversations') }}</h1><p>{{ copy.get('communication_subtitle', 'Directory, messages and presence remain authoritative in Timeblock.') }}</p></div><a class="assistant-quiet-button" href="/communication">{{ copy.get('open_call_runtime', 'Open call runtime') }}</a></header>
+            <div class="assistant-communication-grid">
+              <article class="assistant-card"><div class="assistant-card-heading"><h2>{{ copy.get('directory', 'Directory') }}</h2><span class="assistant-source-label">Timeblock</span></div><form class="assistant-search" data-directory-form><input name="q" type="search" placeholder="{{ copy.get('search_placeholder', 'Search member or business') }}"><button class="assistant-quiet-button" type="submit">{{ copy.get('search', 'Search') }}</button></form><div class="assistant-list" data-directory-list><p class="assistant-muted">{{ copy.get('search_hint', 'Search to find an approved Timeblock identity.') }}</p></div></article>
+              <article class="assistant-card"><div class="assistant-card-heading"><h2>{{ copy.get('conversations', 'Conversations') }}</h2><button class="assistant-quiet-button" type="button" data-conversations-refresh>{{ copy.get('refresh', 'Refresh') }}</button></div><div class="assistant-list" data-conversation-list><p class="assistant-muted">{{ copy.get('loading', 'Loading...') }}</p></div></article>
+            </div>
+            <article class="assistant-card assistant-thread-card"><div class="assistant-card-heading"><h2 data-thread-title>{{ copy.get('select_conversation', 'Select a conversation') }}</h2><span data-thread-status></span></div><div class="assistant-thread" data-thread-messages><p class="assistant-muted">{{ copy.get('conversation_hint', 'Conversation history is fetched from Timeblock only after authorization.') }}</p></div><form class="assistant-message-form" data-message-form hidden><input name="content" maxlength="12000" autocomplete="off" placeholder="{{ copy.get('message_placeholder', 'Write a message') }}"><button class="assistant-primary-button" type="submit">{{ copy.get('send', 'Send') }}</button></form></article>
+          </section>
+
+          <section class="assistant-panel" data-panel="translation" hidden>
+            <header class="assistant-panel-heading"><div><p class="assistant-eyebrow">Timeblock Translation</p><h1>{{ copy.get('translation_title', 'Translate with account context') }}</h1><p>{{ copy.get('translation_subtitle', 'Provider-backed translation will use the Timeblock contract and quota; no provider success is mocked.') }}</p></div></header>
+            <article class="assistant-card assistant-composer-card"><form data-translation-form><label for="translation-source">{{ copy.get('translation_source_label', 'Text to translate') }}</label><textarea id="translation-source" name="text" rows="7" maxlength="8000" placeholder="{{ copy.get('translation_input_placeholder', 'Enter text for provider-backed translation...') }}"></textarea><div class="assistant-form-row"><label class="assistant-inline-label">{{ copy.get('translation_from', 'From') }} <select name="source_language"><option value="auto">Auto</option><option value="vi">Tiếng Việt</option><option value="zh-TW">繁體中文</option><option value="en">English</option></select></label><label class="assistant-inline-label">{{ copy.get('translation_to', 'To') }} <select name="target_language"><option value="vi">Tiếng Việt</option><option value="zh-TW">繁體中文</option><option value="en">English</option></select></label><button class="assistant-primary-button" type="submit">{{ copy.get('translate', 'Translate') }}</button></div><p class="assistant-feedback" data-translation-feedback></p></form></article>
+            <article class="assistant-card assistant-answer-card"><div class="assistant-card-heading"><h2>{{ copy.get('translation_result', 'Translation result') }}</h2><span class="assistant-source-label">{{ copy.get('not_mocked', 'Not mocked') }}</span></div><div class="assistant-answer" data-translation-answer>{{ copy.get('translation_empty', 'The provider-backed result will appear here.') }}</div></article>
+          </section>
+
+          <section class="assistant-panel" data-panel="notifications" hidden>
+            <header class="assistant-panel-heading"><div><p class="assistant-eyebrow">Timeblock Notifications</p><h1>{{ copy.get('notifications_title', 'Stay on top of important events') }}</h1><p>{{ copy.get('notifications_subtitle', 'Notification state is read from Timeblock; push subscription management remains server-authoritative.') }}</p></div></header>
+            <article class="assistant-card assistant-notification-card"><div class="assistant-card-heading"><h2>{{ copy.get('notification_summary', 'Notification summary') }}</h2><button class="assistant-quiet-button" type="button" data-notifications-refresh>{{ copy.get('refresh', 'Refresh') }}</button></div><div class="assistant-notification-summary" data-notification-summary><p class="assistant-muted">{{ copy.get('loading', 'Loading...') }}</p></div></article>
+          </section>
+        </section>
+      </main>
+    {% endif %}
+    <script id="assistant-copy" type="application/json">{{ copy | tojson }}</script>
+    <script src="/static/assistant_shell.js?v=1" defer></script>
+  </body>
+</html>

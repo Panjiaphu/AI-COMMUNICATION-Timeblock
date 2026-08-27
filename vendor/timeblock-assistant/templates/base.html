@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="{{ current_locale }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="{% block meta_description %}{{ t('layout.meta_description') }}{% endblock %}">
+    <meta name="theme-color" content="#0f4f44">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Timeblock">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="canonical" href="{{ canonical_url }}">
+    {% set is_call_v3_page = request.path.startswith('/call-v3/') %}
+    {% set is_assistant_page = request.path.startswith('/assistant') or is_call_v3_page %}
+    {% set is_opportunities_page = request.blueprint == 'opportunities' %}
+    {% if adsense_page_eligible and not ad_free_access %}
+      <meta name="google-adsense-account" content="{{ config.ADSENSE_CLIENT }}">
+      <script async src="{{ 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' ~ config.ADSENSE_CLIENT }}" crossorigin="anonymous"></script>
+    {% endif %}
+    <title>{% block title %}{{ t('layout.default_title') }}{% endblock %}</title>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/timeblock-icon.svg') }}">
+    <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('static', filename='img/timeblock-icon-192.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+    {% if not is_assistant_page %}
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/member.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/business.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/checkout.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/missions.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/events.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/shop.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/utilities.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/market.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/market_equities.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/equities.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/market_futures_risk.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/market_wyckoff.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/market_rule_quality.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/market_enterprise.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/market_enterprise_hot.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/market_enterprise_flow.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/market_enterprise_tokenomics.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/market_enterprise_opportunity.css') }}">
+      {% if is_opportunities_page %}
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/opportunities.css', v='phase10-opportunities-3') }}">
+      {% endif %}
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/market_enterprise_sentiment.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/exchange_rates.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_i18n_fix.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_' ~ 'pha' ~ 'se16.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/' ~ 'pha' ~ 'se18_media.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/market_assistant.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/app_settings_responsive_fix.css') }}">
+    {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/security.css', v='20260801-firewall-evidence-v3') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/i18n_shared_shell.css') }}">
+    {% block head %}{% endblock %}
+  </head>
+  <body class="{% block body_class %}{% endblock %}">
+    <a class="skip-link" href="#main-content">{{ t('layout.skip_to_content') }}</a>
+    {% include "partials/nav.html" %}
+    <main id="main-content" tabindex="-1">
+      {% if page_notice %}
+        <div class="system-notice" role="status">{{ page_notice }}</div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+    {% include "partials/footer.html" %}
+    {% if not is_assistant_page %}
+      {% include "partials/market_assistant.html" %}
+    {% endif %}
+    <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+    {% if not is_assistant_page %}
+      <script src="{{ url_for('static', filename='js/missions.js') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/chat.js') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/events.js') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/shop.js') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/admin.js') }}" defer></script>
+    {% endif %}
+    <script src="{{ url_for('static', filename='js/security.js', v='20260801-firewall-evidence-v3') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/pwa-install.js') }}" defer></script>
+    {% if not is_assistant_page %}
+      <script src="{{ url_for('static', filename='js/app_settings_layout.js') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/market_enterprise_dashboard.js') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/market_futures_risk.js') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/market_backend_payload.js') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/market_enterprise_phase1.js') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/market_enterprise_phase2.js') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/market_enterprise_flow.js') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/market_enterprise_tokenomics.js') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/market_enterprise_opportunity.js') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/market_enterprise_sentiment.js') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/market_equities.js') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/equities.js') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/market_assistant.js') }}" defer></script>
+    {% endif %}
+    {% block scripts %}{% endblock %}
+    {% if active_user and active_user.role in ['member', 'business'] and not is_call_v3_page and not request.path.startswith('/assistant') %}
+      <script src="{{ url_for('static', filename='js/call_audio_ownership.js', v='call-v1-ring-owner-20260822') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/timeblock_call_runtime.js', v='call-v1-ring-owner-20260822') }}" defer></script>
+    {% endif %}
+  </body>
+</html>

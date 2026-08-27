@@ -1,29 +1,142 @@
 <!doctype html>
-<html lang="vi">
+<html lang="{{ locale }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Timeblock AI Communication</title>
-  <link rel="stylesheet" href="/static/communication.css">
+  <meta name="theme-color" content="#0f6858">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="{{ copy.runtime }}">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <title>{{ copy.page_title }}</title>
+  <link rel="stylesheet" href="/static/communication.css?v=8">
 </head>
-<body class="call-body">
+<body class="call-body" data-runtime-state="waiting_for_timeblock" data-pwa-state="PWA_BOOTING">
+  <header class="runtime-topbar" aria-label="{{ copy.runtime }}">
+    <div class="runtime-brand">
+      <span class="runtime-brand-mark" aria-hidden="true">T</span>
+      <span class="runtime-brand-copy">
+        <strong>Timeblock</strong>
+        <small>{{ copy.runtime }}</small>
+      </span>
+    </div>
+    <div class="runtime-topbar-status">
+      <span class="security-pill" title="{{ copy.privacy }}">
+        <span class="security-icon" aria-hidden="true">✓</span>
+        {{ copy.secure_session }}
+      </span>
+      <div class="connection-pill" id="connection-pill" data-state="idle" role="status" aria-live="polite">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="connection-label">{{ copy.waiting }}</span>
+      </div>
+    </div>
+  </header>
+
   <main class="call-shell" id="call-shell">
-    <header class="call-header">
-      <div><p class="eyebrow">TIMEBLOCK AI COMMUNICATION</p><h1>Phiên liên lạc</h1></div>
-      <div class="connection-pill" id="connection-pill" data-state="idle" role="status" aria-live="polite"><span class="status-dot"></span><span id="connection-label">Idle</span></div>
-    </header>
-    <section class="video-stage" aria-label="Khu vực cuộc gọi">
-      <article class="remote-frame"><video id="remote-video" autoplay playsinline></video><div class="video-placeholder" id="remote-placeholder"><span>Remote participant</span><small>Luồng từ xa sẽ xuất hiện sau khi signaling hoàn tất.</small></div><div class="caption-layer" aria-live="polite"><p id="translated-caption">Bản dịch sẽ hiển thị tại đây.</p></div></article>
-      <article class="local-frame"><video id="local-video" autoplay playsinline muted></video><span>Bạn</span></article>
+    <section class="pwa-session-card" id="pwa-session-card" aria-labelledby="pwa-session-title">
+      <div>
+        <p class="panel-kicker">{{ copy.pwa_state }}</p>
+        <strong id="pwa-session-title">{{ copy.session_required }}</strong>
+        <p id="pwa-session-guidance">{{ copy.pwa_required }}</p>
+      </div>
+      <a class="pwa-session-link" id="open-timeblock" href="{{ settings.primary_timeblock_handoff_origin }}" rel="noreferrer">{{ copy.open_timeblock }}</a>
     </section>
-    <aside class="interpreter-panel" id="interpreter-panel" data-state="expanded" aria-label="Bảng phiên dịch AI" aria-hidden="false">
-      <div class="panel-header"><div><strong>AI Interpreter</strong><small id="interpreter-status">Chưa kết nối</small></div><div class="panel-actions"><button type="button" id="panel-collapse" aria-label="Thu gọn bảng phiên dịch" aria-controls="interpreter-content" aria-expanded="true">−</button><button type="button" id="panel-hide" aria-label="Ẩn bảng phiên dịch" aria-controls="interpreter-panel">×</button></div></div>
-      <div class="panel-content" id="interpreter-content"><div class="language-row"><label>Nguồn<select id="source-language"><option value="vi">Tiếng Việt</option><option value="zh-TW">繁體中文</option><option value="en">English</option></select></label><span aria-hidden="true">→</span><label>Đích<select id="target-language"><option value="zh-TW">繁體中文</option><option value="vi">Tiếng Việt</option><option value="en">English</option></select></label></div><div class="transcript-box"><small>Nội dung nguồn</small><p id="source-caption">Chưa có nội dung.</p></div></div>
-    </aside>
-    <button type="button" class="panel-restore" id="panel-restore" aria-label="Hiện bảng phiên dịch AI" aria-controls="interpreter-panel" hidden>Hiện AI Interpreter</button>
-    <nav class="call-controls" aria-label="Điều khiển cuộc gọi"><button type="button" id="start-call" class="control primary">Bắt đầu</button><button type="button" id="microphone-toggle" class="control" disabled>Micro</button><button type="button" id="camera-toggle" class="control" disabled>Camera</button><button type="button" id="end-call" class="control danger" disabled>Kết thúc</button></nav>
+
+    <header class="call-header">
+      <div class="call-heading">
+        <span class="assistant-avatar" aria-hidden="true">T</span>
+        <div>
+          <p class="eyebrow">{{ copy.runtime }}</p>
+          <h1>{{ copy.call_title }}</h1>
+          <p class="call-subtitle">{{ copy.call_subtitle }}</p>
+        </div>
+      </div>
+      <div class="call-header-note" aria-label="{{ copy.secure_session }}">
+        <span class="header-note-dot" aria-hidden="true"></span>
+        <span>WebRTC</span>
+      </div>
+    </header>
+
+    <section class="communication-workspace" aria-label="{{ copy.call_workspace }}">
+      <section class="video-stage" aria-label="{{ copy.call_area }}">
+        <article class="remote-frame">
+          <video id="remote-video" autoplay playsinline></video>
+          <div class="video-placeholder" id="remote-placeholder">
+            <span class="placeholder-mark" aria-hidden="true">T</span>
+            <strong>{{ copy.ready_for_call }}</strong>
+            <p id="runtime-guidance">{{ copy.open_from_timeblock }}</p>
+          </div>
+          <div class="caption-layer" aria-live="polite" aria-atomic="true">
+            <small>{{ copy.live_translation }}</small>
+            <p id="translated-caption">{{ copy.translation_unavailable }}</p>
+          </div>
+        </article>
+
+        <article class="local-frame" aria-label="{{ copy.local_preview }}">
+          <video id="local-video" autoplay playsinline muted></video>
+          <span>{{ copy.you }}</span>
+        </article>
+      </section>
+
+      <div class="interpreter-column">
+        <aside class="interpreter-panel" id="interpreter-panel" data-state="expanded" aria-label="{{ copy.interpreter }}" aria-hidden="false">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">{{ copy.live_translation }}</p>
+              <strong>{{ copy.interpreter }}</strong>
+              <small id="interpreter-status">{{ copy.provider_waiting }}</small>
+            </div>
+            <div class="panel-actions">
+              <button type="button" id="panel-collapse" aria-label="{{ copy.collapse }}" aria-controls="interpreter-content" aria-expanded="true">−</button>
+              <button type="button" id="panel-hide" aria-label="{{ copy.hide }}" aria-controls="interpreter-panel">×</button>
+            </div>
+          </div>
+          <div class="panel-content" id="interpreter-content">
+            <div class="language-row">
+              <label>{{ copy.source }}
+                <select id="source-language">
+                  <option value="vi"{% if locale == 'vi' %} selected{% endif %}>Tiếng Việt</option>
+                  <option value="zh-TW"{% if locale == 'zh-TW' %} selected{% endif %}>繁體中文</option>
+                  <option value="en"{% if locale == 'en' %} selected{% endif %}>English</option>
+                </select>
+              </label>
+              <span class="language-arrow" aria-hidden="true">→</span>
+              <label>{{ copy.target }}
+                <select id="target-language">
+                  <option value="zh-TW"{% if locale != 'zh-TW' %} selected{% endif %}>繁體中文</option>
+                  <option value="vi"{% if locale == 'vi' %} selected{% endif %}>Tiếng Việt</option>
+                  <option value="en"{% if locale == 'en' %} selected{% endif %}>English</option>
+                </select>
+              </label>
+            </div>
+            <div class="transcript-box">
+              <small>{{ copy.source }}</small>
+              <p id="source-caption">{{ copy.no_source }}</p>
+            </div>
+            <p class="provider-note">{{ copy.translation_note }}</p>
+          </div>
+        </aside>
+        <button type="button" class="panel-restore" id="panel-restore" aria-label="{{ copy.restore }}" aria-controls="interpreter-panel" hidden>{{ copy.restore }}</button>
+      </div>
+    </section>
+
+    <section class="chat-contract-card" aria-labelledby="chat-contract-title">
+      <div class="chat-contract-icon" aria-hidden="true">⌁</div>
+      <div>
+        <strong id="chat-contract-title">{{ copy.chat_waiting }}</strong>
+        <p>{{ copy.chat_note }}</p>
+      </div>
+    </section>
+
+    <nav class="call-controls" aria-label="{{ copy.call_title }}">
+      <button type="button" id="start-call" class="control primary" disabled>{{ copy.start }}</button>
+      <button type="button" id="microphone-toggle" class="control" disabled>{{ copy.microphone }}</button>
+      <button type="button" id="camera-toggle" class="control" disabled>{{ copy.camera }}</button>
+      <button type="button" id="end-call" class="control danger" disabled>{{ copy.end }}</button>
+    </nav>
     <p class="call-error" id="call-error" role="alert" aria-live="assertive"></p>
   </main>
-  <script src="/static/communication.js" defer></script>
+
+  <script id="guilua-runtime-config" type="application/json">{{ runtime_config | tojson }}</script>
+  <script src="/static/communication.js?v=7" defer></script>
 </body>
 </html>

@@ -1,0 +1,16 @@
+{
+  "points.history.page_title": "Timeblock 點數紀錄｜平台點數明細",
+  "points.history.eyebrow": "平台點數紀錄",
+  "points.history.title": "點數紀錄",
+  "points.history.intro": "所有平台點數增加與調整都會寫入紀錄。平台點數僅限 Timeblock 內部功能與會員權益使用。",
+  "points.history.table_aria": "會員點數紀錄",
+  "points.history.column.time": "時間",
+  "points.history.column.source": "來源",
+  "points.history.column.delta": "變動",
+  "points.history.column.balance": "餘額",
+  "points.history.column.note": "說明",
+  "points.history.empty": "目前尚無點數紀錄。",
+  "points.source.mission": "任務回饋",
+  "points.source.default": "點數紀錄",
+  "points.source.fgo_entitlement_conversion": "內部 FGO 權益申請"
+}

@@ -1,0 +1,449 @@
+#assistant-panel-messages {
+  --messaging-enterprise-list-min: 320px;
+  --messaging-enterprise-list-max: 380px;
+  --messaging-enterprise-detail-min: 480px;
+}
+
+.assistant-shell:has(#assistant-panel-messages.is-active) > .assistant-quota-strip {
+  display: none;
+}
+
+@media (min-width: 840px) and (min-height: 501px) {
+  .assistant-shell:has(#assistant-panel-messages.is-active) {
+    grid-template-rows: auto auto minmax(620px, 1fr);
+  }
+}
+
+@media (max-width: 839px), (max-height: 500px) and (max-width: 900px) {
+  body:not(.timeblock-mobile-immersive-conversation)
+    .assistant-shell:has(#assistant-panel-messages.is-active) {
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+}
+
+#assistant-panel-messages .messaging-enterprise-contact-rail {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--tb-ui-surface);
+}
+
+#assistant-panel-messages .messaging-enterprise-contact-rail > .assistant-section-title,
+#assistant-panel-messages .messaging-enterprise-contact-rail > .assistant-search-form,
+#assistant-panel-messages .messaging-enterprise-contact-rail > .assistant-contact-qr,
+#assistant-panel-messages .messaging-enterprise-contact-rail > .assistant-feedback {
+  display: block;
+}
+
+#assistant-panel-messages .messaging-enterprise-contact-rail > .assistant-call-sound-settings {
+  display: none;
+}
+
+#assistant-panel-messages .messaging-enterprise-contact-rail > .assistant-rail-section:not(.messaging-enterprise-conversation-section):not(.messaging-contact-v1) {
+  display: none;
+}
+
+#assistant-panel-messages .messaging-enterprise-contact-rail > .messaging-contact-v1 {
+  display: grid;
+}
+
+#assistant-panel-messages .messaging-enterprise-contact-rail > .assistant-feedback:empty {
+  display: none;
+}
+
+#assistant-panel-messages .messaging-enterprise-contact-rail > .assistant-network-tools {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--tb-ui-border);
+  background: #fbfcfb;
+}
+
+#assistant-panel-messages .messaging-enterprise-contact-rail > .assistant-network-tools .assistant-secondary-button {
+  min-height: 44px;
+}
+
+#assistant-panel-messages .messaging-enterprise-conversation-section {
+  display: flex;
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 0;
+  flex-direction: column;
+  overflow: visible;
+}
+
+#assistant-panel-messages .assistant-messages-layout {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+#assistant-panel-messages .assistant-contact-rail {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  border-right: 0;
+}
+
+#assistant-panel-messages .assistant-thread-column {
+  display: none;
+  width: 100%;
+  height: 100%;
+}
+
+#assistant-panel-messages:not([data-enterprise-layout-mode="two"])
+  .assistant-messages-layout.has-thread
+  .assistant-contact-rail {
+  display: none;
+}
+
+#assistant-panel-messages:not([data-enterprise-layout-mode="two"])
+  .assistant-messages-layout.has-thread
+  .assistant-thread-column {
+  display: grid;
+}
+
+#assistant-panel-messages .assistant-thread-back {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+}
+
+#assistant-panel-messages .messaging-enterprise-conversation-section > h3 {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 15px 16px 11px;
+  border-bottom: 1px solid var(--tb-ui-border);
+  color: var(--tb-ui-text);
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+#assistant-panel-messages .messaging-enterprise-conversation-section [data-messaging-v2-filters] {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--tb-ui-border);
+  background: #fbfcfb;
+}
+
+#assistant-panel-messages .messaging-enterprise-conversation-section [data-conversation-list] {
+  min-height: 0;
+  flex: 0 0 auto;
+  overflow: visible;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+}
+
+#assistant-panel-messages .messaging-enterprise-row-shell {
+  display: block;
+  min-width: 0;
+}
+
+#assistant-panel-messages .messaging-enterprise-conversation-row {
+  position: relative;
+  min-height: 68px;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--tb-ui-border);
+  border-radius: 0;
+  background: transparent;
+}
+
+#assistant-panel-messages .messaging-enterprise-conversation-row:hover,
+#assistant-panel-messages .messaging-enterprise-conversation-row:focus-visible {
+  background: #f3f8f6;
+}
+
+#assistant-panel-messages .messaging-enterprise-conversation-row:focus-visible,
+#assistant-panel-messages .messaging-enterprise-header-overflow:focus-visible,
+.messaging-enterprise-overflow-action:focus-visible,
+.messaging-enterprise-overflow-close:focus-visible {
+  outline: 3px solid #2f806f;
+  outline-offset: -3px;
+}
+
+#assistant-panel-messages .messaging-enterprise-conversation-row.is-active,
+#assistant-panel-messages .messaging-enterprise-conversation-row[aria-current="page"] {
+  border-left: 4px solid var(--tb-ui-accent);
+  background: var(--tb-ui-accent-soft);
+}
+
+#assistant-panel-messages .messaging-enterprise-conversation-row.is-unread .assistant-list-copy strong,
+#assistant-panel-messages .messaging-enterprise-conversation-row.is-unread .assistant-list-copy small {
+  font-weight: 850;
+}
+
+#assistant-panel-messages .messaging-enterprise-conversation-row.is-unread .assistant-list-copy small {
+  color: #344d46;
+}
+
+#assistant-panel-messages .messaging-enterprise-row-meta {
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: end;
+  align-self: stretch;
+  align-content: center;
+  gap: 4px;
+  margin-left: 6px;
+}
+
+#assistant-panel-messages .messaging-enterprise-row-kind,
+#assistant-panel-messages .messaging-enterprise-row-time {
+  color: var(--tb-ui-text-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+#assistant-panel-messages .messaging-enterprise-row-kind {
+  padding: 2px 5px;
+  border: 1px solid #d6e3de;
+  border-radius: 999px;
+  background: #fff;
+}
+
+#assistant-panel-messages .messaging-enterprise-selected-marker {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--tb-ui-accent);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+#assistant-panel-messages .messaging-enterprise-conversation-row .assistant-list-count {
+  min-width: 22px;
+  height: 22px;
+  margin: 0;
+}
+
+#assistant-panel-messages .assistant-thread-header {
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+#assistant-panel-messages .assistant-thread-header > .assistant-inline-actions {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+#assistant-panel-messages .assistant-thread-header > .assistant-inline-actions > div {
+  min-width: 0;
+}
+
+#assistant-panel-messages .assistant-thread-header h2,
+#assistant-panel-messages .assistant-thread-header p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#assistant-panel-messages .assistant-call-actions {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
+#assistant-panel-messages .messaging-enterprise-header-overflow {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.messaging-enterprise-overflow-dialog {
+  width: min(420px, calc(100vw - 32px));
+  max-height: min(620px, calc(100dvh - 40px));
+  box-sizing: border-box;
+  padding: 14px;
+  overflow-y: auto;
+  border: 1px solid #d8e4df;
+  border-radius: 16px;
+  color: #17211e;
+  background: #fff;
+  box-shadow: 0 22px 64px rgba(8, 34, 27, 0.22);
+}
+
+.messaging-enterprise-overflow-dialog::backdrop {
+  background: rgba(5, 18, 14, 0.42);
+}
+
+.messaging-enterprise-overflow-title {
+  display: block;
+  padding: 6px 8px 10px;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.messaging-enterprise-overflow-action,
+.messaging-enterprise-overflow-close {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  color: #173f36;
+  background: transparent;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 750;
+  text-align: left;
+}
+
+.messaging-enterprise-overflow-action:hover,
+.messaging-enterprise-overflow-close:hover {
+  background: #f3f8f6;
+}
+
+.messaging-enterprise-overflow-close {
+  justify-content: center;
+  margin-top: 8px;
+  border-top: 1px solid #e4ebe8;
+  border-radius: 0;
+}
+
+.messaging-enterprise-security-copy {
+  margin: 4px 8px 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #526861;
+  background: #f3f8f6;
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+@media (min-width: 840px) and (min-height: 501px) {
+  #assistant-panel-messages[data-enterprise-layout-mode="two"] .messaging-enterprise-contact-rail {
+    padding: 0;
+    border-right: 1px solid var(--tb-ui-border);
+  }
+
+  #assistant-panel-messages[data-enterprise-layout-mode="two"] .assistant-messages-layout {
+    display: grid;
+    grid-template-columns: var(--messaging-enterprise-list-width, 350px)
+      minmax(var(--messaging-enterprise-detail-min), 1fr);
+  }
+
+  #assistant-panel-messages[data-enterprise-layout-mode="two"] .assistant-contact-rail {
+    display: flex;
+  }
+
+  #assistant-panel-messages[data-enterprise-layout-mode="two"] .assistant-thread-column {
+    display: grid;
+  }
+
+  #assistant-panel-messages[data-enterprise-layout-mode="two"] .assistant-thread-back {
+    display: none;
+  }
+
+  #assistant-panel-messages .messaging-enterprise-conversation-row {
+    min-height: 72px;
+    padding: 9px 12px;
+  }
+
+  #assistant-panel-messages .assistant-call-actions .assistant-icon-button {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+  }
+}
+
+@media (min-width: 840px) and (min-height: 501px) and (max-width: 1199px) {
+  #assistant-panel-messages {
+    --messaging-enterprise-list-width: 320px;
+  }
+}
+
+@media (min-width: 1200px) and (min-height: 501px) and (max-width: 1599px) {
+  #assistant-panel-messages {
+    --messaging-enterprise-list-width: 350px;
+  }
+}
+
+@media (min-width: 1600px) and (min-height: 501px) {
+  #assistant-panel-messages {
+    --messaging-enterprise-list-width: 380px;
+  }
+}
+
+@media (max-width: 839px), (max-height: 500px) and (max-width: 900px) {
+  #assistant-panel-messages .messaging-enterprise-contact-rail {
+    padding: 0 10px calc(10px + env(safe-area-inset-bottom));
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Keep one scroll owner on handset layouts.  A nested conversation-list
+     scroller traps touch swipes before the identity and contact sections can
+     move into view. */
+  #assistant-panel-messages .messaging-enterprise-conversation-section {
+    height: auto;
+    min-height: max-content;
+    flex: 0 0 auto;
+  }
+
+  #assistant-panel-messages .messaging-enterprise-conversation-section [data-conversation-list] {
+    flex: 0 0 auto;
+    overflow: visible;
+    overscroll-behavior-y: auto;
+  }
+
+  #assistant-panel-messages .messaging-enterprise-contact-rail > .assistant-section-title {
+    display: none !important;
+  }
+
+  #assistant-panel-messages > .assistant-feedback:empty,
+  #assistant-panel-messages .assistant-contact-rail > .assistant-feedback:empty {
+    display: none;
+  }
+
+  #assistant-panel-messages .messaging-enterprise-contact-rail > .assistant-network-tools {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  #assistant-panel-messages .messaging-enterprise-conversation-section > h3 {
+    padding-right: 4px;
+    padding-left: 4px;
+  }
+
+  #assistant-panel-messages .messaging-enterprise-conversation-section [data-messaging-v2-filters] {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  #assistant-panel-messages .messaging-enterprise-conversation-row {
+    min-height: 64px;
+  }
+
+  #assistant-panel-messages .messaging-enterprise-row-kind,
+  #assistant-panel-messages .messaging-enterprise-row-time {
+    font-size: 0.6rem;
+  }
+
+  #assistant-panel-messages .messaging-enterprise-header-overflow {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #assistant-panel-messages .messaging-enterprise-conversation-section [data-conversation-list] {
+    scroll-behavior: auto;
+  }
+}

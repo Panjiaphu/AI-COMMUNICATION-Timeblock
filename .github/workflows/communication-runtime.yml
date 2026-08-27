@@ -1,10 +1,7 @@
 name: Communication Runtime
 
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [refactor/communication-runtime-foundation]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -36,4 +33,4 @@ jobs:
       - run: python -m compileall app
       - run: PYTHONPATH=. pytest -q
       - run: python scripts/check_env.py --phase build
-      - run: python -c "from app.main import create_app; app=create_app(); assert app.title == 'Guilua Communication Runtime'"
+      - run: python -c "from app.main import create_app; app=create_app(); assert app.title == 'Guilua Timeblock AI Assistant'"

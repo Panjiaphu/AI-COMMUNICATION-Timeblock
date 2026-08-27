@@ -1,4 +1,5 @@
 from functools import lru_cache
+import os
 from pathlib import Path
 
 from pydantic import Field, model_validator
@@ -10,20 +11,44 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 
-    app_name: str = 'Guilua Communication Runtime'
+    app_name: str = 'Guilua Timeblock AI Assistant'
     app_env: str = 'development'
     debug: bool = True
     secret_key: str = Field(default='dev-only-change-me')
-    deployment_version: str = 'development'
+    deployment_version: str = Field(
+        default_factory=lambda: os.getenv('RENDER_GIT_COMMIT', '').strip() or 'development'
+    )
     public_base_url: str = 'http://127.0.0.1:8000'
+    timeblock_app_url: str = 'http://127.0.0.1:5000'
+    default_locale: str = 'vi'
+    supported_locales: tuple[str, ...] = ('vi', 'zh-TW', 'en')
 
     timeblock_api_url: str | None = None
     timeblock_api_key: str | None = None
+    guilua_client_id: str = 'guilua'
+    guilua_session_cookie: str = 'guilua_session'
+    guilua_pending_authorization_cookie: str = 'guilua_auth_nonce'
+    guilua_session_ttl_seconds: int = Field(default=14400, ge=300, le=86400)
+    guilua_pending_authorization_ttl_seconds: int = Field(default=120, ge=60, le=600)
+    guilua_session_max_entries: int = Field(default=10000, ge=100, le=100000)
+    guilua_pending_authorization_max_entries: int = Field(default=2000, ge=100, le=20000)
+    guilua_authorization_start_rate_limit_count: int = Field(default=12, ge=2, le=120)
+    guilua_authorization_start_rate_limit_window_seconds: int = Field(
+        default=60, ge=10, le=300
+    )
+    allow_missing_bff_origin: bool = True
     timeblock_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
+    timeblock_proxy_timeout_seconds: float = Field(default=120.0, gt=1, le=300)
     allow_development_session_fallback: bool = False
+    messaging_realtime_enabled: bool = True
+    messaging_mailbox_lock_enabled: bool = True
+    messaging_advanced_attachments_enabled: bool = True
 
     allowed_websocket_origins: str = 'http://127.0.0.1:8000,http://localhost:8000'
+    allowed_timeblock_handoff_origins: str = 'http://127.0.0.1:5000,http://localhost:5000'
     allow_missing_websocket_origin: bool = True
+    websocket_auth_timeout_seconds: float = Field(default=5.0, gt=0.5, le=30)
+    max_auth_event_bytes: int = Field(default=16384, ge=1024, le=65536)
     connection_stale_seconds: int = Field(default=120, ge=10, le=3600)
     reconnect_token_seconds: int = Field(default=300, ge=30, le=3600)
     ended_session_cache_seconds: int = Field(default=600, ge=30, le=86400)
@@ -50,16 +75,39 @@ class Settings(BaseSettings):
 
     @property
     def websocket_origins(self) -> set[str]:
-        return {item.strip() for item in self.allowed_websocket_origins.split(',') if item.strip()}
+        return {item.strip().rstrip('/') for item in self.allowed_websocket_origins.split(',') if item.strip()}
+
+    @property
+    def timeblock_handoff_origins(self) -> set[str]:
+        return {item.strip().rstrip('/') for item in self.allowed_timeblock_handoff_origins.split(',') if item.strip()}
+
+    @property
+    def primary_timeblock_handoff_origin(self) -> str:
+        configured = self.timeblock_app_url.strip().rstrip('/')
+        return configured if configured in self.timeblock_handoff_origins else sorted(self.timeblock_handoff_origins)[0] if self.timeblock_handoff_origins else configured
+
+    @property
+    def development_query_handoff_enabled(self) -> bool:
+        return self.development_session_fallback_enabled
 
     @model_validator(mode='after')
     def validate_production_settings(self):
+        if not self.guilua_session_cookie.strip() or not self.guilua_pending_authorization_cookie.strip():
+            raise ValueError('GUILUA session and pending cookie names must be non-empty')
+        if self.guilua_session_cookie == self.guilua_pending_authorization_cookie:
+            raise ValueError('GUILUA session and pending cookie names must be distinct')
         if self.is_production and self.secret_key in {'', 'change-me', 'dev-only-change-me'}:
             raise ValueError('SECRET_KEY must be set to a strong value in production')
         if self.is_production and self.allow_development_session_fallback:
             raise ValueError('ALLOW_DEVELOPMENT_SESSION_FALLBACK must be false in production')
+        if self.is_production and self.allow_missing_bff_origin:
+            self.allow_missing_bff_origin = False
         if self.is_production and self.allow_missing_websocket_origin:
             self.allow_missing_websocket_origin = False
+        if self.is_production and not self.websocket_origins:
+            raise ValueError('ALLOWED_WEBSOCKET_ORIGINS must be configured in production')
+        if self.is_production and not self.timeblock_handoff_origins:
+            raise ValueError('ALLOWED_TIMEBLOCK_HANDOFF_ORIGINS must be configured in production')
         return self
 
 

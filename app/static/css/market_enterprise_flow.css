@@ -1,0 +1,156 @@
+.market-money-flow-map {
+  overflow: hidden;
+}
+
+.market-flow-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.market-flow-block {
+  min-width: 0;
+  border: 1px solid rgba(15, 79, 68, 0.12);
+  border-radius: 22px;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.market-flow-block h3 {
+  margin: 0 0 0.9rem;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.market-flow-chain-grid,
+.market-flow-sector-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.market-flow-chain-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.market-flow-sector-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.market-flow-chain-card,
+.market-flow-sector-card {
+  min-width: 0;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  padding: 0.9rem;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.market-flow-card-top,
+.market-flow-chain-card dl div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.market-flow-card-top span,
+.market-flow-card-top strong,
+.market-flow-chain-card dd,
+.market-flow-sector-card p,
+.market-flow-sector-card small {
+  overflow-wrap: anywhere;
+}
+
+.market-flow-card-top span {
+  color: #0f4f44;
+  font-weight: 850;
+}
+
+.market-flow-card-top strong {
+  color: #0f172a;
+}
+
+.market-flow-meter {
+  height: 8px;
+  margin: 0.75rem 0;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.market-flow-meter span {
+  display: block;
+  width: var(--flow-score, 50%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(20, 184, 166, 0.72), rgba(14, 165, 233, 0.72));
+}
+
+.market-flow-chain-card dl {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.6rem 0;
+}
+
+.market-flow-chain-card dt {
+  color: rgba(15, 23, 42, 0.58);
+  font-size: 0.75rem;
+}
+
+.market-flow-chain-card dd {
+  margin: 0;
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+
+.market-flow-chain-card small,
+.market-flow-sector-card small,
+.market-flow-sector-card p {
+  color: rgba(15, 23, 42, 0.66);
+}
+
+.market-flow-sector-card p {
+  margin: 0.55rem 0;
+  line-height: 1.45;
+}
+
+.flow-positive {
+  border-color: rgba(20, 184, 166, 0.26);
+}
+
+.flow-neutral {
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+.flow-negative {
+  border-color: rgba(239, 68, 68, 0.26);
+}
+
+@media (max-width: 1100px) {
+  .market-flow-chain-grid,
+  .market-flow-sector-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .market-flow-block {
+    padding: 0.85rem;
+  }
+
+  .market-flow-chain-grid,
+  .market-flow-sector-grid {
+    display: flex;
+    overflow-x: auto;
+    gap: 0.75rem;
+    scroll-snap-type: x proximity;
+    padding-bottom: 0.25rem;
+  }
+
+  .market-flow-chain-card,
+  .market-flow-sector-card {
+    flex: 0 0 min(78vw, 280px);
+    scroll-snap-align: start;
+  }
+}

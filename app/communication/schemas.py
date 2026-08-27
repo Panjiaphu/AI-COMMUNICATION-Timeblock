@@ -89,6 +89,25 @@ PAYLOAD_MODELS = {
 }
 
 
+class AuthenticationPayload(StrictPayload):
+    session_token: str = Field(min_length=1, max_length=4096, repr=False)
+    reconnect_token: str | None = Field(default=None, min_length=1, max_length=4096, repr=False)
+    workspace_id: str | None = Field(default=None, min_length=1, max_length=128)
+    issuer: str | None = Field(default=None, min_length=1, max_length=128)
+    audience: str | None = Field(default=None, min_length=1, max_length=128)
+
+
+class AuthenticationEnvelope(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    event_name: Literal['session.authenticate']
+    event_version: Literal[1] = 1
+    session_id: str = Field(min_length=1, max_length=128)
+    participant_id: str = Field(min_length=1, max_length=128)
+    trace_id: str = Field(min_length=1, max_length=128)
+    payload: AuthenticationPayload
+
+
 class EventEnvelope(BaseModel):
     model_config = ConfigDict(extra='forbid')
 

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Timeblock">
+  <rect width="512" height="512" rx="112" fill="#0f4f44"/>
+  <path d="M96 168c0-39.8 32.2-72 72-72h176c39.8 0 72 32.2 72 72v176c0 39.8-32.2 72-72 72H168c-39.8 0-72-32.2-72-72V168Z" fill="#f7f8f2" opacity=".08"/>
+  <path d="M142 150h228v68h-78v150h-72V218h-78v-68Z" fill="#ffffff"/>
+  <path d="M150 356h212v34H150v-34Z" fill="#d6b351"/>
+  <path d="M142 252h58v34h-58v-34Zm170 0h58v34h-58v-34Z" fill="#7ad8c0"/>
+</svg>

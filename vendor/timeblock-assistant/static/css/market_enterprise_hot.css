@@ -1,0 +1,156 @@
+.market-hot-trend-board {
+  overflow: hidden;
+}
+
+.market-hot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.market-hot-lane {
+  min-width: 0;
+  border: 1px solid rgba(15, 79, 68, 0.12);
+  border-radius: 22px;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.market-hot-lane h3 {
+  margin: 0 0 0.85rem;
+  font-size: 1rem;
+  color: #0f172a;
+}
+
+.market-hot-card-stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.market-hot-card {
+  min-width: 0;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  padding: 0.9rem;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.market-hot-card-top,
+.market-hot-footer,
+.market-hot-metrics {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.market-hot-card-top,
+.market-hot-footer {
+  justify-content: space-between;
+}
+
+.market-hot-card-top span {
+  font-weight: 800;
+  color: #0f4f44;
+}
+
+.market-hot-card-top strong,
+.market-hot-card p,
+.market-hot-metrics span,
+.market-hot-footer a,
+.market-hot-risk {
+  overflow-wrap: anywhere;
+}
+
+.market-hot-card-top strong {
+  color: #0f172a;
+  font-size: 0.94rem;
+}
+
+.market-hot-metrics {
+  flex-wrap: wrap;
+  margin: 0.65rem 0;
+}
+
+.market-hot-metrics span {
+  border-radius: 999px;
+  padding: 0.22rem 0.5rem;
+  font-size: 0.74rem;
+  background: rgba(15, 23, 42, 0.055);
+}
+
+.market-hot-card p {
+  margin: 0.55rem 0 0.75rem;
+  color: rgba(15, 23, 42, 0.68);
+  line-height: 1.45;
+}
+
+.market-hot-risk,
+.market-hot-footer a {
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.market-hot-footer a {
+  color: #0f4f44;
+  background: rgba(20, 184, 166, 0.1);
+}
+
+.market-risk-low {
+  border-color: rgba(20, 184, 166, 0.24);
+}
+
+.market-risk-medium {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.market-risk-high {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.market-hot-risk.market-risk-low {
+  color: #047857;
+  background: rgba(209, 250, 229, 0.84);
+}
+
+.market-hot-risk.market-risk-medium {
+  color: #92400e;
+  background: rgba(254, 243, 199, 0.86);
+}
+
+.market-hot-risk.market-risk-high {
+  color: #991b1b;
+  background: rgba(254, 226, 226, 0.86);
+}
+
+@media (max-width: 1100px) {
+  .market-hot-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .market-hot-card-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .market-hot-lane {
+    padding: 0.85rem;
+  }
+
+  .market-hot-card-stack {
+    display: flex;
+    overflow-x: auto;
+    gap: 0.75rem;
+    scroll-snap-type: x proximity;
+    padding-bottom: 0.25rem;
+  }
+
+  .market-hot-card {
+    flex: 0 0 min(78vw, 280px);
+    scroll-snap-align: start;
+  }
+}

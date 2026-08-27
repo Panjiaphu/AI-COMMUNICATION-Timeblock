@@ -1,150 +1,109 @@
-# Render Deploy Guide
+# AI-COMMUNICATION Render release guide
 
-## Commands
+## Release boundary
+
+This guide applies only to the existing AI-COMMUNICATION Web Service
+`srv-d93hlhtaeets73dohu0g` (`https://guilua.onrender.com`). It does not
+authorize a Timeblock deployment, a paid-plan change, or a database mutation.
+The Blueprint service name must remain exactly `AI-COMMUNICATION-Timeblock` so
+it cannot be mistaken for a request to create a second `guilua` service.
+
+The AI service is deliberately fail-closed. Do not trigger a deployment while
+the live Timeblock control plane cannot return the authenticated Client
+Contract V2 capability manifest at `/api/guilua/v2/capabilities`; the AI
+`/readyz/` endpoint will return 503 and Render will reject the candidate.
+
+## Service commands
 
 ```text
 Build Command: bash scripts/build_render.sh
 Start Command: bash scripts/start_render.sh
-Health Check Path: /healthz/
+Health Check Path: /readyz/
+Auto deploy: off
+Plan: starter
 ```
 
-## Minimum Production Env
+The build verifies the production environment, the 214-source /
+420-destination canonical source lock, and Python compilation before Render can
+start the process. `/healthz/` is process liveness only; `/readyz/` is the
+release gate and requires Timeblock Client Contract V2.
+
+Render supplies `RENDER_GIT_COMMIT` automatically at runtime. The application
+uses it as `deployment_version`, and the production environment gate rejects a
+missing or non-hexadecimal deploy identity. Do not manually pin
+`RENDER_GIT_COMMIT`; for a non-Render production runtime, set
+`DEPLOYMENT_VERSION` to the exact deployed commit SHA instead.
+
+## Required production environment
 
 ```text
 APP_ENV=production
 DEBUG=false
 SECRET_KEY=<random secret, at least 32 characters>
-USE_SQLITE=true
-SESSION_COOKIE_SECURE=true
-RUN_MIGRATIONS_DURING_BUILD=false
 PUBLIC_BASE_URL=https://guilua.onrender.com
+TIMEBLOCK_APP_URL=https://timeblock-commercial-pro.onrender.com
+TIMEBLOCK_API_URL=https://timeblock-commercial-pro.onrender.com
+TIMEBLOCK_API_KEY=<shared server credential, at least 32 bytes>
+GUILUA_CLIENT_ID=guilua
+GUILUA_SESSION_COOKIE=guilua_session
+GUILUA_PENDING_AUTHORIZATION_COOKIE=guilua_auth_nonce
+GUILUA_SESSION_TTL_SECONDS=14400
+GUILUA_PENDING_AUTHORIZATION_TTL_SECONDS=120
+GUILUA_SESSION_MAX_ENTRIES=10000
+GUILUA_PENDING_AUTHORIZATION_MAX_ENTRIES=2000
+GUILUA_AUTHORIZATION_START_RATE_LIMIT_COUNT=12
+GUILUA_AUTHORIZATION_START_RATE_LIMIT_WINDOW_SECONDS=60
+TIMEBLOCK_TIMEOUT_SECONDS=5
+TIMEBLOCK_PROXY_TIMEOUT_SECONDS=120
+ALLOW_DEVELOPMENT_SESSION_FALLBACK=false
+ALLOW_MISSING_BFF_ORIGIN=false
+MESSAGING_REALTIME_ENABLED=true
+MESSAGING_MAILBOX_LOCK_ENABLED=true
+MESSAGING_ADVANCED_ATTACHMENTS_ENABLED=true
+ALLOWED_TIMEBLOCK_HANDOFF_ORIGINS=https://timeblock-commercial-pro.onrender.com,https://fumapgo.com
+ALLOWED_WEBSOCKET_ORIGINS=https://guilua.onrender.com
+ALLOW_MISSING_WEBSOCKET_ORIGIN=false
+WEBSOCKET_AUTH_TIMEOUT_SECONDS=5
+MAX_AUTH_EVENT_BYTES=16384
+CONNECTION_STALE_SECONDS=120
+RECONNECT_TOKEN_SECONDS=300
+ENDED_SESSION_CACHE_SECONDS=600
+IDEMPOTENCY_CACHE_SECONDS=1800
 ```
 
-## Admin and Email
+`SECRET_KEY` and `TIMEBLOCK_API_KEY` are secret values. Record only whether
+they are configured; never copy their values into logs, commits, PRs, or
+reports. The shared API key must be configured on both services before paired
+acceptance.
 
-This deployment does not use admin seed env variables. Create or update an admin login from Render Shell or a connected local database with:
+Legacy admin, SMTP, SLBo/BO, market-data, wallet, member, SQLite/Postgres and
+Alembic variables are not part of this runtime. Remove them from this service
+rather than carrying them into the Assistant release.
 
-```bash
-python scripts/create_admin.py --email <admin-email> --password "<strong-password>"
-```
+## Exact-release procedure
 
-System mailbox:
+1. Record the current AI service configuration, environment key names, deploy
+   ID, live commit SHA and previous known-good deploy for rollback.
+2. Confirm the candidate is committed, pushed, reviewed through protected
+   `main`, and identify the exact commit Render must build.
+3. Confirm the live Timeblock service exposes Client Contract V2 with
+   `contract_version=2` and `authority=timeblock` using server-side
+   authentication. Do not expose the key in a browser request.
+4. Reconcile the required environment variables without printing secret
+   values. Keep auto-deploy off and keep the existing Starter plan unless the
+   user separately authorizes a paid-plan change.
+5. Trigger a manual deploy for the exact approved AI commit only.
+6. Verify the Render deploy ID and deployed commit SHA, then inspect build and
+   runtime logs for source-lock, environment, startup, dependency and health
+   failures.
+7. Verify `/healthz/` returns process liveness and `/readyz/` returns 200 with
+   Contract V2 and reports the same SHA as Render's deployed commit. Then run
+   authenticated desktop/mobile Assistant, messaging, notification,
+   translation and call smoke checks against the exact deploy.
 
-```text
-ADMIN_NOTIFICATION_EMAIL=dautuquy888@gmail.com
-ADMIN_LINE_ID=@827sxbki
-```
+## Rollback
 
-`ADMIN_NOTIFICATION_EMAIL` is used for admin notifications and email ops. It is not the admin login seed.
-
-Optional admin bootstrap from Render env:
-
-```text
-ADMIN_BOOTSTRAP_ENABLED=true
-ADMIN_BOOTSTRAP_EMAIL=dautuquy888@gmail.com
-ADMIN_BOOTSTRAP_PASSWORD=<strong admin password, at least 14 chars>
-```
-
-When enabled, the app creates or updates this admin on startup. Keep `ADMIN_BOOTSTRAP_PASSWORD` secret and rotate it after sharing access.
-
-Remove these deprecated variables from Render if they still exist:
-
-```text
-ADMIN_SEED_EMAIL
-ADMIN_SEED_PASSWORD
-```
-
-Gmail SMTP:
-
-```text
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=dautuquy888@gmail.com
-SMTP_PASSWORD=<google app password>
-SMTP_FROM_EMAIL=dautuquy888@gmail.com
-SMTP_USE_TLS=true
-EMAIL_WEBHOOK_API_KEY=<secret string>
-```
-
-Do not use the Gmail login password. In Google Account, enable 2-Step Verification, open Security > App passwords, create an app password for Mail, then paste that generated value into `SMTP_PASSWORD`.
-
-## SLBo Runtime Guard Env
-
-```text
-MEMBER_REGISTRATION_ENABLED=true
-MEMBER_PORTAL_ENABLED=true
-BO_PUBLIC_ENABLED=false
-APP_MODE=sandbox
-REAL_MONEY_ENABLED=false
-REAL_CRYPTO_WITHDRAW_ENABLED=false
-LIVE_SETTLEMENT_ENABLED=false
-SLBO_POINT_CURRENCY=SLB_POINT
-BO_TRADE_OPEN_SECONDS=30
-BO_RESULT_WAIT_SECONDS=30
-BO_PAYOUT_RATIO=1.95
-RAPID_SESSION_SECONDS=120
-RAPID_ENTRY_OPEN_SECONDS=105
-RAPID_RESULT_WAIT_SECONDS=15
-PLATFORM_TREASURY_INITIAL_BALANCE=1000000
-PLATFORM_TREASURY_RESERVE_FLOOR=0
-MEMBER_INITIAL_POINT_BALANCE=1000
-```
-
-Keep all `REAL_*` flags false for this internal-point deployment. These are backend guardrails and are not shown in the public UI.
-
-## Market Data
-
-```text
-CRYPTO_MARKET_LIVE_ENABLED=true
-CRYPTO_MARKET_CACHE_SECONDS=180
-CRYPTO_MARKET_TIMEOUT_SECONDS=2.5
-COINGECKO_API_URL=https://api.coingecko.com/api/v3/simple/price
-COINGECKO_API_KEY=
-BINANCE_API_URL=https://api.binance.com/api/v3/ticker/24hr
-```
-
-How to get keys:
-
-- Binance public prices: no API key is needed for the public ticker endpoint used by this app.
-- CoinGecko: go to CoinGecko API, create a Demo API key, then set `COINGECKO_API_KEY`. It is optional but helps quota.
-
-## Ads
-
-This deployment does not use Google AdSense. Do not set `GOOGLE_ADSENSE_*` variables for this service. `/ads.txt` is intentionally disabled.
-
-## Database
-
-SQLite is acceptable for quick Render smoke/demo:
-
-```text
-USE_SQLITE=true
-```
-
-For durable production-like data, create Render PostgreSQL and set:
-
-```text
-USE_SQLITE=false
-DATABASE_URL=<internal PostgreSQL connection string>
-RUN_MIGRATIONS_DURING_BUILD=false
-```
-
-`scripts/start_render.sh` runs `alembic upgrade head` on startup.
-
-## Apply Env by Render API
-
-Create an API key in Render Account Settings, then run locally:
-
-```powershell
-$env:RENDER_API_KEY="<render api key>"
-.\scripts\render_apply_env.ps1 -ServiceId "srv-d93hlhtaeets73dohu0g" -EnvFile ".env.render" -RemoveDeprecated -TriggerDeploy
-```
-
-The helper uses Render API endpoints to add/update service env vars, remove deprecated ad/phone vars, and trigger a deploy. Without `RENDER_API_KEY` or `RENDER_API_TOKEN`, use Dashboard > Environment > Add from .env, then choose **Save, rebuild, and deploy**.
-
-SSH is only for debug shell access:
-
-```bash
-ssh srv-d93hlhtaeets73dohu0g@ssh.oregon.render.com
-```
-
-Do not rely on SSH `export` commands for production env. They are temporary.
+If the exact candidate fails, redeploy the recorded previous known-good AI SHA
+and restore only the environment snapshot captured before release. This
+Assistant release has no database migration or persistent-disk mutation.
+Rollback of AI-COMMUNICATION does not authorize rolling back Timeblock.

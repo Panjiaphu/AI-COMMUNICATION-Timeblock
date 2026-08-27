@@ -1,0 +1,19 @@
+.messaging-ux-multi-preview .messaging-ux-preview-grid {
+  max-height: clamp(132px, 22vh, 200px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  align-content: start;
+}
+
+@media (max-height: 800px) and (min-width: 761px) {
+  .messaging-ux-multi-preview .messaging-ux-preview-grid {
+    max-height: 96px;
+  }
+}
+
+@media (max-width: 760px) {
+  .messaging-ux-multi-preview .messaging-ux-preview-grid {
+    max-height: clamp(120px, 20vh, 176px);
+  }
+}

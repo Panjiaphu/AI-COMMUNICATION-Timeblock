@@ -21,6 +21,7 @@ def settings(**overrides) -> Settings:
         'secret_key': 'test-secret-that-is-not-default-and-is-long',
         'allow_development_session_fallback': True,
         'allowed_websocket_origins': 'http://testserver,http://localhost:8000',
+        'allowed_timeblock_handoff_origins': 'http://testserver',
         'allow_missing_websocket_origin': True,
         'event_rate_limit_count': 50,
         'signaling_rate_limit_count': 20,
@@ -30,11 +31,27 @@ def settings(**overrides) -> Settings:
     return Settings(**values)
 
 
-def ws_path(session='session-1', participant='participant-1', token='development-session', reconnect=None):
-    path = f'/ws/communication/{session}?token={token}&participant_id={participant}&trace_id=trace-p1'
+def ws_path(session='session-1'):
+    return f'/ws/communication/{session}'
+
+
+def auth_frame(session='session-1', participant='participant-1', token='development-session', reconnect=None):
+    payload = {'session_token': token}
     if reconnect:
-        path += f'&reconnect_token={reconnect}'
-    return path
+        payload['reconnect_token'] = reconnect
+    return {
+        'event_name': 'session.authenticate',
+        'event_version': 1,
+        'session_id': session,
+        'participant_id': participant,
+        'trace_id': 'trace-p1',
+        'payload': payload,
+    }
+
+
+def authorize(ws, **kwargs):
+    ws.send_json(auth_frame(**kwargs))
+    return ws.receive_json()
 
 
 def event(authorized, name, sequence=1):
@@ -92,6 +109,16 @@ def test_authority_response_is_bound_to_requested_identity(monkeypatch, method_n
         asyncio.run(getattr(client, method_name)('s1', 'token', 'p1'))
 
 
+def test_authority_workspace_response_is_bound_when_claim_supplied(monkeypatch):
+    async def fake_post(self, path, payload, **kwargs):
+        return {'session_id': 's1', 'room_id': 'r', 'workspace_id': 'wrong', 'participant_id': 'p1'}
+
+    monkeypatch.setattr(TimeblockClient, '_post', fake_post)
+    client = TimeblockClient(settings(allow_development_session_fallback=False, timeblock_api_url='https://timeblock.invalid', timeblock_api_key='key'))
+    with pytest.raises(TimeblockIntegrationError, match='authorization_boundary_mismatch'):
+        asyncio.run(client.authorize_session('s1', 'token', 'p1', workspace_id='expected'))
+
+
 def test_rejected_authority_response_leaves_no_manager_state(monkeypatch):
     async def fake_post(self, path, payload, **kwargs):
         return {'session_id': 'wrong', 'room_id': 'r', 'workspace_id': 'w', 'participant_id': payload['participant_id']}
@@ -99,9 +126,10 @@ def test_rejected_authority_response_leaves_no_manager_state(monkeypatch):
     monkeypatch.setattr(TimeblockClient, '_post', fake_post)
     app = create_app(settings(allow_development_session_fallback=False, timeblock_api_url='https://timeblock.invalid', timeblock_api_key='key'))
     with TestClient(app) as client:
-        with pytest.raises(WebSocketDisconnect):
-            with client.websocket_connect(ws_path(token='token'), headers={'origin': 'http://testserver'}):
-                pass
+        with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as ws:
+            ws.send_json(auth_frame(token='token'))
+            with pytest.raises(WebSocketDisconnect):
+                ws.receive_json()
         assert app.state.room_manager.rooms == {}
         assert app.state.room_manager.reconnect_tokens == {}
 
@@ -118,11 +146,12 @@ def test_refresh_room_and_workspace_changes_are_rejected(monkeypatch):
     monkeypatch.setattr(TimeblockClient, '_post', fake_post)
     app = create_app(settings(allow_development_session_fallback=False, timeblock_api_url='https://timeblock.invalid', timeblock_api_key='key'))
     with TestClient(app) as client:
-        with client.websocket_connect(ws_path(token='token'), headers={'origin': 'http://testserver'}) as ws:
-            reconnect = ws.receive_json()['reconnect_token']
-        with pytest.raises(WebSocketDisconnect):
-            with client.websocket_connect(ws_path(token='token', reconnect=reconnect), headers={'origin': 'http://testserver'}):
-                pass
+        with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as ws:
+            reconnect = authorize(ws, token='token')['reconnect_token']
+        with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as reconnected:
+            reconnected.send_json(auth_frame(token='token', reconnect=reconnect))
+            with pytest.raises(WebSocketDisconnect):
+                reconnected.receive_json()
         room = app.state.room_manager.rooms['session-1']
         assert room.room_id == 'room-1'
         assert room.workspace_id == 'workspace-1'
@@ -141,11 +170,12 @@ def test_refresh_workspace_change_is_rejected(monkeypatch):
     monkeypatch.setattr(TimeblockClient, '_post', fake_post)
     app = create_app(settings(allow_development_session_fallback=False, timeblock_api_url='https://timeblock.invalid', timeblock_api_key='key'))
     with TestClient(app) as client:
-        with client.websocket_connect(ws_path(token='token'), headers={'origin': 'http://testserver'}) as ws:
-            reconnect = ws.receive_json()['reconnect_token']
-        with pytest.raises(WebSocketDisconnect):
-            with client.websocket_connect(ws_path(token='token', reconnect=reconnect), headers={'origin': 'http://testserver'}):
-                pass
+        with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as ws:
+            reconnect = authorize(ws, token='token')['reconnect_token']
+        with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as reconnected:
+            reconnected.send_json(auth_frame(token='token', reconnect=reconnect))
+            with pytest.raises(WebSocketDisconnect):
+                reconnected.receive_json()
         room = app.state.room_manager.rooms['session-1']
         assert room.workspace_id == 'workspace-1'
         assert room.connections == {}
@@ -154,10 +184,10 @@ def test_refresh_workspace_change_is_rejected(monkeypatch):
 def test_session_ended_reaches_peer_and_blocks_new_join():
     app = create_app(settings())
     with TestClient(app) as client:
-        with client.websocket_connect(ws_path(participant='participant-a'), headers={'origin': 'http://testserver'}) as one:
-            auth_a = one.receive_json()
-            with client.websocket_connect(ws_path(participant='participant-b'), headers={'origin': 'http://testserver'}) as two:
-                two.receive_json()
+        with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as one:
+            auth_a = authorize(one, participant='participant-a')
+            with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as two:
+                authorize(two, participant='participant-b')
                 one.receive_json()
                 one.send_json(event(auth_a, 'session.ended'))
                 terminal = two.receive_json()
@@ -165,18 +195,19 @@ def test_session_ended_reaches_peer_and_blocks_new_join():
                 assert terminal['participant_id'] == 'participant-a'
             room = app.state.room_manager.rooms['session-1']
             assert room.status == SessionStatus.ENDED
-        with pytest.raises(WebSocketDisconnect):
-            with client.websocket_connect(ws_path(participant='participant-c'), headers={'origin': 'http://testserver'}):
-                pass
+        with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as three:
+            three.send_json(auth_frame(participant='participant-c'))
+            with pytest.raises(WebSocketDisconnect):
+                three.receive_json()
 
 
 def test_session_leave_does_not_end_room():
     app = create_app(settings())
     with TestClient(app) as client:
-        with client.websocket_connect(ws_path(participant='participant-a'), headers={'origin': 'http://testserver'}) as one:
-            auth_a = one.receive_json()
-            with client.websocket_connect(ws_path(participant='participant-b'), headers={'origin': 'http://testserver'}) as two:
-                two.receive_json()
+        with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as one:
+            auth_a = authorize(one, participant='participant-a')
+            with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as two:
+                authorize(two, participant='participant-b')
                 one.receive_json()
                 one.send_json(event(auth_a, 'session.leave'))
                 assert two.receive_json()['event_name'] == 'participant.left'

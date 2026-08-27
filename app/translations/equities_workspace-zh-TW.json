@@ -1,0 +1,10 @@
+{
+  "market.equities.workspace_page_title": "Timeblock 股票情報工作台",
+  "market.equities.workspace_page_meta": "依國家查看股票、TradingView、買賣傾向 Top 10 與日線技術 Playbook。",
+  "market.equities.workspace_eyebrow": "股票情報",
+  "market.equities.workspace_title": "國家股票分析工作台",
+  "market.equities.workspace_note": "查看國家指數、符合條件的買賣傾向排行、TradingView 圖表與個股技術 Playbook。市場資料可能延遲，僅供參考。",
+  "market.equities.workspace_coverage": "有資料的股票",
+  "market.equities.workspace_analysis_title": "國家訊號排行",
+  "market.equities.workspace_analysis_note": "只顯示真正達到規則門檻的股票，不會用中性標的補滿 Top 10。"
+}

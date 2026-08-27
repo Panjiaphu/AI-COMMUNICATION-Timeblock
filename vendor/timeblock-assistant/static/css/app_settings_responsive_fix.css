@@ -1,0 +1,113 @@
+.app-settings-page {
+  --app-settings-header-offset: 112px;
+  --app-settings-bottom-clearance: 24px;
+}
+
+.app-settings-page main#main-content {
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.app-settings-page .app-settings {
+  width: min(1180px, calc(100% - 32px));
+  padding-top: calc(var(--app-settings-header-offset) + 18px + env(safe-area-inset-top));
+  padding-bottom: calc(var(--app-settings-bottom-clearance) + env(safe-area-inset-bottom));
+}
+
+.app-settings-page .app-settings-grid,
+.app-settings-page .app-settings-grid > *,
+.app-settings-page .settings-card,
+.app-settings-page .ios-settings-list,
+.app-settings-page .ios-settings-row {
+  min-width: 0;
+}
+
+.app-settings-page .settings-primary-button,
+.app-settings-page .settings-secondary-button,
+.app-settings-page .settings-text-button,
+.app-settings-page .app-settings-back,
+.app-settings-page .settings-language-link,
+.app-settings-page .settings-toggle-row {
+  min-height: 44px;
+}
+
+@media (max-width: 900px) {
+  .app-settings-page {
+    --app-settings-bottom-clearance: 112px;
+  }
+
+  .app-settings-page .notification-settings {
+    position: static;
+    top: auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .app-settings-page {
+    --app-settings-header-offset: 136px;
+    --app-settings-bottom-clearance: 124px;
+  }
+
+  .app-settings-page .app-settings {
+    width: 100%;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .app-settings-page .ios-settings-row {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    gap: 8px 10px;
+  }
+
+  .app-settings-page .permission-state {
+    max-width: 112px;
+    overflow-wrap: anywhere;
+  }
+
+  .app-settings-page .ios-settings-row .settings-text-button {
+    grid-column: 2 / -1;
+    justify-self: stretch;
+    width: 100%;
+    max-width: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-settings-page .mobile-bottom-nav {
+    min-height: calc(76px + env(safe-area-inset-bottom));
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .app-settings-page .mobile-bottom-nav a {
+    min-width: 0;
+    min-height: 56px;
+    padding: 5px 2px;
+    line-height: 1.12;
+    overflow-wrap: normal;
+    word-break: keep-all;
+  }
+
+  .app-settings-page .mobile-bottom-nav .assistant-mobile-nav-link {
+    grid-template-rows: auto minmax(2.24em, auto);
+    align-content: center;
+  }
+
+  .app-settings-page .mobile-bottom-nav .assistant-nav-badge {
+    right: 8%;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1080px) {
+  .app-settings-page {
+    --app-settings-header-offset: 104px;
+    --app-settings-bottom-clearance: 116px;
+  }
+
+  .app-settings-page .mobile-bottom-nav a {
+    min-width: 0;
+    line-height: 1.14;
+    overflow-wrap: normal;
+    word-break: keep-all;
+  }
+}

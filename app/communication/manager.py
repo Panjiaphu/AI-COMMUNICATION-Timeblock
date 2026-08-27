@@ -10,6 +10,7 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import WebSocket
+from starlette.websockets import WebSocketState
 
 from app.communication.schemas import AuthorizedSession, EventEnvelope, EventName, RoomSnapshot, SessionStatus
 from app.core.config import Settings
@@ -197,7 +198,8 @@ class RoomManager:
             )
             snapshot = self._snapshot(room)
 
-        await websocket.accept()
+        if websocket.application_state == WebSocketState.CONNECTING:
+            await websocket.accept()
         if replaced_websocket is not None:
             try:
                 await replaced_websocket.close(code=4001, reason='connection_replaced')

@@ -1,0 +1,310 @@
+/* Futures risk calculator: base layout */
+.futures-risk-card {
+  border: 1px solid rgba(12, 68, 59, 0.14);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 18px 40px rgba(15, 79, 68, 0.08);
+  padding: 1rem;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.futures-risk-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(12, 68, 59, 0.1);
+  padding-bottom: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.futures-risk-header span,
+.futures-risk-form h4,
+.futures-risk-results h4 {
+  display: block;
+  color: #0f4f44;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.futures-risk-header strong {
+  display: block;
+  color: #10231f;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  margin-top: 0.25rem;
+}
+
+.futures-risk-header small {
+  color: #61726d;
+  max-width: 18rem;
+  line-height: 1.4;
+}
+
+.futures-risk-grid,
+.futures-risk-form,
+.futures-risk-input-grid,
+.futures-risk-result-grid,
+.futures-risk-messages {
+  display: grid;
+}
+
+.futures-risk-grid,
+.futures-risk-form {
+  gap: 1rem;
+}
+
+.futures-risk-input-grid,
+.futures-risk-result-grid {
+  gap: 0.75rem;
+}
+
+.futures-risk-form section,
+.futures-risk-results {
+  min-width: 0;
+  border: 1px solid rgba(12, 68, 59, 0.08);
+  border-radius: 14px;
+  padding: 0.9rem;
+  background: #fbfefd;
+}
+
+.futures-risk-form h4,
+.futures-risk-results h4 {
+  margin: 0 0 0.75rem;
+}
+
+.futures-risk-input-grid label {
+  min-width: 0;
+  display: grid;
+  gap: 0.35rem;
+  color: #42524d;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.futures-risk-input-grid input,
+.futures-risk-input-grid select {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.45rem;
+  border: 1px solid rgba(12, 68, 59, 0.16);
+  border-radius: 10px;
+  padding: 0.62rem 0.75rem;
+  background: #fff;
+  color: #10231f;
+  font: inherit;
+}
+
+.futures-risk-input-grid input:focus,
+.futures-risk-input-grid select:focus {
+  border-color: #0f806c;
+  box-shadow: 0 0 0 3px rgba(15, 128, 108, 0.12);
+  outline: none;
+}
+
+.leverage-slider-row {
+  grid-column: 1 / -1;
+}
+
+.leverage-slider-row > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 5.2rem auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.leverage-slider-row input[type="range"] {
+  padding: 0;
+  accent-color: #0f806c;
+}
+
+.futures-risk-result-card {
+  min-width: 0;
+  min-height: 4.5rem;
+  border: 1px solid rgba(12, 68, 59, 0.1);
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: #fff;
+}
+
+.futures-risk-result-card span {
+  display: block;
+  color: #61726d;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.futures-risk-result-card strong {
+  display: block;
+  margin-top: 0.35rem;
+  color: #10231f;
+  font-size: 1rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.futures-risk-result-card.positive strong { color: #057a55; }
+.futures-risk-result-card.negative strong { color: #b42318; }
+.futures-risk-result-card.warning strong { color: #b7791f; }
+
+.futures-risk-messages {
+  gap: 0.45rem;
+  margin-top: 0.85rem;
+}
+
+.futures-risk-warning,
+.futures-risk-note {
+  margin: 0;
+  border-radius: 10px;
+  padding: 0.6rem 0.7rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.futures-risk-warning {
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.futures-risk-note {
+  border: 1px solid rgba(15, 128, 108, 0.16);
+  background: #eef8f5;
+  color: #0f4f44;
+}
+
+/* Wide placement outside the lab block */
+@media (min-width: 760px) {
+  .futures-risk-grid {
+    grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
+  }
+
+  .futures-risk-input-grid,
+  .futures-risk-result-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1180px) {
+  .futures-risk-result-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Signal lab stack: sessions above risk, no order hacks */
+.lab-session-risk-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.lab-session-block,
+.lab-risk-block {
+  min-width: 0;
+}
+
+.lab-session-list-horizontal {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 8px;
+}
+
+.lab-session-list-horizontal article {
+  min-height: 112px;
+}
+
+/* Full-width calculator in the dedicated risk block */
+.lab-risk-block .futures-risk-card {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 14px;
+  box-shadow: none;
+  padding: 0.9rem;
+  background: #fff;
+}
+
+.lab-risk-block .futures-risk-grid {
+  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+  gap: 12px;
+}
+
+.lab-risk-block .futures-risk-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.lab-risk-block .futures-risk-input-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.lab-risk-block .futures-risk-result-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.lab-risk-block .futures-risk-form section,
+.lab-risk-block .futures-risk-results {
+  border-radius: 12px;
+  padding: 0.75rem;
+}
+
+.lab-risk-block .futures-risk-messages {
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+}
+
+/* Tablet: keep risk below sessions and collapse calculator safely. */
+@media (max-width: 1100px) {
+  .lab-risk-block .futures-risk-grid,
+  .lab-risk-block .futures-risk-form {
+    grid-template-columns: 1fr;
+  }
+
+  .lab-risk-block .futures-risk-result-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Mobile: one column, larger tap targets, no horizontal overflow */
+@media (max-width: 640px) {
+  .futures-risk-card {
+    border-radius: 14px;
+    padding: 0.75rem;
+  }
+
+  .futures-risk-header {
+    display: block;
+  }
+
+  .futures-risk-header small {
+    display: block;
+    max-width: none;
+    margin-top: 0.6rem;
+  }
+
+  .futures-risk-grid,
+  .futures-risk-input-grid,
+  .futures-risk-result-grid,
+  .lab-session-list-horizontal,
+  .lab-risk-block .futures-risk-form,
+  .lab-risk-block .futures-risk-input-grid,
+  .lab-risk-block .futures-risk-result-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .leverage-slider-row > div {
+    grid-template-columns: minmax(0, 1fr) 4.8rem auto;
+  }
+
+  .futures-risk-input-grid input,
+  .futures-risk-input-grid select {
+    min-height: 42px;
+    font-size: 0.9rem;
+  }
+}

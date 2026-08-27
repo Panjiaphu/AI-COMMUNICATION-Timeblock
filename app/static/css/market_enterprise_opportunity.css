@@ -1,0 +1,148 @@
+.market-opportunity-board {
+  overflow: hidden;
+}
+
+.market-opportunity-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.market-opportunity-card {
+  min-width: 0;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 20px;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+}
+
+.market-opportunity-top,
+.market-opportunity-card dl div,
+.market-opportunity-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+}
+
+.market-opportunity-top span,
+.market-opportunity-top strong,
+.market-opportunity-card dd,
+.market-opportunity-reasons span,
+.market-opportunity-footer span,
+.market-opportunity-footer a {
+  overflow-wrap: anywhere;
+}
+
+.market-opportunity-top span {
+  color: #0f4f44;
+  font-weight: 900;
+}
+
+.market-opportunity-top strong {
+  border-radius: 999px;
+  padding: 0.32rem 0.65rem;
+  background: rgba(20, 184, 166, 0.1);
+  color: #0f172a;
+}
+
+.market-opportunity-meter {
+  height: 8px;
+  margin: 0.75rem 0;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.market-opportunity-meter span {
+  display: block;
+  width: var(--opportunity-score, 50%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(20, 184, 166, 0.78), rgba(59, 130, 246, 0.78));
+}
+
+.market-opportunity-card dl {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+}
+
+.market-opportunity-card dt {
+  color: rgba(15, 23, 42, 0.58);
+  font-size: 0.76rem;
+}
+
+.market-opportunity-card dd {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.market-opportunity-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.7rem 0;
+}
+
+.market-opportunity-reasons span,
+.market-opportunity-footer span,
+.market-opportunity-footer a {
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.market-opportunity-reasons span {
+  background: rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.72);
+}
+
+.market-opportunity-footer span {
+  background: rgba(15, 23, 42, 0.055);
+  color: rgba(15, 23, 42, 0.7);
+}
+
+.market-opportunity-footer a {
+  color: #0f4f44;
+  text-decoration: none;
+  background: rgba(20, 184, 166, 0.1);
+}
+
+.opportunity-medium {
+  border-color: rgba(20, 184, 166, 0.26);
+}
+
+.opportunity-medium_high {
+  border-color: rgba(245, 158, 11, 0.32);
+}
+
+.opportunity-high {
+  border-color: rgba(239, 68, 68, 0.32);
+}
+
+@media (max-width: 1100px) {
+  .market-opportunity-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .market-opportunity-grid {
+    display: flex;
+    overflow-x: auto;
+    gap: 0.75rem;
+    scroll-snap-type: x proximity;
+    padding-bottom: 0.25rem;
+  }
+
+  .market-opportunity-card {
+    flex: 0 0 min(82vw, 310px);
+    scroll-snap-align: start;
+  }
+}

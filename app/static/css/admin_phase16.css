@@ -1,0 +1,187 @@
+.admin-upload-widget {
+  display: grid;
+  gap: 10px;
+  border: 1px dashed rgba(20, 28, 45, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.admin-upload-preview {
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #64748b;
+  overflow: hidden;
+}
+
+.admin-upload-preview img {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+}
+
+.admin-upload-picker {
+  display: inline-grid;
+  place-items: center;
+  width: fit-content;
+  border: 1px solid rgba(20, 28, 45, 0.16);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #ffffff;
+  color: #111827;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.admin-upload-picker input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.admin-mobile-cards {
+  display: none;
+}
+
+.admin-mobile-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(20, 28, 45, 0.12);
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+  box-shadow: 0 14px 32px rgba(20, 28, 45, 0.08);
+}
+
+.admin-mobile-card.winner {
+  border-color: rgba(15, 118, 110, 0.26);
+  background: #f0fdfa;
+}
+
+.admin-mobile-card h2 {
+  margin: 6px 0 0;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-mobile-card p,
+.admin-mobile-card dl {
+  margin: 0;
+  color: #526070;
+}
+
+.admin-mobile-card span {
+  color: #0f766e;
+  font-weight: 900;
+}
+
+.admin-mobile-card dl {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-mobile-card dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid rgba(20, 28, 45, 0.1);
+  padding-top: 8px;
+}
+
+.admin-mobile-card dt {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.admin-mobile-card dd {
+  margin: 0;
+  text-align: right;
+  color: #111827;
+}
+
+.email-thread-list,
+.email-workspace,
+.email-messages,
+.notification-log {
+  display: grid;
+  gap: 14px;
+}
+
+.email-thread-list article,
+.email-messages article,
+.notification-log {
+  border: 1px solid rgba(20, 28, 45, 0.12);
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.email-thread-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.email-thread-list h2 {
+  margin: 6px 0;
+  overflow-wrap: anywhere;
+}
+
+.email-thread-list p,
+.email-messages p,
+.notification-log p {
+  margin: 5px 0;
+  color: #526070;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.email-workspace {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.45fr);
+  align-items: start;
+}
+
+.email-reply-form {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(20, 28, 45, 0.12);
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.email-reply-form textarea,
+.email-reply-form select {
+  width: 100%;
+  border: 1px solid rgba(20, 28, 45, 0.16);
+  border-radius: 8px;
+  padding: 11px 12px;
+  font: inherit;
+}
+
+@media (max-width: 980px) {
+  .admin-table-panel[aria-label="活動參與名單"] {
+    display: none;
+  }
+
+  .admin-mobile-cards {
+    display: grid;
+    gap: 14px;
+  }
+
+  .email-workspace,
+  .email-thread-list article {
+    grid-template-columns: 1fr;
+  }
+
+  .email-reply-form button {
+    width: 100%;
+    justify-content: center;
+  }
+}
