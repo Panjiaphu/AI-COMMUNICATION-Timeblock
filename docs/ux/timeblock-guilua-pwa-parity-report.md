@@ -4,7 +4,7 @@
 
 The Stage A ledger below is retained as historical UX evidence. The current
 candidate vendors the canonical Assistant UI from
-`Panjiaphu/fumap-bot-life@229ea3f53d12c024eaa6d686fdd47cc9326988cf`.
+`Panjiaphu/fumap-bot-life@e37da9fc398b03546191a7193ecc05c77b21ab84`.
 Its current source status is `UI_PARITY=LOCAL_QA_PASS`; production capability
 status is `CAPABILITY_PARITY=BLOCKED_BY_TIMEBLOCK_CONTRACT_V2` until the
 Timeblock Client Contract V2 is merged and deployed. No Render/live state is

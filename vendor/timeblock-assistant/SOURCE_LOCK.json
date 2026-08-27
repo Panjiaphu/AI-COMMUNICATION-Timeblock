@@ -1,7 +1,7 @@
 {
   "source_repo": "Panjiaphu/fumap-bot-life",
-  "source_sha": "229ea3f53d12c024eaa6d686fdd47cc9326988cf",
-  "source_checkout_head": "229ea3f53d12c024eaa6d686fdd47cc9326988cf",
+  "source_sha": "e37da9fc398b03546191a7193ecc05c77b21ab84",
+  "source_checkout_head": "e37da9fc398b03546191a7193ecc05c77b21ab84",
   "source_paths": [
     "templates/base.html",
     "templates/partials/nav.html",
@@ -239,7 +239,7 @@
     "static/css/messaging_mobile_immersive.css": "6166b274ceee92f1c0ce947d471633dd0abc6b83ebded6ef16f0f8b6166e051e",
     "static/css/messaging_enterprise_workspace.css": "a1722c3ad589ee39e6015da5b38a464336f6b74823291a25d328df51c8ed10b5",
     "static/css/messaging_network_identity_restore.css": "577e4348dcf61e7b97efa5dcce6a1b4105d3f01aba1b829ebf9e8132b5536aca",
-    "static/css/messaging_contact_v1.css": "a6b471026e651c06cf5ed836a2da38101e4847e459c64e6d93c4ae14636eaef9",
+    "static/css/messaging_contact_v1.css": "83bdc78182c26be3edb685e0258c44eaf7e9bc8e501e59492241168e34858282",
     "static/css/call_workspace.css": "374b6468de87488dbc979399a4a4e7431924e0cf06000ad50f883b0366e4cafe",
     "static/css/call_translation_plugin.css": "dea1b12db16b85ddef9c51bc20ae489d4bb1bfa8c7e578d25825f456f5a66cb2",
     "static/css/messaging_ux_v1.css": "92c33ee9273ca740cdadbaed24638f6c0e7d0f4c13a6ad181d902876d002e5f7",
@@ -1933,16 +1933,16 @@
     },
     {
       "source_path": "static/css/messaging_contact_v1.css",
-      "source_sha256": "a6b471026e651c06cf5ed836a2da38101e4847e459c64e6d93c4ae14636eaef9",
+      "source_sha256": "83bdc78182c26be3edb685e0258c44eaf7e9bc8e501e59492241168e34858282",
       "destination_path": "vendor/timeblock-assistant/static/css/messaging_contact_v1.css",
-      "destination_sha256": "a6b471026e651c06cf5ed836a2da38101e4847e459c64e6d93c4ae14636eaef9",
+      "destination_sha256": "83bdc78182c26be3edb685e0258c44eaf7e9bc8e501e59492241168e34858282",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "static/css/messaging_contact_v1.css",
-      "source_sha256": "a6b471026e651c06cf5ed836a2da38101e4847e459c64e6d93c4ae14636eaef9",
+      "source_sha256": "83bdc78182c26be3edb685e0258c44eaf7e9bc8e501e59492241168e34858282",
       "destination_path": "app/static/css/messaging_contact_v1.css",
-      "destination_sha256": "a6b471026e651c06cf5ed836a2da38101e4847e459c64e6d93c4ae14636eaef9",
+      "destination_sha256": "83bdc78182c26be3edb685e0258c44eaf7e9bc8e501e59492241168e34858282",
       "adaptation_class": "EXACT_VENDOR"
     },
     {

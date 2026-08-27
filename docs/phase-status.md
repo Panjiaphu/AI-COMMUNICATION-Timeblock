@@ -11,7 +11,7 @@ verification record.
 - Implementation commit: `32be11f43c81deb3f91aa1bca00b393cea2480b5`
 - Draft pull request: `https://github.com/Panjiaphu/AI-COMMUNICATION-Timeblock/pull/6`
 - Starting committed HEAD: `d1ac5d96854853bc0a1bab5aae295843a981d3bf`
-- Canonical UI source: `Panjiaphu/fumap-bot-life@229ea3f53d12c024eaa6d686fdd47cc9326988cf`
+- Canonical UI source: `Panjiaphu/fumap-bot-life@e37da9fc398b03546191a7193ecc05c77b21ab84`
 - Source lock: `vendor/timeblock-assistant/SOURCE_LOCK.json`
 - Runtime network source for vendored UI: `false`
 
@@ -19,7 +19,7 @@ verification record.
 
 | Gate | Status | Evidence and boundary |
 |---|---|---|
-| `UI_PARITY` | `LOCAL_QA_PASS` | Canonical templates, static assets, runtime asset graph, PWA assets and vi / zh-TW / en resources are present from snapshot `229ea3f`; rendered containment evidence is retained for 1440x900, 1366x768, 1024x1366, 768x1024, 430x932, 393x852, 390x844 and 360x800. |
+| `UI_PARITY` | `LOCAL_QA_PASS` | Canonical templates, static assets, runtime asset graph, PWA assets and vi / zh-TW / en resources are present from snapshot `e37da9f`; rendered containment evidence is retained for 1440x900, 1366x768, 1024x1366, 768x1024, 430x932, 393x852, 390x844 and 360x800. |
 | BFF compatibility | `LOCAL_QA_PASS` | 120 explicit method/path route specifications; canonical paths remain unchanged upstream; no open/catch-all proxy; focused BFF/parity suite passed 61 tests. |
 | `CAPABILITY_PARITY` | `BLOCKED_BY_TIMEBLOCK_CONTRACT_V2` | Production principal/session authentication for canonical handlers still depends on Timeblock Client Contract V2 being merged and deployed. |
 | Target QA | `PASS_LOCAL` | Default pytest: 112 passed, 4 skipped, 1 warning; source-lock verifier: 214 source files / 420 destinations; all app runtime JavaScript files passed `node --check`; browser suite evidence remains the previously recorded 16 passes on Chromium 149 and WebKit 26.5 with fake media. |

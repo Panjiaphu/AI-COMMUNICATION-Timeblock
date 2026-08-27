@@ -100,6 +100,8 @@
 }
 
 .messaging-contact-v1-identity-copy strong {
+  display: block;
+  min-height: 1em;
   color: #1f2f2a;
   font-size: 0.84rem;
   font-weight: 850;
