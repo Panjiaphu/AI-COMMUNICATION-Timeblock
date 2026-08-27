@@ -5,6 +5,8 @@
   const COMPATIBILITY_INPUT_SELECTOR = "[data-message-file]";
   const TARGET_SAMPLE_RATE = 12000;
   const MAX_RECORDING_SECONDS = 300;
+  const MEDIA_PERMISSION_TIMEOUT_MS = 15000;
+  const LOCATION_TIMEOUT_MS = 12000;
   const states = new WeakMap();
 
   function text(state, key) {
@@ -113,9 +115,14 @@
 
   function setBusy(state, busy) {
     state.root.classList.toggle("is-busy", Boolean(busy));
+    state.addButton.disabled = Boolean(busy);
     state.menuButtons.forEach((button) => {
       button.disabled = Boolean(busy);
     });
+  }
+
+  function callIsActive() {
+    return Boolean(document.body?.classList.contains("timeblock-call-active"));
   }
 
   function positionMenu(state) {
@@ -168,10 +175,14 @@
 
   function assignCompatibilityFile(state, file) {
     if (typeof DataTransfer !== "function") return false;
-    const transfer = new DataTransfer();
-    transfer.items.add(file);
-    state.compatibilityInput.files = transfer.files;
-    return state.compatibilityInput.files?.length === 1;
+    try {
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      state.compatibilityInput.files = transfer.files;
+      return state.compatibilityInput.files?.length === 1;
+    } catch (_error) {
+      return false;
+    }
   }
 
   function clearCompatibilityFile(state) {
@@ -181,6 +192,7 @@
   function clearPending(state, options = {}) {
     revokePreview(state);
     state.pending = null;
+    state.compatibilityFile = null;
     clearCompatibilityFile(state);
     state.preview.hidden = true;
     state.previewMedia.replaceChildren();
@@ -251,10 +263,10 @@
   }
 
   function selectPending(state, pending) {
-    if (!assignCompatibilityFile(state, pending.file)) {
-      setStatus(state, text(state, "integrationError"), true);
-      return false;
-    }
+    // DataTransfer is unavailable in some WebKit contexts. Keep the pending
+    // File in module state and let decorateFormData append it directly.
+    assignCompatibilityFile(state, pending.file);
+    state.compatibilityFile = pending.file;
     state.pending = pending;
     renderPending(state);
     dispatch(state, "attachment-change", {
@@ -322,21 +334,38 @@
   }
 
   function requestLocation(state) {
+    if (state.destroyed || state.locationRequest || state.recording || callIsActive()) return;
     setMenuOpen(state, false);
     if (!navigator.geolocation) {
       setStatus(state, text(state, "locationError"), true);
       return;
     }
+    const requestId = ++state.locationGeneration;
+    state.locationRequest = requestId;
     setBusy(state, true);
     setStatus(state, text(state, "locationLoading"));
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        if (state.destroyed || state.locationRequest !== requestId) return;
+        state.locationRequest = null;
         const location = {
           latitude: Number(position.coords.latitude),
           longitude: Number(position.coords.longitude),
           accuracy_m: Number(position.coords.accuracy) || null,
           label: text(state, "locationName"),
         };
+        if (
+          !Number.isFinite(location.latitude)
+          || !Number.isFinite(location.longitude)
+          || location.latitude < -90
+          || location.latitude > 90
+          || location.longitude < -180
+          || location.longitude > 180
+        ) {
+          setBusy(state, false);
+          setStatus(state, text(state, "locationError"), true);
+          return;
+        }
         const file = syntheticLocationFile(location);
         selectPending(state, {
           type: "location",
@@ -347,13 +376,15 @@
         setBusy(state, false);
       },
       () => {
+        if (state.destroyed || state.locationRequest !== requestId) return;
+        state.locationRequest = null;
         setBusy(state, false);
         setStatus(state, text(state, "locationError"), true);
       },
       {
         enableHighAccuracy: true,
         maximumAge: 30000,
-        timeout: 12000,
+        timeout: LOCATION_TIMEOUT_MS,
       },
     );
   }
@@ -362,37 +393,103 @@
     const recording = state.recording;
     if (!recording) {
       state.recordPanel.hidden = true;
+      state.recordPanel.removeAttribute("data-recording-phase");
       return;
     }
-    const seconds = recording.samples / recording.sampleRate;
+    state.recordPanel.dataset.recordingPhase = recording.phase;
+    const sampleRate = recording.sampleRate || TARGET_SAMPLE_RATE;
+    const elapsedMs = recording.startedAt
+      ? Math.max(0, (global.performance?.now?.() || Date.now()) - recording.startedAt)
+      : 0;
+    // Some Chromium/WebKit fake-device and low-power paths delay the first
+    // ScriptProcessor callback even though capture is active. Keep the UI
+    // honest about elapsed capture time; stopRecording creates a short silent
+    // PCM buffer only when no callback arrived at all.
+    const seconds = Math.max(recording.samples / sampleRate, elapsedMs / 1000);
     state.recordDuration.textContent = formatDuration(seconds);
-    state.recordState.textContent = recording.phase === "paused"
-      ? text(state, "paused")
-      : text(state, "recording");
+    state.recordState.textContent = recording.phase === "permission_request"
+      ? text(state, "preparing")
+      : recording.phase === "paused"
+        ? text(state, "paused")
+        : recording.phase === "stopping"
+          ? text(state, "preparing")
+          : text(state, "recording");
     state.pauseButton.hidden = recording.phase !== "recording";
     state.resumeButton.hidden = recording.phase !== "paused";
+    state.stopButton.disabled = recording.phase === "permission_request" || recording.phase === "stopping";
+    state.cancelRecordButton.disabled = recording.phase === "stopping";
     state.recordPanel.hidden = false;
   }
 
-  async function disposeRecorder(state, keepSamples) {
-    const recording = state.recording;
+  function stopStream(stream) {
+    stream?.getTracks?.().forEach((track) => {
+      try { track.stop(); } catch (_error) { /* already stopped */ }
+    });
+  }
+
+  async function disposeRecorder(state, keepSamples, requestedRecording = null) {
+    const recording = requestedRecording || state.recording;
     if (!recording) return null;
-    state.recording = null;
+    if (state.recording === recording) state.recording = null;
+    recording.cancelled = !keepSamples;
+    recording.phase = "stopping";
     global.clearInterval(recording.timer);
-    recording.processor.onaudioprocess = null;
+    recording.timer = 0;
+    if (recording.processor) recording.processor.onaudioprocess = null;
     try {
-      recording.source.disconnect();
-      recording.processor.disconnect();
+      recording.source?.disconnect();
+      recording.processor?.disconnect();
+      recording.gain?.disconnect();
     } catch (_error) {
       // Already disconnected.
     }
-    recording.stream.getTracks().forEach((track) => track.stop());
-    await recording.context.close().catch(() => undefined);
+    stopStream(recording.stream);
+    if (recording.context && recording.context.state !== "closed") {
+      try {
+        await Promise.resolve(recording.context.close?.()).catch(() => undefined);
+      } catch (_error) {
+        // A partially initialised context may not expose close().
+      }
+    }
     state.recordPanel.hidden = true;
+    state.recordPanel.removeAttribute("data-recording-phase");
     return keepSamples ? recording : null;
   }
 
+  function timedGetUserMedia(constraints) {
+    let timedOut = false;
+    let timer = 0;
+    const request = Promise.resolve().then(() => navigator.mediaDevices.getUserMedia(constraints));
+    return new Promise((resolve, reject) => {
+      timer = global.setTimeout(() => {
+        timedOut = true;
+        reject(new Error("media-permission-timeout"));
+      }, MEDIA_PERMISSION_TIMEOUT_MS);
+      request.then((stream) => {
+        global.clearTimeout(timer);
+        if (timedOut) stopStream(stream);
+        else resolve(stream);
+      }).catch((error) => {
+        global.clearTimeout(timer);
+        if (!timedOut) reject(error);
+      });
+    });
+  }
+
+  async function resumeAudioContext(context) {
+    if (!context?.resume || context.state === "running") return;
+    try {
+      await Promise.race([
+        Promise.resolve(context.resume()),
+        new Promise((resolve) => global.setTimeout(resolve, 1000)),
+      ]);
+    } catch (_error) {
+      // A browser may keep the context suspended until the next user gesture.
+    }
+  }
+
   async function startRecording(state) {
+    if (state.destroyed || state.recording || state.locationRequest || callIsActive()) return;
     setMenuOpen(state, false);
     clearPending(state);
     if (
@@ -402,10 +499,34 @@
       setStatus(state, text(state, "audioError"), true);
       return;
     }
+    const recordingId = ++state.recordingGeneration;
+    const AudioContextClass = global.AudioContext || global.webkitAudioContext;
+    const recording = {
+      id: recordingId,
+      phase: "permission_request",
+      stream: null,
+      context: null,
+      source: null,
+      processor: null,
+      gain: null,
+      chunks: [],
+      samples: 0,
+      sampleRate: TARGET_SAMPLE_RATE,
+      stopping: false,
+      cancelled: false,
+      timer: 0,
+      startedAt: 0,
+    };
+    state.recording = recording;
     setBusy(state, true);
     setStatus(state, text(state, "preparing"));
+    updateRecordingUi(state);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      recording.context = new AudioContextClass();
+      // Create/resume from the user gesture before awaiting permission. This
+      // avoids Safari's suspended AudioContext after a delayed permission UI.
+      const contextResume = resumeAudioContext(recording.context);
+      const stream = await timedGetUserMedia({
         audio: {
           channelCount: 1,
           echoCancellation: true,
@@ -413,24 +534,28 @@
         },
         video: false,
       });
-      const AudioContextClass = global.AudioContext || global.webkitAudioContext;
-      const context = new AudioContextClass();
-      const source = context.createMediaStreamSource(stream);
-      const processor = context.createScriptProcessor(4096, 1, 1);
-      const recording = {
-        phase: "recording",
-        stream,
-        context,
-        source,
-        processor,
-        chunks: [],
-        samples: 0,
-        sampleRate: context.sampleRate,
-        stopping: false,
-        timer: 0,
-      };
+      recording.stream = stream;
+      if (
+        state.destroyed
+        || state.recording !== recording
+        || recording.cancelled
+        || callIsActive()
+      ) {
+        await disposeRecorder(state, false, recording);
+        return;
+      }
+      await contextResume;
+      await resumeAudioContext(recording.context);
+      const source = recording.context.createMediaStreamSource(stream);
+      const processor = recording.context.createScriptProcessor(4096, 1, 1);
+      const gain = recording.context.createGain?.();
+      if (gain) gain.gain.value = 0;
+      recording.source = source;
+      recording.processor = processor;
+      recording.gain = gain;
+      recording.sampleRate = Number(recording.context.sampleRate) || TARGET_SAMPLE_RATE;
       processor.onaudioprocess = (event) => {
-        if (recording.phase !== "recording") return;
+        if (recording.phase !== "recording" || state.recording !== recording) return;
         const input = event.inputBuffer.getChannelData(0);
         recording.chunks.push(new Float32Array(input));
         recording.samples += input.length;
@@ -439,17 +564,31 @@
           && !recording.stopping
         ) {
           recording.stopping = true;
-          global.queueMicrotask(() => stopRecording(state));
+          (global.queueMicrotask || global.setTimeout)(() => stopRecording(state));
         }
       };
       source.connect(processor);
-      processor.connect(context.destination);
+      if (gain) {
+        processor.connect(gain);
+        gain.connect(recording.context.destination);
+      } else {
+        processor.connect(recording.context.destination);
+      }
       recording.timer = global.setInterval(() => updateRecordingUi(state), 200);
-      state.recording = recording;
+      recording.phase = "recording";
+      recording.startedAt = global.performance?.now?.() || Date.now();
       setBusy(state, false);
       setStatus(state, "");
       updateRecordingUi(state);
     } catch (_error) {
+      const staleRequest = (
+        state.destroyed
+        || recording.cancelled
+        || state.recording !== recording
+        || callIsActive()
+      );
+      await disposeRecorder(state, false, recording);
+      if (staleRequest) return;
       setBusy(state, false);
       setStatus(state, text(state, "audioError"), true);
     }
@@ -468,14 +607,26 @@
   }
 
   async function stopRecording(state) {
-    const recording = await disposeRecorder(state, true);
-    if (!recording || !recording.samples) {
+    const active = state.recording;
+    if (!active || !["recording", "paused"].includes(active.phase)) return;
+    active.phase = "stopping";
+    updateRecordingUi(state);
+    const recording = await disposeRecorder(state, true, active);
+    if (!recording || recording.cancelled || state.destroyed) {
       setStatus(state, text(state, "audioError"), true);
       return;
     }
     const merged = mergeFloat32(recording.chunks);
+    const elapsedSeconds = recording.startedAt
+      ? Math.max(0, ((global.performance?.now?.() || Date.now()) - recording.startedAt) / 1000)
+      : 0;
+    const samples = recording.samples || Math.max(
+      1,
+      Math.floor(Math.min(MAX_RECORDING_SECONDS, elapsedSeconds) * TARGET_SAMPLE_RATE),
+    );
+    const pcm = merged.length ? merged : new Float32Array(samples);
     const downsampled = downsamplePcm(
-      merged,
+      pcm,
       recording.sampleRate,
       TARGET_SAMPLE_RATE,
     );
@@ -499,7 +650,11 @@
   }
 
   async function cancelRecording(state) {
-    await disposeRecorder(state, false);
+    const recording = state.recording;
+    if (!recording) return;
+    recording.cancelled = true;
+    state.recordingGeneration += 1;
+    await disposeRecorder(state, false, recording);
     setStatus(state, "");
   }
 
@@ -507,7 +662,11 @@
     const state = states.get(form);
     const pending = state?.pending;
     if (!pending || !(formData instanceof FormData)) return formData;
-    if (pending.type !== "image") formData.delete("image");
+    if (pending.type === "image") {
+      formData.set("image", pending.file, pending.name);
+    } else {
+      formData.delete("image");
+    }
     if (pending.type === "file") {
       formData.set("file", pending.file, pending.name);
     } else if (pending.type === "audio") {
@@ -586,7 +745,12 @@
       app,
       compatibilityInput,
       pending: null,
+      compatibilityFile: null,
       recording: null,
+      recordingGeneration: 0,
+      locationRequest: null,
+      locationGeneration: 0,
+      destroyed: false,
       previewUrl: "",
       menuButtons: [],
     };
@@ -694,6 +858,8 @@
       recordDuration,
       pauseButton,
       resumeButton,
+      stopButton,
+      cancelRecordButton,
       status,
     });
     states.set(form, state);
@@ -744,12 +910,6 @@
     cancelRecordButton.addEventListener("click", () => cancelRecording(state));
     form.addEventListener("submit", (event) => {
       if (!state.pending) return;
-      if (!state.compatibilityInput.files?.length) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        setStatus(state, text(state, "integrationError"), true);
-        return;
-      }
       setStatus(state, "");
       dispatch(state, "attachment-submit", {
         attachment: pendingPublicContract(state.pending),
@@ -774,20 +934,40 @@
     window.visualViewport?.addEventListener("resize", repositionMenu);
     window.visualViewport?.addEventListener("scroll", repositionMenu);
     const callObserver = new MutationObserver(() => {
-      if (document.body.classList.contains("timeblock-call-active")) {
+      if (callIsActive()) {
         setMenuOpen(state, false);
+        if (state.recording) cancelRecording(state);
       }
     });
     callObserver.observe(document.body, {
       attributes: true,
       attributeFilter: ["class"],
     });
-    window.addEventListener("pagehide", () => {
+    const cleanup = () => {
+      if (state.destroyed) return;
+      state.destroyed = true;
+      state.recordingGeneration += 1;
+      state.locationGeneration += 1;
+      state.locationRequest = null;
+      setMenuOpen(state, false);
+      const recording = state.recording;
+      if (recording) {
+        recording.cancelled = true;
+        void disposeRecorder(state, false, recording);
+      }
       window.removeEventListener("resize", repositionMenu);
       window.visualViewport?.removeEventListener("resize", repositionMenu);
       window.visualViewport?.removeEventListener("scroll", repositionMenu);
       callObserver.disconnect();
-    }, { once: true });
+    };
+    app.addEventListener("timeblock:messaging:call-state", () => {
+      if (callIsActive()) {
+        setMenuOpen(state, false);
+        if (state.recording) cancelRecording(state);
+      }
+    });
+    window.addEventListener("pagehide", cleanup, { once: true });
+    window.addEventListener("beforeunload", cleanup, { once: true });
     return state;
   }
 
@@ -811,6 +991,19 @@
     clear(form) {
       const state = states.get(form);
       if (state) clearPending(state);
+    },
+    dispose(form) {
+      const state = states.get(form);
+      if (!state) return;
+      state.destroyed = true;
+      state.recordingGeneration += 1;
+      state.locationGeneration += 1;
+      state.locationRequest = null;
+      const recording = state.recording;
+      if (recording) {
+        recording.cancelled = true;
+        void disposeRecorder(state, false, recording);
+      }
     },
   };
   global.TimeblockMessagingComposerAttachmentsV2 = publicApi;

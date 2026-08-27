@@ -18,7 +18,8 @@
     {% set nav_assistant_destination = url_for('assistant.workspace', lang=current_locale) %}
     {% if not active_user or active_user.role in ['member', 'business'] %}<a href="{{ nav_assistant_destination if active_user else url_for('auth.login', next=nav_assistant_destination, lang=current_locale) }}">{{ t('assistant.title') }}</a>{% endif %}
     <a href="{{ url_for('events.list_events', lang=current_locale) }}">{{ t('nav.events') }}</a>
-    <a class="nav-tertiary" href="{{ url_for('shop.affiliate', lang=current_locale) }}">{{ t('nav.shop') }}</a>
+    <a class="nav-tertiary" href="{{ url_for('shop.marketplace', lang=current_locale) }}">{{ t('nav.shop') }}</a>
+    <a class="nav-tertiary" href="{{ url_for('delivery.index', lang=current_locale) }}">{{ t('nav.delivery') }}</a>
     <a class="nav-tertiary" href="{{ url_for('redeem_shop.list_products', lang=current_locale) }}">{{ t('nav.redeem_shop') }}</a>
     <a class="nav-tertiary" href="{{ url_for('block_ledger.public_explorer', lang=current_locale) }}">{{ t('nav.block_ledger') }}</a>
     <a class="nav-secondary" href="{{ url_for('member.dashboard', lang=current_locale) }}">{{ t('nav.member_center') }}</a>

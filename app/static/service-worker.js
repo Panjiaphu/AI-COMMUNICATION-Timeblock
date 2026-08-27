@@ -1,4 +1,4 @@
-const CACHE_NAME = "timeblock-pwa-v19";
+const CACHE_NAME = "timeblock-pwa-v20";
 const CALL_V1_RUNTIME_VERSION = "call-v1-ring-owner-20260822";
 const CALL_VIBRATION_PATTERN = [
   320, 305, 120, 505, 120, 505, 120, 505,
@@ -57,10 +57,29 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request).catch(() => new Response(
-      "Timeblock is temporarily offline. Reconnect and try again.",
-      { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } },
-    )));
+    event.respondWith(fetch(request).catch(() => {
+      if (url.pathname === "/delivery/driver" || url.pathname.startsWith("/delivery/driver/")) {
+        const requestedLocale = url.searchParams.get("lang");
+        const locale = ["zh-TW", "vi", "en"].includes(requestedLocale) ? requestedLocale : "zh-TW";
+        const offlineMessage = {
+          "zh-TW": "Timeblock Delivery 目前離線。請重新連線後再試。",
+          vi: "Timeblock Delivery hiện đang ngoại tuyến. Hãy kết nối lại rồi thử lại.",
+          en: "Timeblock Delivery is temporarily offline. Reconnect and try again.",
+        }[locale];
+        return new Response(offlineMessage, {
+          status: 503,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Content-Language": locale,
+            "Cache-Control": "no-store",
+          },
+        });
+      }
+      return new Response(
+        "Timeblock is temporarily offline. Reconnect and try again.",
+        { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } },
+      );
+    }));
     return;
   }
   const isStaticAsset = url.pathname.startsWith("/static/") && /\.(?:css|js|png|svg|webmanifest)$/.test(url.pathname);

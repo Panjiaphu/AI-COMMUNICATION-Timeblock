@@ -7,7 +7,7 @@ Timeblock remains the Control Plane and durable System of Record for identity, w
 ## Current phase
 
 The canonical Assistant UI snapshot is vendored from
-`Panjiaphu/fumap-bot-life@16a83643b77afd20feb6d7b7f7366702d25fd87d`.
+`Panjiaphu/fumap-bot-life@229ea3f53d12c024eaa6d686fdd47cc9326988cf`.
 Its templates, static assets, runtime asset graph and vi / zh-TW / en resources
 are present locally. For this candidate, `UI_PARITY=LOCAL_QA_PASS` means the
 canonical snapshot and its local runtime adapters passed the bounded local

@@ -814,7 +814,18 @@ button.assistant-conversation-preview {
   box-shadow: 0 8px 24px rgba(18, 71, 60, 0.08);
 }
 
+.assistant-composer-box > *,
+.assistant-composer-box textarea {
+  min-width: 0;
+}
+
+.assistant-composer-box.has-messaging-v2-voice {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+}
+
 .assistant-composer textarea {
+  display: block;
+  box-sizing: border-box;
   width: 100%;
   max-height: 132px;
   min-height: 38px;

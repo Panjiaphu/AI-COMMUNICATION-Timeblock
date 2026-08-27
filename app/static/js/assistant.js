@@ -2239,7 +2239,9 @@
     const imageInput = $('[data-message-file]');
     const content = input.value.trim();
     const image = imageInput.files && imageInput.files[0];
-    if (!content && !image) return;
+    const pendingAttachment = window.TimeblockMessagingComposerAttachmentsV2?.getPending?.(event.currentTarget);
+    const hasAttachment = Boolean(image || pendingAttachment);
+    if (!content && !hasAttachment) return;
     const replyToMessageId = app.dataset.messagingReplyToMessageId || "";
     const requestSignature = [
       state.conversation.id,
@@ -2248,6 +2250,12 @@
       image?.name || "",
       image?.size || 0,
       image?.lastModified || 0,
+      pendingAttachment?.type || "",
+      pendingAttachment?.name || "",
+      pendingAttachment?.size || 0,
+      pendingAttachment?.durationSeconds || 0,
+      pendingAttachment?.location?.latitude || "",
+      pendingAttachment?.location?.longitude || "",
     ].join(":");
     if (!state.pendingMessage || state.pendingMessage.signature !== requestSignature) {
       state.pendingMessage = {
@@ -2264,10 +2272,10 @@
         client_message_id: state.pendingMessage.clientMessageId,
         reply_to_message_id: replyToMessageId || null,
       });
-      if (image) {
+      if (hasAttachment) {
         const data = new FormData();
         data.append("content", content);
-        data.append("image", image, image.name);
+        if (image) data.append("image", image, image.name);
         data.append("client_message_id", state.pendingMessage.clientMessageId);
         if (replyToMessageId) data.append("reply_to_message_id", replyToMessageId);
         window.TimeblockMessagingComposerAttachmentsV2?.decorateFormData(event.currentTarget, data);

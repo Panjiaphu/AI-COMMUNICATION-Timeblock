@@ -2,7 +2,7 @@
 
 > Historical Stage A contract: the current candidate supersedes this source
 > lock with canonical snapshot
-> `Panjiaphu/fumap-bot-life@16a83643b77afd20feb6d7b7f7366702d25fd87d`.
+> `Panjiaphu/fumap-bot-life@229ea3f53d12c024eaa6d686fdd47cc9326988cf`.
 > Current status is `UI_PARITY=LOCAL_QA_PASS` for bounded local QA and
 > `CAPABILITY_PARITY=BLOCKED_BY_TIMEBLOCK_CONTRACT_V2` for production. This is
 > not a Render/live claim; see `../phase-status.md`.

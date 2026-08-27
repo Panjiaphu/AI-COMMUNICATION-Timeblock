@@ -44,6 +44,7 @@
   data-actor-type="{{ assistant_actor.type }}"
   data-actor-id="{{ assistant_actor.id }}"
   data-messaging-realtime-enabled="{{ 'true' if config.MESSAGING_REALTIME_ENABLED else 'false' }}"
+  data-call-translation-realtime-enabled="{{ 'true' if config.TRANSLATOR_REALTIME_ENABLED else 'false' }}"
   data-messaging-mailbox-lock-enabled="{{ 'true' if config.MESSAGING_MAILBOX_LOCK_ENABLED else 'false' }}"
   data-composer-add="{{ t('messaging.v2.composer.add') }}"
   data-composer-camera="{{ t('messaging.v2.composer.camera') }}"
@@ -275,6 +276,10 @@
   data-copy-translation-track-restore-failed="{{ t('assistant.call.translation.track_restore_failed') }}"
   data-copy-translation-sync-connected="{{ t('assistant.call.translation.sync_connected') }}"
   data-copy-translation-syncing="{{ t('assistant.call.translation.syncing') }}"
+  data-copy-translation-realtime-badge="{{ t('assistant.call.translation.realtime_badge') }}"
+  data-copy-translation-realtime-live="{{ t('assistant.call.translation.realtime_live') }}"
+  data-copy-translation-realtime-fallback="{{ t('assistant.call.translation.realtime_fallback') }}"
+  data-copy-translation-realtime-finalizing="{{ t('assistant.call.translation.realtime_finalizing') }}"
   data-copy-call-media-playback="{{ t('assistant.call.media_playback') }}"
   data-copy-qr-ready="{{ t('assistant.network.qr_ready') }}"
   data-copy-qr-unsupported="{{ t('assistant.network.qr_unsupported') }}"
@@ -544,6 +549,7 @@
                     <strong id="call-translation-title">{{ t('assistant.call.translation.title') }}</strong>
                     <span>{{ t('assistant.call.translation.subtitle') }}</span>
                     <span data-call-translation-sync-status data-state="syncing" role="status" aria-live="polite">{{ t('assistant.call.translation.syncing') }}</span>
+                    <span data-call-translation-realtime-mode {% if not config.TRANSLATOR_REALTIME_ENABLED %}hidden{% endif %}>{{ t('assistant.call.translation.realtime_badge') }}</span>
                   </div>
                   <button class="assistant-icon-button" type="button" data-call-translation-close aria-label="{{ t('assistant.common.close') }}">{{ icon('close') }}</button>
                 </header>
@@ -868,7 +874,7 @@
   <script src="{{ url_for('static', filename='js/call-v1/signaling.js', v='call-v1-hotfix-20260820b') }}" defer></script>
   <script src="{{ url_for('static', filename='js/call-v1/ring-audio.js', v='call-v1-hotfix-20260820b') }}" defer></script>
   <script src="{{ url_for('static', filename='js/call-v1/runtime.js', v='call-v1-hotfix-20260820b') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/translation_plugin.js', v='call-v1-translation-plugin-20260824-voice-task') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/translation_plugin.js', v='call-v1-ios-auto-read-20260826') }}" defer></script>
   <script src="{{ url_for('static', filename='js/call-v1/bootstrap.js', v='call-v1-hotfix-20260820b') }}" defer></script>
   <script src="{{ url_for('static', filename='js/live_translate.js', v='live-translate-v1-20260822') }}" defer></script>
   <script src="{{ url_for('static', filename='js/assistant.js', v='call-v1-hotfix-20260820b') }}" defer></script>

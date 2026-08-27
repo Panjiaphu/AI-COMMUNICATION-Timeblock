@@ -3,7 +3,7 @@
 This directory is a local source-locked migration input copied from
 `Panjiaphu/fumap-bot-life`. It is not loaded from a network source at runtime.
 
-- Source SHA: `16a83643b77afd20feb6d7b7f7366702d25fd87d`
+- Source SHA: `229ea3f53d12c024eaa6d686fdd47cc9326988cf`
 - Lock: `SOURCE_LOCK.json`
 - Sync: `python scripts/sync_timeblock_assistant_ui.py ...`
 

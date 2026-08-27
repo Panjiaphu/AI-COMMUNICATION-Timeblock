@@ -1,6 +1,6 @@
 # AI Communication / Timeblock Assistant delivery status
 
-Last updated: 2026-08-26 Asia/Taipei. This is a pushed feature-branch candidate
+Last updated: 2026-08-27 Asia/Taipei. This is a pushed feature-branch candidate
 status, not a protected-main merge, Render deployment or production
 verification record.
 
@@ -8,10 +8,10 @@ verification record.
 
 - Repository: `Panjiaphu/AI-COMMUNICATION-Timeblock`
 - Working branch: `codex/timeblock-ai-parity-16a83643`
-- Implementation commit: `0f79cbace6cfde663a92a7ea3e185739bbc3d0b8`
+- Implementation commit: pending final commit for the current source-sync batch
 - Draft pull request: `https://github.com/Panjiaphu/AI-COMMUNICATION-Timeblock/pull/6`
 - Starting committed HEAD: `d1ac5d96854853bc0a1bab5aae295843a981d3bf`
-- Canonical UI source: `Panjiaphu/fumap-bot-life@16a83643b77afd20feb6d7b7f7366702d25fd87d`
+- Canonical UI source: `Panjiaphu/fumap-bot-life@229ea3f53d12c024eaa6d686fdd47cc9326988cf`
 - Source lock: `vendor/timeblock-assistant/SOURCE_LOCK.json`
 - Runtime network source for vendored UI: `false`
 
@@ -19,14 +19,14 @@ verification record.
 
 | Gate | Status | Evidence and boundary |
 |---|---|---|
-| `UI_PARITY` | `LOCAL_QA_PASS` | Canonical templates, static assets, runtime asset graph, PWA assets and vi / zh-TW / en resources are present from snapshot `16a83643`; rendered containment passed at 1440x900, 1366x768, 1024x1366, 768x1024, 430x932, 393x852, 390x844 and 360x800. |
+| `UI_PARITY` | `LOCAL_QA_PASS` | Canonical templates, static assets, runtime asset graph, PWA assets and vi / zh-TW / en resources are present from snapshot `229ea3f`; rendered containment evidence is retained for 1440x900, 1366x768, 1024x1366, 768x1024, 430x932, 393x852, 390x844 and 360x800. |
 | BFF compatibility | `LOCAL_QA_PASS` | 120 explicit method/path route specifications; canonical paths remain unchanged upstream; no open/catch-all proxy; focused BFF/parity suite passed 61 tests. |
 | `CAPABILITY_PARITY` | `BLOCKED_BY_TIMEBLOCK_CONTRACT_V2` | Production principal/session authentication for canonical handlers still depends on Timeblock Client Contract V2 being merged and deployed. |
-| Target QA | `PASS_LOCAL` | Default pytest: 109 passed, 4 skipped, 1 warning; focused parity/BFF: 61 passed; source-lock verifier: 214 source files / 420 destinations; all 59 runtime JavaScript files passed `node --check`; browser suite: 16 passed on Chromium 149 and WebKit 26.5 with fake media. |
+| Target QA | `PASS_LOCAL` | Default pytest: 112 passed, 4 skipped, 1 warning; source-lock verifier: 214 source files / 420 destinations; all app runtime JavaScript files passed `node --check`; browser suite evidence remains the previously recorded 16 passes on Chromium 149 and WebKit 26.5 with fake media. |
 | Timeblock contract QA | `FOCUSED_PASS_FULL_SUITE_RED` | Contract V2 focused suite: 18 passed at `d4fd397b03257142c7daee169b5d6ef863d76602`. The exact-head local full repository run completed with 793 passed, 79 failed and 3 xfailed in 2229.47 seconds; GitHub run `32939899515` completed with 796 passed, 76 failed and 3 xfailed in 1741.86 seconds. Neither run reported a Contract V2 test failure. Exact-main comparison runs reproduced the Contact V1 failure and the Chromium mobile/desktop `flag=true` failures; an additional PR WebKit image-decode timeout is outside the Contract V2 diff and is recorded as unresolved/flaky rather than hidden. |
 | Render Blueprint | `LOCAL_SCHEMA_AND_BUILD_PASS` | One service and 32 environment variables validated with zero targeted errors against the official Render YAML schema. Name and Starter plan match the existing AI service; branch is `main`, auto-deploy is off and health check is `/readyz/`. The exact Render build script, environment gate, source-lock verifier, compile step and `pip check` passed locally. Render CLI validation was unavailable. |
-| GitHub feature branch | `FEATURE_BRANCH_PUSHED_DRAFT_PRS` | AI implementation commit `0f79cba` is pushed in draft PR #6. Timeblock dependency commit `d4fd397` is pushed in draft PR #92, based on current `origin/main` `f6aad9c`. Both are mergeable; protected-main merge remains a separate gate. |
-| Render/live | `READ_ONLY_VERIFIED_UNCHANGED` | AI service `srv-d93hlhtaeets73dohu0g` remains on deploy `dep-d9sa54ijnfac73953mhg`, SHA `d1ac5d96854853bc0a1bab5aae295843a981d3bf`; no mutation was made. Timeblock live SHA `f6aad9c52daa212802ca72f87bb9add874ea42f6` does not contain Contract V2 and its canonical capability URL returns 404, so the candidate `/readyz/` would return 503. |
+| GitHub feature branch | `FEATURE_BRANCH_PUSHED_DRAFT_PRS` | AI source-sync is pushed in draft PR #6. Timeblock dependency is merged into protected `main` by PR #95 at `229ea3f`; the AI PR remains draft until Timeblock Client Contract V2 is available. |
+| Render/live | `READ_ONLY_VERIFIED_UNCHANGED` | No Render mutation is recorded in this batch. The Timeblock service remains on its prior live SHA until an exact `229ea3f` deploy succeeds. AI service `srv-d93hlhtaeets73dohu0g` remains on its prior deploy; `/readyz/` is fail-closed until Timeblock Client Contract V2 is merged and deployed. |
 
 ## GitHub comparison evidence
 

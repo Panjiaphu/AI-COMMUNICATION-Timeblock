@@ -558,10 +558,13 @@
     const recordPanel = messageForm.querySelector(".messaging-composer-v2-recorder");
     const previewAudio = messageForm.querySelector(".messaging-composer-v2-preview audio");
     const status = messageForm.querySelector(".messaging-composer-v2-status");
+    const recordingPhase = recordPanel?.dataset.recordingPhase || "";
     const sending = messageForm.dataset.enterpriseVoiceState === "sending";
     let state = "idle";
     if (sending) state = "sending";
     else if (status?.classList.contains("is-error") && String(status.textContent || "").trim()) state = "error";
+    else if (recordingPhase === "stopping") state = "stopping";
+    else if (recordingPhase === "permission_request") state = "permission_request";
     else if (recordPanel && !recordPanel.hidden) state = "recording";
     else if (root.classList.contains("is-busy")) state = "permission_request";
     else if (previewAudio) state = "recorded";
@@ -570,7 +573,20 @@
     voiceButton.dataset.voiceState = state;
     voiceButton.classList.toggle("is-active", state === "recording");
     voiceButton.setAttribute("aria-pressed", String(state === "recording"));
-    voiceButton.disabled = state === "sending" || state === "recorded";
+    const shouldDisableVoice = (
+      state === "sending"
+      || state === "recorded"
+      || state === "permission_request"
+      || state === "stopping"
+      || document.body.classList.contains("timeblock-call-active")
+    );
+    // The voice observer watches `disabled`. Avoid writing the same property
+    // value on every observer pass, which would enqueue another mutation in
+    // some WebKit/Chromium builds and can starve the click handler while the
+    // permission request is pending.
+    if (voiceButton.disabled !== shouldDisableVoice) {
+      voiceButton.disabled = shouldDisableVoice;
+    }
     const label = state === "recording"
       ? text("voiceStop")
       : state === "permission_request"
@@ -619,10 +635,18 @@
       if (mic) voiceButton.appendChild(mic);
       else voiceButton.textContent = "MIC";
       root.insertAdjacentElement("afterend", voiceButton);
+      messageForm.querySelector(".assistant-composer-box")?.classList.add("has-messaging-v2-voice");
       voiceButton.addEventListener("click", () => {
+        if (
+          voiceButton.disabled
+          || document.body.classList.contains("timeblock-call-active")
+        ) return;
         const recordPanel = messageForm.querySelector(".messaging-composer-v2-recorder");
         if (recordPanel && !recordPanel.hidden) {
-          recordPanel.querySelector(".messaging-composer-v2-record-actions .is-primary")?.click();
+          const state = messageForm.dataset.enterpriseVoiceState || "";
+          if (state === "recording" || state === "paused") {
+            recordPanel.querySelector(".messaging-composer-v2-record-actions .is-primary")?.click();
+          }
           return;
         }
         voiceMenuAction(root)?.click();
@@ -672,6 +696,7 @@
   buildTranslationDialog();
   app.addEventListener("timeblock:messaging:conversation", handleConversationDetail);
   app.addEventListener("timeblock:messaging:messages", handleConversationDetail);
+  app.addEventListener("timeblock:messaging:call-state", syncVoicePresentation);
   enhanceMessageTranslations();
   enhanceVoiceComposer();
 
@@ -684,6 +709,7 @@
 
   window.addEventListener("pagehide", () => {
     closeTranslationDialog();
+    window.TimeblockMessagingComposerAttachmentsV2?.dispose?.(messageForm);
     threadObserver?.disconnect();
     capabilityObserver?.disconnect();
     voiceObserver?.disconnect();

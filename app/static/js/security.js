@@ -28,6 +28,53 @@ document.addEventListener("DOMContentLoaded", () => {
     setButtonBusy(form);
   });
 
+  const copyFallback = (text) => {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+    const copied = document.execCommand("copy");
+    textarea.remove();
+    if (!copied) throw new Error("copy command failed");
+  };
+
+  const copyIp = async (text) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    copyFallback(text);
+  };
+
+  document.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-copy-ip]");
+    if (!button) return;
+    const ipAddress = String(button.dataset.copyIp || "").trim();
+    if (!ipAddress || ipAddress === "unknown" || ipAddress === "-") return;
+
+    const originalLabel = button.dataset.copyLabel || button.textContent || "複製 IP";
+    button.dataset.copyLabel = originalLabel;
+    button.disabled = true;
+    try {
+      await copyIp(ipAddress);
+      button.textContent = "已複製";
+      button.setAttribute("aria-live", "polite");
+    } catch (error) {
+      button.textContent = "複製失敗";
+      button.setAttribute("aria-live", "assertive");
+    } finally {
+      window.setTimeout(() => {
+        button.textContent = originalLabel;
+        button.disabled = false;
+      }, 1400);
+    }
+  });
+
   const formatTaipei = (value) => {
     if (!value) return "-";
     const date = new Date(value);
@@ -77,6 +124,19 @@ document.addEventListener("DOMContentLoaded", () => {
     element.textContent = value(text);
     parent.appendChild(element);
     return element;
+  };
+
+  const appendCopyButton = (parent, ipAddress, label, ariaLabel) => {
+    const normalized = value(ipAddress, "");
+    if (!normalized || normalized === "unknown" || normalized === "-") return null;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary-action security-copy-ip";
+    button.dataset.copyIp = normalized;
+    button.textContent = label;
+    button.setAttribute("aria-label", ariaLabel);
+    parent.appendChild(button);
+    return button;
   };
 
   const riskPill = (text, className) => {
@@ -178,10 +238,17 @@ document.addEventListener("DOMContentLoaded", () => {
     sourceCell.className = "security-identity-cell";
     appendText(sourceCell, "Client IP", "security-cell-kicker");
     appendText(sourceCell, securityEvent.ip_address, "security-ip-value", "strong");
+    appendCopyButton(sourceCell, securityEvent.ip_address, "複製 IP", "複製事件訪客 IP");
     if (securityEvent.is_current_admin_ip) {
       sourceCell.appendChild(riskPill("目前管理員 IP", "protected"));
     }
     appendText(sourceCell, `Proxy: ${value(securityEvent.observed_remote_ip)}`);
+    appendCopyButton(
+      sourceCell,
+      securityEvent.observed_remote_ip,
+      "複製 Proxy",
+      "複製事件 Proxy 或 Origin IP",
+    );
     appendText(sourceCell, `${value(securityEvent.ip_source)} / ${value(securityEvent.ip_confidence)}`);
     if (securityEvent.cf_ray) appendText(sourceCell, `Ray: ${securityEvent.cf_ray}`);
 

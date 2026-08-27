@@ -1,6 +1,7 @@
 .messaging-composer-v2 {
   position: relative;
   display: flex;
+  min-width: 0;
   flex: 0 0 auto;
   align-items: center;
 }
@@ -241,6 +242,18 @@
 
 .messaging-composer-v2.is-busy {
   opacity: 0.72;
+}
+
+.assistant-composer-box > .messaging-composer-v2,
+.assistant-composer-box > textarea,
+.assistant-composer-box > button {
+  min-width: 0;
+}
+
+.assistant-composer-box > textarea {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
 }
 
 body.timeblock-call-active .messaging-composer-v2-menu {
