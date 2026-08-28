@@ -176,6 +176,8 @@ async def communication(request: Request) -> HTMLResponse:
     copy = communication_copy(locale)
     runtime_config = {
         'handoff_event': 'timeblock.communication.handoff.v1',
+        'group_handoff_event': 'timeblock.group.communication.handoff.v2',
+        'group_handoff_contract_version': '2',
         'allowed_handoff_origins': sorted(settings.timeblock_handoff_origins),
         'development_query_handoff': settings.development_query_handoff_enabled,
         'timeblock_entry_url': settings.primary_timeblock_handoff_origin,
