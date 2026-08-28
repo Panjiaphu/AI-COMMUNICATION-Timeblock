@@ -41,6 +41,7 @@ class GroupMediaSession:
     media: str
     region: str
     max_participants: int
+    max_rooms: int
     token_ttl_seconds: int
 
 
@@ -96,11 +97,12 @@ def parse_group_media_session(payload: Mapping[str, object]) -> GroupMediaSessio
         raise GroupMediaProviderContractError("missing_session_limits")
     try:
         max_participants = int(limits.get("max_participants"))
+        max_rooms = int(limits.get("max_rooms"))
         token_ttl_seconds = int(limits.get("token_ttl_seconds"))
         room_ttl_seconds = int(limits.get("room_ttl_seconds"))
     except (TypeError, ValueError) as exc:
         raise GroupMediaProviderContractError("invalid_session_limits") from exc
-    if max_participants != 8 or token_ttl_seconds != 300 or room_ttl_seconds != 3600:
+    if max_participants != 8 or max_rooms != 20 or token_ttl_seconds != 300 or room_ttl_seconds != 3600:
         raise GroupMediaProviderContractError("invalid_session_limits")
     if session.get("recording") is not False or session.get("raw_media_storage") is not False:
         raise GroupMediaProviderContractError("media_storage_policy_violation")
@@ -115,6 +117,7 @@ def parse_group_media_session(payload: Mapping[str, object]) -> GroupMediaSessio
         media=media,
         region=region,
         max_participants=max_participants,
+        max_rooms=max_rooms,
         token_ttl_seconds=token_ttl_seconds,
     )
 

@@ -72,6 +72,7 @@ def test_livekit_media_session_is_strictly_ephemeral_and_policy_bound():
     assert session.provider == "livekit-cloud"
     assert session.media == "video"
     assert session.max_participants == 8
+    assert session.max_rooms == 20
     assert session.token_ttl_seconds == 300
 
     payload["session"]["recording"] = True
