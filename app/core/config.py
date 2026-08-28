@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     messaging_mailbox_lock_enabled: bool = True
     messaging_advanced_attachments_enabled: bool = True
 
+    # Group voice translation is fail-closed until the owner explicitly
+    # enables it and supplies the server-only OpenAI key in Render.
+    group_translation_enabled: bool = False
+    openai_api_key: str | None = None
+    openai_realtime_translation_model: str = 'gpt-realtime-translate'
+    group_translation_max_targets: int = Field(default=2, ge=1, le=3)
+
     allowed_websocket_origins: str = 'http://127.0.0.1:8000,http://localhost:8000'
     allowed_timeblock_handoff_origins: str = 'http://127.0.0.1:5000,http://localhost:5000'
     allow_missing_websocket_origin: bool = True

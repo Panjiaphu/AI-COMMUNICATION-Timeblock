@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.communication.manager import RoomManager
 from app.communication.router import router as communication_router
+from app.group_translation.router import router as group_translation_router
 from app.bff.router import router as bff_router
 from app.bff.session_store import SessionStore
 from app.core.config import BASE_DIR, Settings, get_settings
@@ -61,6 +62,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     application.include_router(bff_router)
     application.include_router(communication_router)
+    application.include_router(group_translation_router)
 
     @application.get('/healthz/')
     async def healthz() -> dict[str, str]:

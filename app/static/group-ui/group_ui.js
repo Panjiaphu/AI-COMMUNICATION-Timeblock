@@ -38,6 +38,9 @@
     if (stateNode) stateNode.textContent = state;
   };
 
+  let translationManager = null;
+  const remoteTracks = new Set();
+  let activeHandoff = null;
   const callCard = root.querySelector(".group-call-stage");
   if (callCard) {
     const degraded = callCard.querySelector("[data-group-degraded]");
@@ -50,18 +53,53 @@
       if (reject) reject.hidden = connected || state === "JOINING";
       if (leave) leave.hidden = !connected;
     };
+    const translationPanel = root.querySelector(".group-translation-panel");
+    const translation = window.GroupTranslationClient?.create({
+      panel: translationPanel,
+      copy,
+      onState: (state) => {
+        const stateNode = translationPanel?.querySelector("[data-group-translation-state]");
+        if (stateNode) stateNode.textContent = state;
+      },
+      onPartial: (original, translated) => {
+        const originalNode = translationPanel?.querySelector("[data-group-original]");
+        const finalNode = translationPanel?.querySelector("[data-group-final]");
+        if (originalNode && original) originalNode.textContent = original;
+        if (finalNode && translated) finalNode.textContent = translated;
+        const stateNode = translationPanel?.querySelector("[data-group-translation-state]");
+        if (stateNode) stateNode.textContent = "PARTIAL";
+      },
+      onFinal: (_original, _translated) => {
+        const stateNode = translationPanel?.querySelector("[data-group-translation-state]");
+        if (stateNode) stateNode.textContent = "FINAL";
+      },
+    });
+    translationManager = translation;
     const media = window.GroupMediaClient?.create({
       card: callCard,
       copy,
+      onRemoteTrack: (track, participantId) => {
+        remoteTracks.add(track);
+        if (translation?.enabled) void translation.startForTrack(track, participantId);
+      },
+      onRemoteTrackRemoved: (track) => {
+        remoteTracks.delete(track);
+        translation?.removeTrack(track);
+      },
       onState: (state, note) => {
         setState(callCard, state);
         updateCallActions(state);
         if (degraded && note) degraded.textContent = note;
       },
     });
-    const consumeHandoff = () => window.GroupCommunicationHandoff?.consume?.() || null;
+    const consumeHandoff = () => {
+      if (!activeHandoff) activeHandoff = window.GroupCommunicationHandoff?.consume?.() || null;
+      return activeHandoff;
+    };
     join?.addEventListener("click", async () => {
-      await media?.join(consumeHandoff());
+      const handoff = consumeHandoff();
+      translation?.setContext(handoff);
+      await media?.join(handoff);
     });
     reject?.addEventListener("click", () => {
       setState(callCard, "ENDED");
@@ -69,6 +107,8 @@
     });
     leave?.addEventListener("click", async () => {
       await media?.leave();
+      await translation?.stop();
+      remoteTracks.clear();
     });
     updateCallActions("RINGING");
   }
@@ -110,10 +150,18 @@
     });
   }
 
-  const translation = root.querySelector(".group-translation-panel");
-  translation?.querySelector('[data-group-translation-action="listen"]')?.addEventListener("click", () => {
-    const state = translation.querySelector("[data-group-translation-state]");
-    if (state) state.textContent = "QUEUED";
+  const translationPanel = root.querySelector(".group-translation-panel");
+  translationPanel?.querySelector('[data-group-translation-action="listen"]')?.addEventListener("click", async () => {
+    const state = translationPanel.querySelector("[data-group-translation-state]");
+    const manager = translationManager;
+    if (state) state.textContent = "STARTING";
+    if (!manager) {
+      if (state) state.textContent = "UNAVAILABLE";
+      return;
+    }
+    manager.setContext(activeHandoff);
+    await manager.enable(remoteTracks);
+    if (state) state.textContent = manager.sidecars.size ? "STREAMING" : "WAITING_FOR_REMOTE_AUDIO";
   });
 
   const preferences = root.querySelector(".group-translation-preferences");

@@ -17,10 +17,12 @@
   }
 
   class GroupMediaSession {
-    constructor({ card, copy, onState }) {
+    constructor({ card, copy, onState, onRemoteTrack, onRemoteTrackRemoved }) {
       this.card = card;
       this.copy = copy || {};
       this.onState = onState;
+      this.onRemoteTrack = onRemoteTrack;
+      this.onRemoteTrackRemoved = onRemoteTrackRemoved;
       this.room = null;
       this.localStream = null;
       this.roomId = "";
@@ -29,6 +31,7 @@
       this.connecting = false;
       this.ending = false;
       this.remoteElements = new Set();
+      this.remoteParticipantIds = new WeakMap();
       this.stage = card.querySelector("[data-group-livekit-stage]");
       this.localVideo = card.querySelector("[data-group-local-video]");
       this.remoteVideo = card.querySelector("[data-group-remote-video]");
@@ -114,8 +117,9 @@
 
     bindRoom(room, library, generation) {
       const event = library.RoomEvent;
-      room.on(event.TrackSubscribed, (track) => {
+      room.on(event.TrackSubscribed, (track, _publication, participant) => {
         if (generation !== this.generation || this.ending) return;
+        if (participant?.identity) this.remoteParticipantIds.set(track, String(participant.identity));
         this.attachRemoteTrack(track);
       });
       room.on(event.TrackUnsubscribed, (track) => this.detachRemoteTrack(track));
@@ -145,10 +149,12 @@
         this.remoteAudio.append(element);
       }
       this.remoteElements.add(element);
+      this.onRemoteTrack?.(track, this.getRemoteParticipantId(track));
     }
 
     detachRemoteTrack(track) {
       if (track?.detach) track.detach().forEach((element) => element.remove());
+      this.onRemoteTrackRemoved?.(track);
       this.remoteElements.forEach((element) => {
         if (!element.isConnected) this.remoteElements.delete(element);
       });
@@ -259,6 +265,10 @@
       this.mode = "";
       this.ending = false;
       this.state(state, state === "JOIN_FAILED" ? "group_call_failed" : "group_ui_only");
+    }
+
+    getRemoteParticipantId(track) {
+      return safeText(this.remoteParticipantIds.get(track), 160);
     }
   }
 
