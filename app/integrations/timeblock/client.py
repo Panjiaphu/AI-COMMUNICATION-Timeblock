@@ -12,7 +12,9 @@ from app.core.config import Settings
 from app.handoff.group import GroupHandoff, parse_group_handoff
 from app.handoff.group_media import (
     GroupMediaProviderContract,
+    GroupMediaSession,
     parse_group_media_provider_contract,
+    parse_group_media_session,
 )
 
 
@@ -281,6 +283,17 @@ class TimeblockClient:
         except ValueError as exc:
             raise TimeblockIntegrationError(
                 'timeblock_group_media_provider_contract_invalid'
+            ) from exc
+
+    @staticmethod
+    def parse_group_media_session(payload: Mapping[str, object]) -> GroupMediaSession:
+        """Validate an ephemeral provider grant before passing it to media code."""
+
+        try:
+            return parse_group_media_session(payload)
+        except ValueError as exc:
+            raise TimeblockIntegrationError(
+                'timeblock_group_media_session_invalid'
             ) from exc
 
     async def exchange_guilua_code(self, code: str, redirect_uri: str) -> dict:

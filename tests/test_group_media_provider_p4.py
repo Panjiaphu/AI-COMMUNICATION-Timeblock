@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from app.handoff.group_media import (
     GROUP_CALL_MEDIA_PROVIDER_REQUIRED,
     GroupMediaProviderContractError,
+    parse_group_media_session,
     parse_group_media_provider_contract,
     require_ready_group_media_provider,
 )
@@ -40,6 +43,40 @@ def test_ready_manifest_requires_no_error_and_preserves_transport_boundary():
     assert contract.ready
     assert contract.token_transport == "server_memory_only"
     assert contract.authorization == "timeblock_membership"
+
+
+def test_livekit_media_session_is_strictly_ephemeral_and_policy_bound():
+    now = datetime.now(timezone.utc)
+    payload = {
+        "session": {
+            "provider": "livekit-cloud",
+            "provider_room_id": "tb-gc-opaque",
+            "server_url": "wss://project.livekit.cloud",
+            "participant_id": "member:42",
+            "token": "short-lived-token",
+            "expires_at": (now + timedelta(seconds=300)).isoformat().replace("+00:00", "Z"),
+            "room_expires_at": (now + timedelta(seconds=3600)).isoformat().replace("+00:00", "Z"),
+            "media": "video",
+            "region": "Singapore",
+            "limits": {
+                "max_participants": 8,
+                "max_rooms": 20,
+                "room_ttl_seconds": 3600,
+                "token_ttl_seconds": 300,
+            },
+            "recording": False,
+            "raw_media_storage": False,
+        }
+    }
+    session = parse_group_media_session(payload)
+    assert session.provider == "livekit-cloud"
+    assert session.media == "video"
+    assert session.max_participants == 8
+    assert session.token_ttl_seconds == 300
+
+    payload["session"]["recording"] = True
+    with pytest.raises(GroupMediaProviderContractError, match="media_storage_policy_violation"):
+        parse_group_media_session(payload)
 
 
 @pytest.mark.parametrize(

@@ -10,7 +10,9 @@ from .group import (
 from .group_media import (
     GroupMediaProviderContract,
     GroupMediaProviderContractError,
+    GroupMediaSession,
     parse_group_media_provider_contract,
+    parse_group_media_session,
     require_ready_group_media_provider,
 )
 
@@ -22,6 +24,8 @@ __all__ = [
     "parse_group_handoff",
     "GroupMediaProviderContract",
     "GroupMediaProviderContractError",
+    "GroupMediaSession",
     "parse_group_media_provider_contract",
+    "parse_group_media_session",
     "require_ready_group_media_provider",
 ]
