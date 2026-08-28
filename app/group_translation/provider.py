@@ -17,6 +17,7 @@ class GroupTranslationProviderError(RuntimeError):
 class TranslationClientSecret:
     value: str
     expires_at: int | None
+    request_id: str | None = None
 
 
 class OpenAIGroupTranslationProvider:
@@ -83,4 +84,5 @@ class OpenAIGroupTranslationProvider:
             expires_at = int(expires_at) if expires_at is not None else None
         except (TypeError, ValueError):
             expires_at = None
-        return TranslationClientSecret(value=secret.strip(), expires_at=expires_at)
+        request_id = response.headers.get("x-request-id") or response.headers.get("x-openai-request-id")
+        return TranslationClientSecret(value=secret.strip(), expires_at=expires_at, request_id=request_id)

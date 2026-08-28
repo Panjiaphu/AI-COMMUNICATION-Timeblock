@@ -73,6 +73,12 @@
         const stateNode = translationPanel?.querySelector("[data-group-translation-state]");
         if (stateNode) stateNode.textContent = "FINAL";
       },
+      onTTSState: (state) => {
+        const stateNode = translationPanel?.querySelector("[data-group-translation-state]");
+        if (stateNode && ["PLAYING", "PAUSED_TRANSMIT", "AUTOPLAY_BLOCKED"].includes(state)) {
+          stateNode.textContent = state;
+        }
+      },
     });
     translationManager = translation;
     const media = window.GroupMediaClient?.create({
@@ -160,6 +166,18 @@
       return;
     }
     manager.setContext(activeHandoff);
+    const consent = root.querySelector("[data-group-translation-consent]");
+    if (!consent?.checked && !activeHandoff?.translation_consent_version && !activeHandoff?.consent_version) {
+      if (state) state.textContent = "CONSENT_REQUIRED";
+      return;
+    }
+    if (consent?.checked) {
+      const granted = await manager.grantConsent();
+      if (!granted && !activeHandoff?.translation_consent_version) {
+        if (state) state.textContent = "CONSENT_UNAVAILABLE";
+        return;
+      }
+    }
     await manager.enable(remoteTracks);
     if (state) state.textContent = manager.sidecars.size ? "STREAMING" : "WAITING_FOR_REMOTE_AUDIO";
   });

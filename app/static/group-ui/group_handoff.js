@@ -77,7 +77,11 @@
       setRootHandoffState(state.status);
       return false;
     }
-    state.handoff = { ...payload };
+    state.handoff = {
+      ...payload,
+      conversation_id: payload.conversation_id || text(payload.workspace_id, 160).replace(/^conversation:/, ""),
+      translation_consent_version: payload.translation_consent_version || payload.consent_version || "",
+    };
     state.status = "READY";
     setRootHandoffState(state.status);
     window.dispatchEvent(new CustomEvent("group:handoff-ready", {
@@ -88,6 +92,8 @@
         mode: payload.mode,
         session_id: payload.session_id,
         room_id: payload.room_id,
+        conversation_id: payload.conversation_id || text(payload.workspace_id, 160).replace(/^conversation:/, ""),
+        translation_consent_version: payload.translation_consent_version || payload.consent_version || "",
         language_profile: profileForState(payload.language_profile),
       },
     }));
@@ -110,6 +116,8 @@
       mode: state.handoff?.mode || "",
       session_id: state.handoff?.session_id || "",
       room_id: state.handoff?.room_id || "",
+      conversation_id: state.handoff?.conversation_id || "",
+      translation_consent_version: state.handoff?.translation_consent_version || state.handoff?.consent_version || "",
       language_profile: profileForState(state.handoff?.language_profile),
     }),
     consume: () => {

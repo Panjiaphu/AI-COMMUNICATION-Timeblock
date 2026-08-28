@@ -64,3 +64,15 @@ than retrying indefinitely.
 
 Do not mark P5 production complete until Timeblock confirms quota/consent/audit
 and exact live-SHA evidence. Radio floor/Radio translation remain P7/P8.
+
+## Runtime implementation status
+
+The P5 branch now includes the recipient-side FIFO TTS queue. It accepts final
+translated output only, deduplicates by generation/segment/target, plays one
+recipient stream at a time, pauses while the recipient transmits, reports an
+autoplay-blocked state for a user-gesture retry, and releases audio resources on
+leave/end. The browser forwards the Timeblock reservation and source duration
+with final events; failed sidecars release unused reservations. The router
+proxies explicit consent and reservation release, and provider responses expose
+only safe request-id/expiry metadata. Partial transcripts remain ephemeral; no
+raw audio, SDP, API key, or transcript text is written to audit logs.

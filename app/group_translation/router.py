@@ -58,13 +58,25 @@ async def _bootstrap(request: Request, session: BffSession, room_id: str, body: 
     source = str(body.get("source_language") or "").strip()
     target = str(body.get("target_language") or "").strip()
     generation = str(body.get("generation") or "").strip()
+    consent_version = str(body.get("consent_version") or "").strip()
+    estimated_source_seconds = body.get("estimated_source_seconds", 300)
+    speaker_id = str(body.get("speaker_id") or "").strip()
+    reservation_key = str(body.get("reservation_key") or "").strip()
     if source not in _LANGUAGES or target not in _LANGUAGES or source == target:
         raise HTTPException(status_code=400, detail="invalid_language")
     try:
         result = await request.app.state.timeblock_client.client_post(
             f"/api/messaging/call-rooms/{room_id}/translation/session",
             session.timeblock_token,
-            {"source_language": source, "generation": generation},
+            {
+                "source_language": source,
+                "target_language": target,
+                "generation": generation,
+                "consent_version": consent_version,
+                "estimated_source_seconds": estimated_source_seconds,
+                "speaker_id": speaker_id or None,
+                "reservation_key": reservation_key or None,
+            },
         )
     except TimeblockIntegrationError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
@@ -74,7 +86,14 @@ async def _bootstrap(request: Request, session: BffSession, room_id: str, body: 
     targets = translation.get("target_languages")
     if not isinstance(targets, list) or target not in targets:
         raise HTTPException(status_code=403, detail="target_language_not_in_plan")
+    if not text_value(translation.get("quota_reservation_id")):
+        raise HTTPException(status_code=502, detail="timeblock_translation_quota_contract_invalid")
     return translation
+
+
+def text_value(value: object, maximum: int = 256) -> str:
+    normalized = str(value or "").strip()
+    return normalized if normalized and len(normalized) <= maximum else ""
 
 
 @router.post("/api/group-translation/session")
@@ -95,6 +114,17 @@ async def create_group_translation_session(request: Request) -> JSONResponse:
             principal_id=str(translation["participant_id"]),
         )
     except GroupTranslationProviderError as exc:
+        reservation_id = text_value(translation.get("quota_reservation_id"), 128)
+        if reservation_id:
+            try:
+                await request.app.state.timeblock_client.client_post(
+                    f"/api/messaging/call-rooms/{room_id}/translation/usage/release",
+                    session.timeblock_token,
+                    {"quota_reservation_id": reservation_id},
+                )
+            except TimeblockIntegrationError:
+                # The Timeblock TTL cleanup remains the final compensation path.
+                pass
         status = 503 if str(exc) in {"group_translation_disabled", "group_translation_provider_not_configured", "group_translation_provider_unavailable"} else 502
         raise HTTPException(status_code=status, detail=str(exc)) from exc
     return JSONResponse(
@@ -102,6 +132,7 @@ async def create_group_translation_session(request: Request) -> JSONResponse:
             "provider": "openai-realtime-translate",
             "client_secret": secret.value,
             "expires_at": secret.expires_at,
+            "provider_request_id": secret.request_id,
             "translation": {
                 **translation,
                 "target_language": target,
@@ -110,6 +141,55 @@ async def create_group_translation_session(request: Request) -> JSONResponse:
         },
         headers={"Cache-Control": "no-store, private, max-age=0", "Pragma": "no-cache"},
     )
+
+
+@router.post("/api/group-translation/usage/release")
+async def release_group_translation_usage(request: Request) -> JSONResponse:
+    _browser_origin(request)
+    session = _session(request)
+    body = await request.json()
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="invalid_request")
+    room_id = _room_id(body.get("room_id"))
+    reservation_id = text_value(body.get("quota_reservation_id"), 128)
+    if not reservation_id:
+        raise HTTPException(status_code=400, detail="quota_reservation_required")
+    try:
+        result = await request.app.state.timeblock_client.client_post(
+            f"/api/messaging/call-rooms/{room_id}/translation/usage/release",
+            session.timeblock_token,
+            {"quota_reservation_id": reservation_id},
+        )
+    except TimeblockIntegrationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return JSONResponse(result, headers={"Cache-Control": "no-store, private, max-age=0"})
+
+
+@router.post("/api/group-translation/consent")
+async def update_group_translation_consent(request: Request) -> JSONResponse:
+    _browser_origin(request)
+    session = _session(request)
+    body = await request.json()
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="invalid_request")
+    try:
+        conversation_id = int(body.get("conversation_id"))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="invalid_conversation_id") from exc
+    payload = {
+        "enabled": body.get("enabled", True),
+        "target_languages": body.get("target_languages"),
+        "policy_version": body.get("policy_version"),
+    }
+    try:
+        result = await request.app.state.timeblock_client.client_post(
+            f"/api/messaging/conversations/{conversation_id}/group-translation-consent",
+            session.timeblock_token,
+            payload,
+        )
+    except TimeblockIntegrationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return JSONResponse(result, headers={"Cache-Control": "no-store, private, max-age=0"})
 
 
 @router.post("/api/group-translation/events")
