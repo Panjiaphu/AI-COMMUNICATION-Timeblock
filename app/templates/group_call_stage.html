@@ -15,10 +15,11 @@
   <div class="group-ui-actions" role="group" aria-label="{{ copy.group_call }}">
     <button type="button" class="group-ui-button group-ui-button-primary" data-group-call-action="join">{{ copy.group_join }}</button>
     <button type="button" class="group-ui-button group-ui-button-danger" data-group-call-action="reject">{{ copy.group_reject }}</button>
+    <button type="button" class="group-ui-button group-ui-button-danger" data-group-call-action="leave" hidden>{{ copy.group_call_leave }}</button>
   </div>
-  <div class="group-ui-state-picker" aria-label="{{ copy.group_state_label }}">
-    <button type="button" data-group-call-state="RINGING" class="is-selected">RINGING</button>
-    <button type="button" data-group-call-state="JOIN_FAILED">JOIN_FAILED</button>
-    <button type="button" data-group-call-state="ENDED">ENDED</button>
+  <div class="group-livekit-stage" data-group-livekit-stage hidden>
+    <video class="group-livekit-remote-video" data-group-remote-video autoplay playsinline aria-label="{{ copy.group_call_remote_media }}"></video>
+    <video class="group-livekit-local-video" data-group-local-video autoplay playsinline muted aria-label="{{ copy.group_call_local_preview }}"></video>
+    <div class="group-livekit-audio" data-group-remote-audio aria-hidden="true"></div>
   </div>
 </section>

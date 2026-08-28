@@ -134,7 +134,9 @@ def _authenticated_client(
 def test_canonical_registry_is_unique_explicit_and_excludes_privileged_paths():
     route_keys = [(spec.method, spec.path) for spec in CANONICAL_PROXY_ROUTES]
 
-    assert len(route_keys) == 120
+    # Group-call participant rejection is a distinct, explicitly authorized
+    # lifecycle action; keep the registry size guard in sync with it.
+    assert len(route_keys) == 121
     assert len(route_keys) == len(set(route_keys))
     assert {method for method, _path in route_keys} <= {
         "GET",

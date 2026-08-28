@@ -42,6 +42,11 @@ def test_group_copy_has_vi_en_zh_tw_parity():
         "group_translation_title",
         "group_preferences_title",
         "group_preferences_saved",
+        "group_call_leave",
+        "group_call_joining",
+        "group_call_connected",
+        "group_call_reconnecting",
+        "group_call_failed",
     }
     copies = {locale: communication_copy(locale) for locale in ("vi", "en", "zh-TW")}
     for locale, copy in copies.items():

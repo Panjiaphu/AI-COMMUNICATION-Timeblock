@@ -41,17 +41,35 @@
   const callCard = root.querySelector(".group-call-stage");
   if (callCard) {
     const degraded = callCard.querySelector("[data-group-degraded]");
-    callCard.querySelectorAll("[data-group-call-state]").forEach((button) => {
-      button.addEventListener("click", () => setState(callCard, button.dataset.groupCallState));
+    const join = callCard.querySelector('[data-group-call-action="join"]');
+    const reject = callCard.querySelector('[data-group-call-action="reject"]');
+    const leave = callCard.querySelector('[data-group-call-action="leave"]');
+    const updateCallActions = (state) => {
+      const connected = state === "JOINED" || state === "RECONNECTING";
+      if (join) join.hidden = connected || state === "JOINING";
+      if (reject) reject.hidden = connected || state === "JOINING";
+      if (leave) leave.hidden = !connected;
+    };
+    const media = window.GroupMediaClient?.create({
+      card: callCard,
+      copy,
+      onState: (state, note) => {
+        setState(callCard, state);
+        updateCallActions(state);
+        if (degraded && note) degraded.textContent = note;
+      },
     });
-    callCard.querySelector('[data-group-call-action="join"]')?.addEventListener("click", () => {
-      setState(callCard, "JOIN_FAILED");
-      if (degraded) degraded.textContent = text("group_join_degraded", text("group_ui_only", "UI-only state; secure handoff is not connected."));
+    const consumeHandoff = () => window.GroupCommunicationHandoff?.consume?.() || null;
+    join?.addEventListener("click", async () => {
+      await media?.join(consumeHandoff());
     });
-    callCard.querySelector('[data-group-call-action="reject"]')?.addEventListener("click", () => {
-      setState(callCard, "ENDED");
-      if (degraded) degraded.textContent = text("group_rejected", text("group_ui_only", "UI-only state; no room was ended."));
+    reject?.addEventListener("click", async () => {
+      await media?.reject(consumeHandoff());
     });
+    leave?.addEventListener("click", async () => {
+      await media?.leave();
+    });
+    updateCallActions("RINGING");
   }
 
   const radioCard = root.querySelector(".group-radio-panel");

@@ -29,6 +29,12 @@
 .group-ui-button-primary { border-color: var(--group-accent); color: #fff; background: var(--group-accent); }
 .group-ui-button-primary:hover, .group-ui-button-primary:focus-visible { background: var(--group-accent-strong); }
 .group-ui-button-danger { border-color: #e7c8c4; color: var(--group-danger); background: #fff8f7; }
+.group-livekit-stage { position: relative; min-height: 176px; margin-top: 14px; overflow: hidden; border: 1px solid #b9d9cc; border-radius: 12px; background: #0e221c; }
+.group-livekit-stage[hidden] { display: none; }
+.group-livekit-remote-video { display: block; width: 100%; min-height: 176px; max-height: 360px; object-fit: cover; background: #0e221c; }
+.group-livekit-local-video { position: absolute; right: 10px; bottom: 10px; width: clamp(92px, 28%, 160px); aspect-ratio: 16 / 10; border: 1px solid rgba(255,255,255,.65); border-radius: 9px; object-fit: cover; background: #24332e; box-shadow: 0 8px 18px rgba(0,0,0,.28); }
+.group-livekit-local-video:not([data-active="true"]) { display: none; }
+.group-livekit-audio { display: none; }
 .group-ui-toggle, .group-ui-check { display: inline-flex; align-items: center; gap: 6px; color: #40534c; font-size: .72rem; }
 .group-ui-toggle input, .group-ui-check input { accent-color: var(--group-accent); }
 .group-ui-state-picker { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--group-border); }
@@ -55,6 +61,8 @@
   .group-ui-state { align-self: flex-start; }
   .group-ui-actions { align-items: stretch; }
   .group-ui-actions .group-ui-button { flex: 1 1 42%; }
+  .group-livekit-stage { min-height: 148px; }
+  .group-livekit-remote-video { min-height: 148px; }
   .group-ui-actions .group-ui-toggle { flex: 1 1 100%; min-height: 40px; }
   .group-ui-state-picker { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; }
   .group-ui-state-picker button { flex: 0 0 auto; }
