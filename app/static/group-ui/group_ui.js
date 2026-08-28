@@ -16,6 +16,18 @@
     }
   }
   const text = (key, fallback) => String(copy[key] || fallback || "");
+  const applyLanguageProfile = (profile) => {
+    if (!profile) return;
+    root.querySelectorAll("[data-group-profile-field]").forEach((field) => {
+      const key = field.dataset.groupProfileField;
+      if (!(key in profile)) return;
+      if (field.type === "checkbox") field.checked = Boolean(profile[key]);
+      else field.value = profile[key] == null ? "" : String(profile[key]);
+    });
+  };
+  window.addEventListener("group:handoff-ready", (event) => {
+    applyLanguageProfile(event.detail?.language_profile || null);
+  });
   const setState = (card, state) => {
     card.dataset.state = state;
     card.querySelectorAll("[data-group-call-state], [data-group-radio-state]").forEach((button) => {

@@ -23,6 +23,27 @@
     const normalized = value.trim();
     return normalized && normalized.length <= maximum ? normalized : "";
   };
+  const validProfile = (profile) => {
+    if (profile == null) return true;
+    if (typeof profile !== "object") return false;
+    if (!["vi", "zh-TW", "en"].includes(profile.spoken_language)) return false;
+    if (!["vi", "zh-TW", "en"].includes(profile.preferred_output_language)) return false;
+    if (profile.secondary_language != null && !["vi", "zh-TW", "en"].includes(profile.secondary_language)) return false;
+    if (!["default", "calm", "bright"].includes(profile.tts_voice_profile)) return false;
+    return ["auto_detect_enabled", "auto_translate", "auto_read_translation", "show_original", "show_translation"]
+      .every((key) => typeof profile[key] === "boolean");
+  };
+  const profileForState = (profile) => profile ? {
+    spoken_language: profile.spoken_language,
+    preferred_output_language: profile.preferred_output_language,
+    secondary_language: profile.secondary_language || null,
+    auto_detect_enabled: profile.auto_detect_enabled,
+    auto_translate: profile.auto_translate,
+    auto_read_translation: profile.auto_read_translation,
+    show_original: profile.show_original,
+    show_translation: profile.show_translation,
+    tts_voice_profile: profile.tts_voice_profile,
+  } : null;
   const validPayload = (payload) => {
     if (!payload || typeof payload !== "object") return false;
     if (text(payload.contract_version) !== expectedVersion || text(payload.authority) !== "timeblock") return false;
@@ -39,6 +60,7 @@
     if (!text(payload.session_token, 4096) || !text(payload.audience, 128) || !text(payload.issuer, 128)) return false;
     if (!text(payload.websocket_url, 4096).match(/^wss?:\/\//)) return false;
     if (text(payload.websocket_url, 4096).includes(text(payload.session_token, 4096))) return false;
+    if (!validProfile(payload.language_profile)) return false;
     const expiry = Date.parse(text(payload.expires_at, 128));
     return Number.isFinite(expiry) && expiry > Date.now();
   };
@@ -65,6 +87,7 @@
         surface: payload.surface,
         session_id: payload.session_id,
         room_id: payload.room_id,
+        language_profile: profileForState(payload.language_profile),
       },
     }));
     return true;
@@ -85,6 +108,7 @@
       surface: state.handoff?.surface || "",
       session_id: state.handoff?.session_id || "",
       room_id: state.handoff?.room_id || "",
+      language_profile: profileForState(state.handoff?.language_profile),
     }),
     consume: () => {
       const handoff = state.handoff;

@@ -10,6 +10,27 @@ class GroupHandoffError(ValueError):
 
 
 @dataclass(frozen=True, slots=True)
+class GroupTranslationProfile:
+    spoken_language: str
+    preferred_output_language: str
+    secondary_language: str | None
+    auto_detect_enabled: bool
+    auto_translate: bool
+    auto_read_translation: bool
+    show_original: bool
+    show_translation: bool
+    tts_voice_profile: str
+
+
+@dataclass(frozen=True, slots=True)
+class GroupTranslationPlan:
+    source_language: str
+    target_languages: tuple[str, ...]
+    translation_count: int
+    strategy: str
+
+
+@dataclass(frozen=True, slots=True)
 class GroupHandoff:
     contract_version: str
     authority: str
@@ -30,6 +51,8 @@ class GroupHandoff:
     expires_at: str
     runtime_url: str
     websocket_url: str
+    language_profile: GroupTranslationProfile | None = None
+    translation_plan: GroupTranslationPlan | None = None
 
 
 _REQUIRED = (
@@ -77,6 +100,76 @@ def _expires_at(value: str) -> str:
     return value
 
 
+_LANGUAGES = {"vi", "zh-TW", "en"}
+_VOICE_PROFILES = {"default", "calm", "bright"}
+
+
+def _profile_bool(payload: Mapping[str, object], key: str) -> bool:
+    value = payload.get(key)
+    if not isinstance(value, bool):
+        raise GroupHandoffError(f"invalid_language_profile_{key}")
+    return value
+
+
+def _parse_language_profile(value: object) -> GroupTranslationProfile | None:
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise GroupHandoffError("invalid_language_profile")
+    spoken = value.get("spoken_language")
+    output = value.get("preferred_output_language")
+    secondary = value.get("secondary_language")
+    if not isinstance(spoken, str) or not isinstance(output, str):
+        raise GroupHandoffError("invalid_language_profile_language")
+    if spoken not in _LANGUAGES or output not in _LANGUAGES:
+        raise GroupHandoffError("invalid_language_profile_language")
+    if secondary is not None and (
+        not isinstance(secondary, str) or secondary not in _LANGUAGES
+    ):
+        raise GroupHandoffError("invalid_language_profile_language")
+    if secondary in {spoken, output}:
+        secondary = None
+    voice = value.get("tts_voice_profile")
+    if voice not in _VOICE_PROFILES:
+        raise GroupHandoffError("invalid_language_profile_voice")
+    return GroupTranslationProfile(
+        spoken_language=spoken,
+        preferred_output_language=output,
+        secondary_language=secondary,
+        auto_detect_enabled=_profile_bool(value, "auto_detect_enabled"),
+        auto_translate=_profile_bool(value, "auto_translate"),
+        auto_read_translation=_profile_bool(value, "auto_read_translation"),
+        show_original=_profile_bool(value, "show_original"),
+        show_translation=_profile_bool(value, "show_translation"),
+        tts_voice_profile=voice,
+    )
+
+
+def _parse_translation_plan(value: object) -> GroupTranslationPlan | None:
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise GroupHandoffError("invalid_translation_plan")
+    source = value.get("source_language")
+    targets = value.get("target_languages")
+    count = value.get("translation_count")
+    if not isinstance(source, str) or source not in _LANGUAGES or not isinstance(targets, (list, tuple)):
+        raise GroupHandoffError("invalid_translation_plan")
+    normalized = tuple(str(item) for item in targets)
+    if any(item not in _LANGUAGES or item == source for item in normalized):
+        raise GroupHandoffError("invalid_translation_plan")
+    if len(set(normalized)) != len(normalized) or not isinstance(count, int) or count != len(normalized):
+        raise GroupHandoffError("invalid_translation_plan")
+    if value.get("strategy") != "once_per_distinct_target":
+        raise GroupHandoffError("invalid_translation_plan")
+    return GroupTranslationPlan(
+        source_language=source,
+        target_languages=normalized,
+        translation_count=count,
+        strategy="once_per_distinct_target",
+    )
+
+
 def parse_group_handoff(payload: Mapping[str, object]) -> GroupHandoff:
     """Validate, but never persist, a Timeblock Group Call/Video handoff."""
 
@@ -105,4 +198,6 @@ def parse_group_handoff(payload: Mapping[str, object]) -> GroupHandoff:
     if values["session_token"] in values["websocket_url"]:
         raise GroupHandoffError("secret_in_url")
     values["expires_at"] = _expires_at(values["expires_at"])
+    values["language_profile"] = _parse_language_profile(payload.get("language_profile"))
+    values["translation_plan"] = _parse_translation_plan(payload.get("translation_plan"))
     return GroupHandoff(**values)
