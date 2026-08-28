@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_realtime_translation_model: str = 'gpt-realtime-translate'
     group_translation_max_targets: int = Field(default=2, ge=1, le=3)
+    group_radio_floor_lease_seconds: int = Field(default=15, ge=5, le=120)
+    group_radio_max_burst_seconds: int = Field(default=30, ge=5, le=300)
+    group_radio_max_rooms: int = Field(default=20, ge=1, le=1000)
 
     allowed_websocket_origins: str = 'http://127.0.0.1:8000,http://localhost:8000'
     allowed_timeblock_handoff_origins: str = 'http://127.0.0.1:5000,http://localhost:5000'

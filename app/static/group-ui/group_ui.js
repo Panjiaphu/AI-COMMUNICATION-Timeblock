@@ -125,6 +125,9 @@
     const start = radioCard.querySelector('[data-group-radio-action="start"]');
     const stop = radioCard.querySelector('[data-group-radio-action="stop"]');
     const leave = radioCard.querySelector('[data-group-radio-action="leave"]');
+    const radio = window.GroupRadioClient?.create({
+      onState: (state) => setState(radioCard, state),
+    });
     const readyNote = text("group_radio_ready", "Radio is in a design state; no microphone permission was requested.");
     const degradedNote = text("group_radio_degraded", "The Radio provider is unavailable; no microphone or floor lease was created.");
     const setRadioActionVisibility = (talking) => {
@@ -140,19 +143,32 @@
       });
     });
     start?.addEventListener("click", () => {
-      setState(radioCard, "TALKING");
-      setRadioActionVisibility(true);
-      if (note) note.textContent = degradedNote;
+      const handoff = activeHandoff || window.GroupCommunicationHandoff?.getState?.() || null;
+      radio?.setContext(handoff);
+      if (!radio) return;
+      void Promise.resolve(radio.start({ conversationId: handoff?.conversation_id })).then(() => {
+        setState(radioCard, "TALKING");
+        setRadioActionVisibility(true);
+        if (note) note.textContent = readyNote;
+      }).catch((error) => {
+        setState(radioCard, "DEVICE_LOST");
+        setRadioActionVisibility(false);
+        if (note) note.textContent = `${degradedNote} ${error.message || ""}`.trim();
+      });
     });
     stop?.addEventListener("click", () => {
-      setState(radioCard, "FINALIZING_BURST");
-      setRadioActionVisibility(false);
-      if (note) note.textContent = degradedNote;
+      void Promise.resolve(radio?.stop()).finally(() => {
+        setState(radioCard, "FINALIZING_BURST");
+        setRadioActionVisibility(false);
+        if (note) note.textContent = readyNote;
+      });
     });
     leave?.addEventListener("click", () => {
-      setState(radioCard, "ENDED");
-      setRadioActionVisibility(false);
-      if (note) note.textContent = degradedNote;
+      void Promise.resolve(radio?.leave()).finally(() => {
+        setState(radioCard, "ENDED");
+        setRadioActionVisibility(false);
+        if (note) note.textContent = degradedNote;
+      });
     });
   }
 

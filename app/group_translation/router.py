@@ -47,11 +47,18 @@ def _browser_origin(request: Request) -> None:
 
 def _room_id(value: object) -> str:
     raw = str(value or "").strip()
-    if raw.startswith("group-call:"):
-        raw = raw[len("group-call:") :]
+    for prefix in ("group-call:", "group-radio:"):
+        if raw.startswith(prefix):
+            raw = raw[len(prefix) :]
+            break
     if not _ROOM_RE.fullmatch(raw):
         raise HTTPException(status_code=400, detail="invalid_room_id")
     return raw
+
+
+def _room_namespace(value: object) -> str:
+    raw = str(value or "").strip()
+    return "group-radio" if raw.startswith("group-radio:") else "group-call"
 
 
 async def _bootstrap(request: Request, session: BffSession, room_id: str, body: dict) -> dict:
@@ -103,6 +110,7 @@ async def create_group_translation_session(request: Request) -> JSONResponse:
     body = await request.json()
     if not isinstance(body, dict):
         raise HTTPException(status_code=400, detail="invalid_request")
+    room_namespace = _room_namespace(body.get("room_id"))
     room_id = _room_id(body.get("room_id"))
     translation = await _bootstrap(request, session, room_id, body)
     target = str(body.get("target_language") or "").strip()
@@ -136,7 +144,7 @@ async def create_group_translation_session(request: Request) -> JSONResponse:
             "translation": {
                 **translation,
                 "target_language": target,
-                "room_id": f"group-call:{room_id}",
+                "room_id": f"{room_namespace}:{room_id}",
             },
         },
         headers={"Cache-Control": "no-store, private, max-age=0", "Pragma": "no-cache"},
