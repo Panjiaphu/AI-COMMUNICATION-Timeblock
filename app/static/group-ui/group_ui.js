@@ -63,8 +63,9 @@
     join?.addEventListener("click", async () => {
       await media?.join(consumeHandoff());
     });
-    reject?.addEventListener("click", async () => {
-      await media?.reject(consumeHandoff());
+    reject?.addEventListener("click", () => {
+      setState(callCard, "ENDED");
+      if (degraded) degraded.textContent = text("group_rejected", text("group_ui_only", "UI-only state; no room was ended."));
     });
     leave?.addEventListener("click", async () => {
       await media?.leave();

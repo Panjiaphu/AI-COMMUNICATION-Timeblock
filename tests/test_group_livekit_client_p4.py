@@ -23,7 +23,6 @@ def test_group_livekit_client_is_pinned_scoped_and_memory_only():
     assert "token_ttl_seconds: 300" in script
     assert "max_participants: 8" in script
     assert '"media/session"' in script
-    assert '"reject"' in script
     assert "localStorage" not in script
     assert "sessionStorage" not in script
     assert "session_token" not in script

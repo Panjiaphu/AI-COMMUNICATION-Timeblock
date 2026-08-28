@@ -164,7 +164,6 @@ CANONICAL_PROXY_ROUTES: tuple[ProxyRouteSpec, ...] = (
     _spec("POST", "/api/messaging/call-rooms/{room_id}/participants", "calls.start"),
     _spec("POST", "/api/messaging/call-rooms/{room_id}/invite", "calls.start"),
     _spec("POST", "/api/messaging/call-rooms/{room_id}/join", "calls.answer"),
-    _spec("POST", "/api/messaging/call-rooms/{room_id}/reject", "calls.answer"),
     _spec("POST", "/api/messaging/call-rooms/{room_id}/leave", "calls.end"),
     _spec("POST", "/api/messaging/call-rooms/{room_id}/end", "calls.end"),
 

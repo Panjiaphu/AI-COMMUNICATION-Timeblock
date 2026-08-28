@@ -219,21 +219,6 @@
       }
     }
 
-    async reject(handoff) {
-      let context;
-      try { context = this.handoffContext(handoff); } catch (_error) {
-        this.state("JOIN_FAILED", "group_call_failed");
-        return;
-      }
-      await this.cleanup();
-      try {
-        await this.request(context.roomId, "reject");
-        this.state("ENDED", "group_call_rejected");
-      } catch (_error) {
-        this.state("JOIN_FAILED", "group_call_failed");
-      }
-    }
-
     async reconcile(roomId, action) {
       try { await this.request(roomId, action); } catch (_error) { /* server reconciliation is best effort */ }
     }

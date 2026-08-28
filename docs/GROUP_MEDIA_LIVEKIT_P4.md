@@ -28,7 +28,7 @@ the selected `audio` or `video` mode, publishes local tracks, and renders
 remote media. The client SDK is pinned to LiveKit `2.21.0` with SRI in
 `communication.html`.
 
-Leaving, rejection, disconnect, failed connection, and page unload all run
+Leaving, disconnect, failed connection, and page unload all run
 the same terminal cleanup: stop every local `MediaStreamTrack`, clear media
 elements, disconnect the room, and best-effort notify Timeblock of the leave.
 No media token is logged, persisted, or exposed to the surrounding Group UI.
