@@ -2,7 +2,9 @@
   "use strict";
 
   const root = document.querySelector("[data-group-ui]");
-  if (!root) return;
+  const setRootHandoffState = (status) => {
+    if (root) root.dataset.handoffState = status;
+  };
 
   let runtimeConfig = {};
   try {
@@ -14,6 +16,7 @@
   const allowedOrigins = new Set(runtimeConfig.allowed_handoff_origins || []);
   const expectedVersion = String(runtimeConfig.group_handoff_contract_version || "2");
   const state = { status: "WAITING", handoff: null };
+  setRootHandoffState(state.status);
 
   const text = (value, maximum = 4096) => {
     if (typeof value !== "string") return "";
@@ -49,12 +52,12 @@
   const apply = (payload) => {
     if (!validPayload(payload)) {
       state.status = "INVALID";
-      root.dataset.handoffState = state.status;
+      setRootHandoffState(state.status);
       return false;
     }
     state.handoff = { ...payload };
     state.status = "READY";
-    root.dataset.handoffState = state.status;
+    setRootHandoffState(state.status);
     window.dispatchEvent(new CustomEvent("group:handoff-ready", {
       detail: {
         handoff_id: payload.handoff_id,
@@ -87,7 +90,7 @@
       const handoff = state.handoff;
       state.handoff = null;
       state.status = handoff ? "CONSUMED" : state.status;
-      root.dataset.handoffState = state.status;
+      setRootHandoffState(state.status);
       return handoff;
     },
   });
