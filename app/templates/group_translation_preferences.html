@@ -1,0 +1,24 @@
+<section class="group-ui-card group-translation-preferences" aria-labelledby="group-preferences-title">
+  <div class="group-ui-card-heading">
+    <div>
+      <p class="group-ui-kicker">{{ copy.group_translation }}</p>
+      <h2 id="group-preferences-title">{{ copy.group_preferences_title }}</h2>
+      <p>{{ copy.group_preferences_subtitle }}</p>
+    </div>
+    <span class="group-ui-state">PREFERENCES_EDIT</span>
+  </div>
+  <div class="group-ui-preference-grid" data-group-profile-source="timeblock">
+    <label>{{ copy.group_spoken_language }}<select data-group-profile-field="spoken_language"><option value="vi">{{ copy.group_language_vi }}</option><option value="zh-TW">{{ copy.group_language_zh_tw }}</option><option value="en">{{ copy.group_language_en }}</option></select></label>
+    <label>{{ copy.group_output_language }}<select data-group-profile-field="preferred_output_language"><option value="zh-TW">{{ copy.group_language_zh_tw }}</option><option value="vi">{{ copy.group_language_vi }}</option><option value="en">{{ copy.group_language_en }}</option></select></label>
+    <label>{{ copy.group_secondary_language }}<select data-group-profile-field="secondary_language"><option value="">{{ copy.group_language_none }}</option><option value="vi">{{ copy.group_language_vi }}</option><option value="zh-TW">{{ copy.group_language_zh_tw }}</option><option value="en">{{ copy.group_language_en }}</option></select></label>
+    <label>{{ copy.group_tts_voice_profile }}<select data-group-profile-field="tts_voice_profile"><option value="default">{{ copy.group_voice_default }}</option><option value="calm">{{ copy.group_voice_calm }}</option><option value="bright">{{ copy.group_voice_bright }}</option></select></label>
+  </div>
+  <label class="group-ui-check"><input type="checkbox" data-group-profile-field="auto_detect_enabled"> <span>{{ copy.group_auto_detect }}</span></label>
+  <label class="group-ui-check"><input type="checkbox" data-group-profile-field="auto_translate" checked> <span>{{ copy.group_auto_translate }}</span></label>
+  <label class="group-ui-check"><input type="checkbox" data-group-profile-field="auto_read_translation"> <span>{{ copy.group_auto_read_translation }}</span></label>
+  <label class="group-ui-check"><input type="checkbox" data-group-translation-consent> <span>{{ copy.group_translation_consent }}</span></label>
+  <label class="group-ui-check"><input type="checkbox" data-group-profile-field="show_original" checked> <span>{{ copy.group_show_original }}</span></label>
+  <label class="group-ui-check"><input type="checkbox" data-group-profile-field="show_translation" checked> <span>{{ copy.group_show_translation }}</span></label>
+  <button type="button" class="group-ui-button group-ui-button-primary" data-group-preferences-save disabled>{{ copy.group_preferences_saved }}</button>
+  <p class="group-ui-inline-status" data-group-preferences-status></p>
+</section>

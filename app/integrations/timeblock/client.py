@@ -9,6 +9,13 @@ import httpx
 
 from app.communication.schemas import AuthorizedSession
 from app.core.config import Settings
+from app.handoff.group import GroupHandoff, parse_group_handoff
+from app.handoff.group_media import (
+    GroupMediaProviderContract,
+    GroupMediaSession,
+    parse_group_media_provider_contract,
+    parse_group_media_session,
+)
 
 
 class TimeblockIntegrationError(RuntimeError):
@@ -255,6 +262,39 @@ class TimeblockClient:
         ):
             raise TimeblockIntegrationError('timeblock_contract_mismatch')
         return data
+
+    @staticmethod
+    def parse_group_handoff(payload: Mapping[str, object]) -> GroupHandoff:
+        """Validate a browser-delivered Group Contract V2 envelope in memory."""
+
+        try:
+            return parse_group_handoff(payload)
+        except ValueError as exc:
+            raise TimeblockIntegrationError('timeblock_group_handoff_invalid') from exc
+
+    @staticmethod
+    def parse_group_media_provider_contract(
+        payload: Mapping[str, object],
+    ) -> GroupMediaProviderContract:
+        """Validate provider readiness before any future media setup."""
+
+        try:
+            return parse_group_media_provider_contract(payload)
+        except ValueError as exc:
+            raise TimeblockIntegrationError(
+                'timeblock_group_media_provider_contract_invalid'
+            ) from exc
+
+    @staticmethod
+    def parse_group_media_session(payload: Mapping[str, object]) -> GroupMediaSession:
+        """Validate an ephemeral provider grant before passing it to media code."""
+
+        try:
+            return parse_group_media_session(payload)
+        except ValueError as exc:
+            raise TimeblockIntegrationError(
+                'timeblock_group_media_session_invalid'
+            ) from exc
 
     async def exchange_guilua_code(self, code: str, redirect_uri: str) -> dict:
         return await self._post(

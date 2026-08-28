@@ -55,6 +55,12 @@ services:
         value: "true"
       - key: MESSAGING_ADVANCED_ATTACHMENTS_ENABLED
         value: "true"
+      - key: GROUP_TRANSLATION_ENABLED
+        value: "false"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_REALTIME_TRANSLATION_MODEL
+        value: gpt-realtime-translate
       - key: ALLOWED_WEBSOCKET_ORIGINS
         value: https://guilua.onrender.com
       - key: ALLOWED_TIMEBLOCK_HANDOFF_ORIGINS

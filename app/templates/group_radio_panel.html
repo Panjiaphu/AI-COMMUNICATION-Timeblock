@@ -1,0 +1,24 @@
+<section class="group-ui-card group-radio-panel" data-group-surface="radio" data-state="READY" aria-labelledby="group-radio-title">
+  <div class="group-ui-card-heading">
+    <div>
+      <p class="group-ui-kicker">{{ copy.group_radio }}</p>
+      <h2 id="group-radio-title">{{ copy.group_radio_title }}</h2>
+      <p>{{ copy.group_radio_subtitle }}</p>
+    </div>
+    <span class="group-ui-state" data-group-radio-state>READY</span>
+  </div>
+  <div class="group-radio-channel"><strong>FUMAP / GROUP RADIO</strong><span>{{ copy.group_floor_available }}</span></div>
+  <div class="group-radio-participants"><span class="group-ui-avatar" aria-hidden="true">3</span><div><strong>{{ copy.group_participants }}</strong><small>{{ copy.group_one_floor }}</small></div></div>
+  <div class="group-ui-actions" role="group" aria-label="{{ copy.group_radio }}">
+    <button type="button" class="group-ui-button group-ui-button-primary" data-group-radio-action="start">{{ copy.group_start_talking }}</button>
+    <button type="button" class="group-ui-button" data-group-radio-action="stop" hidden>{{ copy.group_stop_commit }}</button>
+    <button type="button" class="group-ui-button group-ui-button-danger" data-group-radio-action="leave">{{ copy.group_leave }}</button>
+  </div>
+  <p class="group-ui-inline-status" data-group-radio-note>{{ copy.group_radio_ready }}</p>
+  <div class="group-ui-state-picker" aria-label="{{ copy.group_state_label }}">
+    <button type="button" data-group-radio-state="READY" class="is-selected">READY</button>
+    <button type="button" data-group-radio-state="FLOOR_BUSY">FLOOR_BUSY</button>
+    <button type="button" data-group-radio-state="TALKING">TALKING</button>
+    <button type="button" data-group-radio-state="DEVICE_LOST">DEVICE_LOST</button>
+  </div>
+</section>

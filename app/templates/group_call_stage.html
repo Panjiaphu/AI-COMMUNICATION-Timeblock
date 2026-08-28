@@ -1,0 +1,25 @@
+<section class="group-ui-card group-call-stage" data-group-surface="call" data-state="RINGING" aria-labelledby="group-call-title">
+  <div class="group-ui-card-heading">
+    <div>
+      <p class="group-ui-kicker">{{ copy.group_call }}</p>
+      <h2 id="group-call-title">{{ copy.group_call_title }}</h2>
+      <p>{{ copy.group_call_subtitle }}</p>
+    </div>
+    <span class="group-ui-state" data-group-state>RINGING</span>
+  </div>
+  <p class="group-ui-degraded" data-group-degraded>{{ copy.group_ui_only }}</p>
+  <div class="group-ui-identity">
+    <span class="group-ui-avatar" aria-hidden="true">G</span>
+    <div><strong>{{ copy.group_inviter }}</strong><small>{{ copy.group_participant_count }}</small></div>
+  </div>
+  <div class="group-ui-actions" role="group" aria-label="{{ copy.group_call }}">
+    <button type="button" class="group-ui-button group-ui-button-primary" data-group-call-action="join">{{ copy.group_join }}</button>
+    <button type="button" class="group-ui-button group-ui-button-danger" data-group-call-action="reject">{{ copy.group_reject }}</button>
+    <button type="button" class="group-ui-button group-ui-button-danger" data-group-call-action="leave" hidden>{{ copy.group_call_leave }}</button>
+  </div>
+  <div class="group-livekit-stage" data-group-livekit-stage hidden>
+    <video class="group-livekit-remote-video" data-group-remote-video autoplay playsinline aria-label="{{ copy.group_call_remote_media }}"></video>
+    <video class="group-livekit-local-video" data-group-local-video autoplay playsinline muted aria-label="{{ copy.group_call_local_preview }}"></video>
+    <div class="group-livekit-audio" data-group-remote-audio aria-hidden="true"></div>
+  </div>
+</section>

@@ -1,0 +1,17 @@
+<section class="group-ui-card group-translation-panel" data-group-surface="translation" aria-labelledby="group-translation-title">
+  <div class="group-ui-card-heading">
+    <div>
+      <p class="group-ui-kicker">{{ copy.group_translation }}</p>
+      <h2 id="group-translation-title">{{ copy.group_translation_title }}</h2>
+      <p>{{ copy.group_translation_subtitle }}</p>
+    </div>
+    <span class="group-ui-state" data-group-translation-state>UNAVAILABLE</span>
+  </div>
+  <div class="group-translation-row"><span>{{ copy.group_original }}</span><strong data-group-original>{{ copy.group_no_content }}</strong></div>
+  <div class="group-translation-row is-final"><span>{{ copy.group_final }}</span><strong data-group-final>{{ copy.group_translation_unavailable }}</strong></div>
+  <div data-group-translation-audio-host hidden aria-hidden="true"></div>
+  <div class="group-ui-actions">
+    <button type="button" class="group-ui-button" data-group-translation-action="listen">{{ copy.group_listen }}</button>
+    <label class="group-ui-toggle"><input type="checkbox" data-group-auto-read> <span>{{ copy.group_auto_read }}</span></label>
+  </div>
+</section>
