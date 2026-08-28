@@ -1,0 +1,24 @@
+<section class="group-ui-card group-call-stage" data-group-surface="call" data-state="RINGING" aria-labelledby="group-call-title">
+  <div class="group-ui-card-heading">
+    <div>
+      <p class="group-ui-kicker">{{ copy.group_call }}</p>
+      <h2 id="group-call-title">{{ copy.group_call_title }}</h2>
+      <p>{{ copy.group_call_subtitle }}</p>
+    </div>
+    <span class="group-ui-state" data-group-state>RINGING</span>
+  </div>
+  <p class="group-ui-degraded" data-group-degraded>{{ copy.group_ui_only }}</p>
+  <div class="group-ui-identity">
+    <span class="group-ui-avatar" aria-hidden="true">G</span>
+    <div><strong>{{ copy.group_inviter }}</strong><small>{{ copy.group_participant_count }}</small></div>
+  </div>
+  <div class="group-ui-actions" role="group" aria-label="{{ copy.group_call }}">
+    <button type="button" class="group-ui-button group-ui-button-primary" data-group-call-action="join">{{ copy.group_join }}</button>
+    <button type="button" class="group-ui-button group-ui-button-danger" data-group-call-action="reject">{{ copy.group_reject }}</button>
+  </div>
+  <div class="group-ui-state-picker" aria-label="{{ copy.group_state_label }}">
+    <button type="button" data-group-call-state="RINGING" class="is-selected">RINGING</button>
+    <button type="button" data-group-call-state="JOIN_FAILED">JOIN_FAILED</button>
+    <button type="button" data-group-call-state="ENDED">ENDED</button>
+  </div>
+</section>

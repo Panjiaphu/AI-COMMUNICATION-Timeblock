@@ -9,6 +9,7 @@
   <link rel="manifest" href="/static/manifest.webmanifest">
   <title>{{ copy.page_title }}</title>
   <link rel="stylesheet" href="/static/communication.css?v=8">
+  <link rel="stylesheet" href="/static/group-ui.css?v=1">
 </head>
 <body class="call-body" data-runtime-state="waiting_for_timeblock" data-pwa-state="PWA_BOOTING">
   <header class="runtime-topbar" aria-label="{{ copy.runtime }}">
@@ -127,6 +128,13 @@
       </div>
     </section>
 
+    <section class="group-ui-grid" data-group-ui aria-label="{{ copy.group_title }}">
+      {% include "group_call_stage.html" %}
+      {% include "group_radio_panel.html" %}
+      {% include "group_translation_panel.html" %}
+      {% include "group_translation_preferences.html" %}
+    </section>
+
     <nav class="call-controls" aria-label="{{ copy.call_title }}">
       <button type="button" id="start-call" class="control primary" disabled>{{ copy.start }}</button>
       <button type="button" id="microphone-toggle" class="control" disabled>{{ copy.microphone }}</button>
@@ -138,5 +146,6 @@
 
   <script id="guilua-runtime-config" type="application/json">{{ runtime_config | tojson }}</script>
   <script src="/static/communication.js?v=7" defer></script>
+  <script src="/static/group-ui/group_ui.js?v=1" defer></script>
 </body>
 </html>

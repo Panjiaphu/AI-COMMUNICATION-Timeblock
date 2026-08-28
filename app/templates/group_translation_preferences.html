@@ -1,0 +1,18 @@
+<section class="group-ui-card group-translation-preferences" aria-labelledby="group-preferences-title">
+  <div class="group-ui-card-heading">
+    <div>
+      <p class="group-ui-kicker">{{ copy.group_translation }}</p>
+      <h2 id="group-preferences-title">{{ copy.group_preferences_title }}</h2>
+      <p>{{ copy.group_preferences_subtitle }}</p>
+    </div>
+    <span class="group-ui-state">PREFERENCES_EDIT</span>
+  </div>
+  <div class="group-ui-preference-grid">
+    <label>{{ copy.group_spoken_language }}<select data-group-language="spoken"><option>Tiếng Việt</option><option>繁體中文</option><option>English</option></select></label>
+    <label>{{ copy.group_output_language }}<select data-group-language="output"><option>繁體中文</option><option>Tiếng Việt</option><option>English</option></select></label>
+  </div>
+  <label class="group-ui-check"><input type="checkbox" data-group-auto-translate checked> <span>{{ copy.group_auto_translate }}</span></label>
+  <label class="group-ui-check"><input type="checkbox" data-group-auto-read> <span>{{ copy.group_auto_read }}</span></label>
+  <button type="button" class="group-ui-button group-ui-button-primary" data-group-preferences-save>{{ copy.group_save_preferences }}</button>
+  <p class="group-ui-inline-status" data-group-preferences-status></p>
+</section>
