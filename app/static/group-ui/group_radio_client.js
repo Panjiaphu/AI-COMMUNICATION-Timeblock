@@ -8,8 +8,9 @@
   };
 
   class GroupRadioClient {
-    constructor({ onState } = {}) {
+    constructor({ onState, onMediaSession } = {}) {
       this.onState = onState;
+      this.onMediaSession = onMediaSession;
       this.sessionId = "";
       this.participantId = "";
       this.leaseId = "";
@@ -41,6 +42,15 @@
         this.sessionId = safe(payload.radio_session?.id, 128);
       }
       if (!this.sessionId || !this.participantId) throw new Error("radio_handoff_required");
+      const joined = await fetch(`/api/group-radio/sessions/${encodeURIComponent(this.sessionId)}/join`, { method: "POST", credentials: "same-origin" });
+      if (!joined.ok) throw new Error("radio_join_failed");
+      const mediaResponse = await fetch(`/api/group-radio/sessions/${encodeURIComponent(this.sessionId)}/media`, {
+        method: "POST", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ media: "audio" }),
+      });
+      const mediaPayload = await mediaResponse.json().catch(() => ({}));
+      if (!mediaResponse.ok) throw new Error(mediaPayload.detail || "radio_media_session_failed");
+      this.onMediaSession?.(mediaPayload.session || null);
       const response = await fetch("/api/group-radio/floor/acquire", {
         method: "POST", credentials: "same-origin",
         headers: { "Content-Type": "application/json" },

@@ -127,6 +127,28 @@ async def read_session(request: Request, session_id: str) -> JSONResponse:
     return JSONResponse(result, headers={"Cache-Control": "no-store, private, max-age=0"})
 
 
+@router.post("/api/group-radio/sessions/{session_id}/media")
+async def media_session(request: Request, session_id: str) -> JSONResponse:
+    """Proxy the membership-bound LiveKit audio grant without exposing BFF credentials."""
+
+    _origin(request)
+    session = _session(request)
+    normalized = _id(session_id, "session_id")
+    body = await request.json()
+    media = str(body.get("media") or "audio").strip().lower() if isinstance(body, dict) else "audio"
+    if media != "audio":
+        raise HTTPException(status_code=409, detail="radio_audio_only")
+    try:
+        result = await request.app.state.timeblock_client.client_post(
+            f"/api/messaging/radio-sessions/{normalized}/media/session",
+            session.timeblock_token,
+            {"media": "audio"},
+        )
+    except TimeblockIntegrationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return JSONResponse(result, headers={"Cache-Control": "no-store, private, max-age=0", "Pragma": "no-cache"})
+
+
 @router.post("/api/group-radio/floor/acquire")
 async def acquire_floor(request: Request) -> JSONResponse:
     _origin(request)
