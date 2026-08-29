@@ -1,17 +1,25 @@
 <section class="group-ui-card group-translation-panel" data-group-surface="translation" aria-labelledby="group-translation-title">
   <div class="group-ui-card-heading">
-    <div>
+    <div class="group-translation-heading-copy">
+      <span class="group-translation-mark" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg></span>
+      <div>
       <p class="group-ui-kicker">{{ copy.group_translation }}</p>
       <h2 id="group-translation-title">{{ copy.group_translation_title }}</h2>
       <p>{{ copy.group_translation_subtitle }}</p>
+      </div>
     </div>
     <span class="group-ui-state" data-group-translation-state>UNAVAILABLE</span>
   </div>
-  <div class="group-translation-row"><span>{{ copy.group_original }}</span><strong data-group-original>{{ copy.group_no_content }}</strong></div>
-  <div class="group-translation-row is-final"><span>{{ copy.group_final }}</span><strong data-group-final>{{ copy.group_translation_unavailable }}</strong></div>
+  <div class="group-translation-flow" aria-live="polite">
+    <div class="group-translation-row"><span>{{ copy.group_original }}</span><strong data-group-original>{{ copy.group_no_content }}</strong></div>
+    <span class="group-translation-arrow" aria-hidden="true">↓</span>
+    <div class="group-translation-row is-final"><span>{{ copy.group_final }}</span><strong data-group-final>{{ copy.group_translation_unavailable }}</strong></div>
+  </div>
   <div data-group-translation-audio-host hidden aria-hidden="true"></div>
-  <div class="group-ui-actions">
-    <button type="button" class="group-ui-button" data-group-translation-action="listen">{{ copy.group_listen }}</button>
+  <div class="group-ui-actions group-translation-actions">
+    <button type="button" class="group-ui-button group-ui-button-primary" data-group-translation-action="listen">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 5 6 9H2v6h4l5 4V5ZM15.5 8.5a5 5 0 0 1 0 7M18 6a8 8 0 0 1 0 12"/></svg><span>{{ copy.group_listen }}</span>
+    </button>
     <label class="group-ui-toggle"><input type="checkbox" data-group-auto-read> <span>{{ copy.group_auto_read }}</span></label>
   </div>
 </section>

@@ -9,7 +9,7 @@
   <link rel="manifest" href="/static/manifest.webmanifest">
   <title>{{ copy.page_title }}</title>
   <link rel="stylesheet" href="/static/communication.css?v=8">
-  <link rel="stylesheet" href="/static/group-ui.css?v=2">
+  <link rel="stylesheet" href="/static/group-ui.css?v=3">
 </head>
 <body class="call-body" data-runtime-state="waiting_for_timeblock" data-pwa-state="PWA_BOOTING">
   <header class="runtime-topbar" aria-label="{{ copy.runtime }}">
@@ -128,7 +128,15 @@
       </div>
     </section>
 
-    <section class="group-ui-grid" data-group-ui aria-label="{{ copy.group_title }}">
+    <header class="group-runtime-heading">
+      <div>
+        <p class="panel-kicker">AI-COMMUNICATION</p>
+        <h2>{{ copy.group_title }}</h2>
+        <p>{{ copy.privacy }}</p>
+      </div>
+      <span class="security-pill"><span class="security-icon" aria-hidden="true">✓</span>{{ copy.group_ui_only }}</span>
+    </header>
+    <section class="group-ui-grid" data-group-ui data-group-design-version="2" aria-label="{{ copy.group_title }}">
       {% include "group_call_stage.html" %}
       {% include "group_radio_panel.html" %}
       {% include "group_translation_panel.html" %}
@@ -154,6 +162,6 @@
   <script src="/static/group-ui/group_translation_tts_queue.js?v=1" defer></script>
   <script src="/static/group-ui/group_radio_translation.js?v=1" defer></script>
   <script src="/static/group-ui/group_translation_client.js?v=1" defer></script>
-  <script src="/static/group-ui/group_ui.js?v=2" defer></script>
+  <script src="/static/group-ui/group_ui.js?v=3" defer></script>
 </body>
 </html>
