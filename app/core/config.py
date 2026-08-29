@@ -100,6 +100,27 @@ class Settings(BaseSettings):
     def development_query_handoff_enabled(self) -> bool:
         return self.development_session_fallback_enabled
 
+    @model_validator(mode='before')
+    @classmethod
+    def prefer_render_commit_identity(cls, values):
+        """Use Render's immutable source identity when it is available.
+
+        ``DEPLOYMENT_VERSION`` is retained for local and non-Render deployments,
+        but a stale manually pinned value must never override the commit that
+        Render actually deployed.  Render exposes that identity through
+        ``RENDER_GIT_COMMIT`` at runtime.
+        """
+        render_sha = os.getenv('RENDER_GIT_COMMIT', '').strip()
+        if not render_sha or not isinstance(values, dict):
+            return values
+        if len(render_sha) < 40 or len(render_sha) > 64 or any(
+            character not in '0123456789abcdefABCDEF' for character in render_sha
+        ):
+            return values
+        normalized = dict(values)
+        normalized['deployment_version'] = render_sha
+        return normalized
+
     @model_validator(mode='after')
     def validate_production_settings(self):
         if not self.guilua_session_cookie.strip() or not self.guilua_pending_authorization_cookie.strip():

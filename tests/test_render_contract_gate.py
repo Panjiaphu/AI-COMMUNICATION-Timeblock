@@ -75,6 +75,23 @@ def test_settings_use_render_git_commit_as_deployment_version(monkeypatch):
     assert settings.deployment_version == render_sha
 
 
+def test_settings_prefer_render_git_commit_over_stale_manual_version(monkeypatch):
+    render_sha = "d" * 40
+    monkeypatch.setenv("DEPLOYMENT_VERSION", "c" * 40)
+    monkeypatch.setenv("RENDER_GIT_COMMIT", render_sha)
+
+    settings = Settings(
+        _env_file=None,
+        app_env="test",
+        debug=True,
+        secret_key="render-identity-test-key",
+        public_base_url="http://testserver",
+        timeblock_app_url="http://timeblock.test",
+    )
+
+    assert settings.deployment_version == render_sha
+
+
 def test_build_gate_verifies_every_source_locked_destination():
     assert verify_source_lock() == 0
 
