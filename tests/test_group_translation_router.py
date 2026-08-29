@@ -99,6 +99,33 @@ def test_group_translation_broker_issues_ephemeral_secret_without_forwarding_api
     assert "server-openai-key" not in response.text
 
 
+def test_group_radio_translation_preserves_radio_room_namespace(monkeypatch):
+    app = create_app(_settings())
+    app.state.timeblock_client = StubTimeblockClient()
+
+    async def fake_secret(self, **kwargs):
+        return TranslationClientSecret(value="radio-ephemeral", expires_at=123)
+
+    monkeypatch.setattr(
+        "app.group_translation.provider.OpenAIGroupTranslationProvider.create_client_secret",
+        fake_secret,
+    )
+    with _client(app) as client:
+        response = client.post(
+            "/api/group-translation/session",
+            json={
+                "room_id": "group-radio:radio-room-1",
+                "generation": "gen-1",
+                "source_language": "vi",
+                "target_language": "zh-TW",
+                "consent_version": "consent-1",
+                "speaker_id": "member:42",
+            },
+        )
+    assert response.status_code == 200
+    assert response.json()["translation"]["room_id"] == "group-radio:radio-room-1"
+
+
 def test_group_translation_broker_fails_closed_when_disabled():
     app = create_app(_settings(group_translation_enabled=False))
     app.state.timeblock_client = StubTimeblockClient()
@@ -152,3 +179,20 @@ def test_group_translation_tts_queue_is_loaded_and_final_only():
     assert "AUTOPLAY_BLOCKED" in queue
     assert "quota_reservation_id" in client
     assert "this.audio.autoplay = false" in client
+
+
+def test_group_radio_runtime_scripts_are_loaded_and_teardown_safe():
+    from pathlib import Path
+
+    root = Path(__file__).parents[1]
+    template = (root / "app/templates/communication.html").read_text(encoding="utf-8")
+    radio = (root / "app/static/group-ui/group_radio_client.js").read_text(encoding="utf-8")
+    lifecycle = (root / "app/static/group-ui/group_radio_lifecycle.js").read_text(encoding="utf-8")
+    translation = (root / "app/static/group-ui/group_radio_translation.js").read_text(encoding="utf-8")
+    assert "group_radio_client.js" in template
+    assert "group_radio_lifecycle.js" in template
+    assert "group_radio_translation.js" in template
+    assert "floor/heartbeat" in radio
+    assert "resource_zero" in lifecycle
+    assert "partial_translation" not in translation
+    assert "translationStatus !== \"final\"" in translation

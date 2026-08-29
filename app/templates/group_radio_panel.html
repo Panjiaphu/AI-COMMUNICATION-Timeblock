@@ -1,24 +1,60 @@
 <section class="group-ui-card group-radio-panel" data-group-surface="radio" data-state="READY" aria-labelledby="group-radio-title">
-  <div class="group-ui-card-heading">
-    <div>
-      <p class="group-ui-kicker">{{ copy.group_radio }}</p>
-      <h2 id="group-radio-title">{{ copy.group_radio_title }}</h2>
-      <p>{{ copy.group_radio_subtitle }}</p>
+  <aside class="group-radio-rail" aria-label="{{ copy.group_channel }}">
+    <div class="group-radio-brand">
+      <span class="group-radio-brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false"><path d="M4.9 19.1a10 10 0 0 1 0-14.2M7.8 16.2a6 6 0 0 1 0-8.4M19.1 4.9a10 10 0 0 1 0 14.2M16.2 7.8a6 6 0 0 1 0 8.4"/><circle cx="12" cy="12" r="2"/></svg>
+      </span>
+      <div><p class="group-ui-kicker">AI-COMMUNICATION</p><h2 id="group-radio-title">{{ copy.group_radio_title }}</h2></div>
     </div>
-    <span class="group-ui-state" data-group-radio-state>READY</span>
+    <p class="group-radio-description">{{ copy.group_radio_subtitle }}</p>
+    <div class="group-radio-channel-card is-active">
+      <span class="group-radio-channel-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-7h6v7"/></svg></span>
+      <span><strong>{{ copy.group_channel }}</strong><small>{{ copy.group_channel_waiting }}</small></span>
+      <i aria-hidden="true"></i>
+    </div>
+    <div class="group-radio-device-card">
+      <span class="group-radio-channel-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 14a8 8 0 0 1 16 0M4 14v5a2 2 0 0 0 2 2h2v-7H4ZM20 14v5a2 2 0 0 1-2 2h-2v-7h4Z"/></svg></span>
+      <span><strong>{{ copy.group_audio_route }}</strong><small>{{ copy.group_audio_route_private }}</small></span>
+    </div>
+  </aside>
+
+  <div class="group-radio-stage">
+    <header class="group-radio-stage-header">
+      <div><p class="group-ui-kicker">{{ copy.group_radio }}</p><strong>{{ copy.group_channel }}</strong></div>
+      <span class="group-ui-state" data-group-radio-state>READY</span>
+    </header>
+    <div class="group-radio-floor" aria-live="polite">
+      <div class="group-radio-floor-copy radio-ready-copy"><span class="radio-floor-orbit" aria-hidden="true"></span><strong>{{ copy.group_floor_available }}</strong><small>{{ copy.group_radio_ready }}</small></div>
+      <div class="group-radio-floor-copy radio-busy-copy"><span class="radio-floor-lock" aria-hidden="true">⌛</span><strong>{{ copy.group_floor_busy }}</strong><small>{{ copy.group_floor_busy_note }}</small></div>
+      <div class="group-radio-floor-copy radio-talking-copy"><span class="radio-floor-live" aria-hidden="true"></span><strong>{{ copy.group_talking }}</strong><small>{{ copy.group_talking_note }}</small></div>
+      <div class="group-radio-floor-copy radio-finalizing-copy"><span class="radio-floor-check" aria-hidden="true">✓</span><strong>{{ copy.group_finalizing }}</strong><small>{{ copy.group_finalizing_note }}</small></div>
+      <div class="group-radio-floor-copy radio-device-lost-copy"><span class="radio-floor-lock" aria-hidden="true">!</span><strong>{{ copy.group_device_lost }}</strong><small>{{ copy.group_device_lost_note }}</small></div>
+      <div class="group-radio-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="group-ui-actions group-radio-primary-actions" role="group" aria-label="{{ copy.group_radio }}">
+        <button type="button" class="group-ui-button group-ui-button-primary group-radio-ptt" data-group-radio-action="start">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8"/></svg><span>{{ copy.group_start_talking }}</span>
+        </button>
+        <button type="button" class="group-ui-button group-ui-button-danger group-radio-ptt group-radio-stop" data-group-radio-action="stop" hidden>
+          <span class="group-radio-stop-icon" aria-hidden="true"></span><span>{{ copy.group_stop_commit }}</span>
+        </button>
+      </div>
+      <p class="group-ui-inline-status" data-group-radio-note>{{ copy.group_radio_ready }}</p>
+    </div>
+    <div class="group-ui-state-picker" aria-label="{{ copy.group_state_label }}" hidden>
+      <button type="button" data-group-radio-state="READY" class="is-selected">READY</button>
+      <button type="button" data-group-radio-state="FLOOR_BUSY">FLOOR_BUSY</button>
+      <button type="button" data-group-radio-state="TALKING">TALKING</button>
+      <button type="button" data-group-radio-state="FINALIZING_BURST">FINALIZING_BURST</button>
+      <button type="button" data-group-radio-state="DEVICE_LOST">DEVICE_LOST</button>
+    </div>
   </div>
-  <div class="group-radio-channel"><strong>FUMAP / GROUP RADIO</strong><span>{{ copy.group_floor_available }}</span></div>
-  <div class="group-radio-participants"><span class="group-ui-avatar" aria-hidden="true">3</span><div><strong>{{ copy.group_participants }}</strong><small>{{ copy.group_one_floor }}</small></div></div>
-  <div class="group-ui-actions" role="group" aria-label="{{ copy.group_radio }}">
-    <button type="button" class="group-ui-button group-ui-button-primary" data-group-radio-action="start">{{ copy.group_start_talking }}</button>
-    <button type="button" class="group-ui-button" data-group-radio-action="stop" hidden>{{ copy.group_stop_commit }}</button>
-    <button type="button" class="group-ui-button group-ui-button-danger" data-group-radio-action="leave">{{ copy.group_leave }}</button>
-  </div>
-  <p class="group-ui-inline-status" data-group-radio-note>{{ copy.group_radio_ready }}</p>
-  <div class="group-ui-state-picker" aria-label="{{ copy.group_state_label }}">
-    <button type="button" data-group-radio-state="READY" class="is-selected">READY</button>
-    <button type="button" data-group-radio-state="FLOOR_BUSY">FLOOR_BUSY</button>
-    <button type="button" data-group-radio-state="TALKING">TALKING</button>
-    <button type="button" data-group-radio-state="DEVICE_LOST">DEVICE_LOST</button>
-  </div>
+
+  <aside class="group-radio-roster" aria-label="{{ copy.group_participants }}">
+    <div class="group-radio-roster-heading"><strong>{{ copy.group_participants }}</strong><span aria-hidden="true">•••</span></div>
+    <div class="group-radio-empty-roster"><span class="group-ui-avatar" aria-hidden="true">T</span><p>{{ copy.group_channel_waiting }}</p></div>
+    <div class="group-radio-recent"><p class="group-ui-kicker">{{ copy.group_recent_burst }}</p><strong>{{ copy.group_no_content }}</strong><small>{{ copy.group_one_floor }}</small></div>
+    <button type="button" class="group-ui-button group-ui-button-danger group-radio-leave" data-group-radio-action="leave">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 17l5-5-5-5M15 12H3M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/></svg><span>{{ copy.group_leave }}</span>
+    </button>
+  </aside>
 </section>

@@ -5,6 +5,15 @@
   if (!root || root.dataset.initialized === "true") return;
   root.dataset.initialized = "true";
 
+  const directControls = document.querySelector(".call-controls");
+  if (directControls && "IntersectionObserver" in window) {
+    const surfaceObserver = new IntersectionObserver((entries) => {
+      const groupSurfaceVisible = entries.some((entry) => entry.isIntersecting && entry.intersectionRatio > 0.04);
+      document.body.classList.toggle("is-group-surface-visible", groupSurfaceVisible);
+    }, { threshold: [0, 0.04, 0.2] });
+    surfaceObserver.observe(root);
+  }
+
   let copy = window.__GROUP_UI_COPY__ || {};
   if (!Object.keys(copy).length) {
     try {
@@ -127,33 +136,54 @@
     const leave = radioCard.querySelector('[data-group-radio-action="leave"]');
     const readyNote = text("group_radio_ready", "Radio is in a design state; no microphone permission was requested.");
     const degradedNote = text("group_radio_degraded", "The Radio provider is unavailable; no microphone or floor lease was created.");
-    const setRadioActionVisibility = (talking) => {
-      if (start) start.hidden = talking;
+    const radioStateNotes = {
+      READY: readyNote,
+      FLOOR_BUSY: text("group_floor_busy_note", degradedNote),
+      TALKING: text("group_talking_note", readyNote),
+      FINALIZING_BURST: text("group_finalizing_note", readyNote),
+      DEVICE_LOST: text("group_device_lost_note", degradedNote),
+      ENDED: degradedNote,
+    };
+    const setRadioActionVisibility = (state) => {
+      const talking = state === "TALKING";
+      if (start) start.hidden = talking || ["FLOOR_BUSY", "DEVICE_LOST", "ENDED"].includes(state);
       if (stop) stop.hidden = !talking;
     };
+    const applyRadioState = (state, noteOverride = "") => {
+      setState(radioCard, state);
+      setRadioActionVisibility(state);
+      if (note) note.textContent = noteOverride || radioStateNotes[state] || degradedNote;
+    };
+    const radio = window.GroupRadioClient?.create({ onState: (state) => applyRadioState(state) });
     radioCard.querySelectorAll("[data-group-radio-state]").forEach((button) => {
       button.addEventListener("click", () => {
         const state = button.dataset.groupRadioState;
-        setState(radioCard, state);
-        setRadioActionVisibility(state === "TALKING");
-        if (note) note.textContent = state === "READY" ? readyNote : degradedNote;
+        if (state) applyRadioState(state);
       });
     });
     start?.addEventListener("click", () => {
-      setState(radioCard, "TALKING");
-      setRadioActionVisibility(true);
-      if (note) note.textContent = degradedNote;
+      const handoff = activeHandoff || window.GroupCommunicationHandoff?.getState?.() || null;
+      radio?.setContext(handoff);
+      if (!radio) return;
+      void Promise.resolve(radio.start({ conversationId: handoff?.conversation_id })).then(() => {
+        applyRadioState("TALKING");
+      }).catch((error) => {
+        const message = String(error?.message || "");
+        if (message.includes("floor_busy")) applyRadioState("FLOOR_BUSY");
+        else applyRadioState("DEVICE_LOST");
+      });
     });
     stop?.addEventListener("click", () => {
-      setState(radioCard, "FINALIZING_BURST");
-      setRadioActionVisibility(false);
-      if (note) note.textContent = degradedNote;
+      void Promise.resolve(radio?.stop()).finally(() => {
+        applyRadioState("FINALIZING_BURST");
+      });
     });
     leave?.addEventListener("click", () => {
-      setState(radioCard, "ENDED");
-      setRadioActionVisibility(false);
-      if (note) note.textContent = degradedNote;
+      void Promise.resolve(radio?.leave()).finally(() => {
+        applyRadioState("ENDED");
+      });
     });
+    applyRadioState("READY");
   }
 
   const translationPanel = root.querySelector(".group-translation-panel");

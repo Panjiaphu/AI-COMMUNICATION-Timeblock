@@ -48,10 +48,22 @@
     if (!payload || typeof payload !== "object") return false;
     if (text(payload.contract_version) !== expectedVersion || text(payload.authority) !== "timeblock") return false;
     if (text(payload.handoff_type) !== "group") return false;
-    if (!["group_call", "group_video"].includes(text(payload.surface))) return false;
+    const surface = text(payload.surface);
+    if (surface === "group_radio") {
+      if (text(payload.mode) !== "audio") return false;
+      if (!text(payload.handoff_id, 128) || !text(payload.generation, 128)) return false;
+      if (!text(payload.radio_session_id, 160) || !/^[A-Za-z0-9_-]{32,128}$/.test(text(payload.radio_session_id, 160))) return false;
+      if (!text(payload.session_id, 160) || text(payload.session_id) !== text(payload.radio_session_id, 160)) return false;
+      if (!text(payload.participant_id, 128).match(/^(member|business):/)) return false;
+      if (!text(payload.workspace_id, 160).startsWith("conversation:")) return false;
+      if (!validProfile(payload.language_profile)) return false;
+      const radioExpiry = Date.parse(text(payload.expires_at, 128));
+      return Number.isFinite(radioExpiry) && radioExpiry > Date.now();
+    }
+    if (!["group_call", "group_video"].includes(surface)) return false;
     if (!["audio", "video"].includes(text(payload.mode))) return false;
-    if (text(payload.surface) === "group_video" && text(payload.mode) !== "video") return false;
-    if (text(payload.surface) === "group_call" && text(payload.mode) !== "audio") return false;
+    if (surface === "group_video" && text(payload.mode) !== "video") return false;
+    if (surface === "group_call" && text(payload.mode) !== "audio") return false;
     if (!text(payload.handoff_id, 128) || !text(payload.generation, 128)) return false;
     if (!text(payload.session_id, 128).startsWith("group:")) return false;
     if (!text(payload.room_id, 160).startsWith("group-call:")) return false;
@@ -92,6 +104,7 @@
         mode: payload.mode,
         session_id: payload.session_id,
         room_id: payload.room_id,
+        radio_session_id: payload.radio_session_id || "",
         conversation_id: payload.conversation_id || text(payload.workspace_id, 160).replace(/^conversation:/, ""),
         translation_consent_version: payload.translation_consent_version || payload.consent_version || "",
         language_profile: profileForState(payload.language_profile),
@@ -116,6 +129,7 @@
       mode: state.handoff?.mode || "",
       session_id: state.handoff?.session_id || "",
       room_id: state.handoff?.room_id || "",
+      radio_session_id: state.handoff?.radio_session_id || "",
       conversation_id: state.handoff?.conversation_id || "",
       translation_consent_version: state.handoff?.translation_consent_version || state.handoff?.consent_version || "",
       language_profile: profileForState(state.handoff?.language_profile),

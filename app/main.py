@@ -10,6 +10,8 @@ from fastapi.staticfiles import StaticFiles
 from app.communication.manager import RoomManager
 from app.communication.router import router as communication_router
 from app.group_translation.router import router as group_translation_router
+from app.group_radio import RadioFloorManager, RadioRoomCapacity
+from app.group_radio.router import router as group_radio_router
 from app.bff.router import router as bff_router
 from app.bff.session_store import SessionStore
 from app.core.config import BASE_DIR, Settings, get_settings
@@ -28,6 +30,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             while True:
                 await asyncio.sleep(30)
                 await app.state.room_manager.cleanup()
+                await app.state.radio_floor.cleanup()
 
         task = asyncio.create_task(cleanup_loop())
         try:
@@ -40,6 +43,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application = FastAPI(title=runtime_settings.app_name, debug=runtime_settings.debug, lifespan=lifespan)
     application.state.settings = runtime_settings
     application.state.room_manager = RoomManager(runtime_settings)
+    application.state.radio_floor = RadioFloorManager(
+        lease_seconds=runtime_settings.group_radio_floor_lease_seconds,
+        max_burst_seconds=runtime_settings.group_radio_max_burst_seconds,
+    )
+    application.state.radio_capacity = RadioRoomCapacity(runtime_settings.group_radio_max_rooms)
     application.state.timeblock_client = TimeblockClient(runtime_settings)
     application.state.bff_session_store = SessionStore(
         session_ttl_seconds=runtime_settings.guilua_session_ttl_seconds,
@@ -63,6 +71,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(bff_router)
     application.include_router(communication_router)
     application.include_router(group_translation_router)
+    application.include_router(group_radio_router)
 
     @application.get('/healthz/')
     async def healthz() -> dict[str, str]:
