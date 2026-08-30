@@ -29,6 +29,9 @@
     ? runtimeConfig.initial_surface
     : "";
   root.dataset.initialSurface = initialSurface;
+  if (initialSurface) {
+    document.body.classList.add("group-runtime-mode", `group-runtime-${initialSurface}`);
+  }
   const text = (key, fallback) => String(copy[key] || fallback || "");
   const applyLanguageProfile = (profile) => {
     if (!profile) return;
@@ -55,6 +58,10 @@
   let translationManager = null;
   const remoteTracks = new Set();
   let activeHandoff = null;
+  const consumeHandoff = () => {
+    if (!activeHandoff) activeHandoff = window.GroupCommunicationHandoff?.consume?.() || null;
+    return activeHandoff;
+  };
   const callCard = root.querySelector(".group-call-stage");
   if (callCard) {
     const degraded = callCard.querySelector("[data-group-degraded]");
@@ -82,10 +89,22 @@
         if (finalNode && translated) finalNode.textContent = translated;
         const stateNode = translationPanel?.querySelector("[data-group-translation-state]");
         if (stateNode) stateNode.textContent = "PARTIAL";
+        const radioOriginal = root.querySelector("[data-group-radio-original]");
+        const radioFinal = root.querySelector("[data-group-radio-final]");
+        const radioState = root.querySelector("[data-group-radio-translation-state]");
+        if (radioOriginal && original) radioOriginal.textContent = original;
+        if (radioFinal && translated) radioFinal.textContent = translated;
+        if (radioState) radioState.textContent = "PARTIAL";
       },
-      onFinal: (_original, _translated) => {
+      onFinal: (original, translated) => {
         const stateNode = translationPanel?.querySelector("[data-group-translation-state]");
         if (stateNode) stateNode.textContent = "FINAL";
+        const radioOriginal = root.querySelector("[data-group-radio-original]");
+        const radioFinal = root.querySelector("[data-group-radio-final]");
+        const radioState = root.querySelector("[data-group-radio-translation-state]");
+        if (radioOriginal && original) radioOriginal.textContent = original;
+        if (radioFinal && translated) radioFinal.textContent = translated;
+        if (radioState) radioState.textContent = "FINAL";
       },
       onTTSState: (state) => {
         const stateNode = translationPanel?.querySelector("[data-group-translation-state]");
@@ -112,10 +131,6 @@
         if (degraded && note) degraded.textContent = note;
       },
     });
-    const consumeHandoff = () => {
-      if (!activeHandoff) activeHandoff = window.GroupCommunicationHandoff?.consume?.() || null;
-      return activeHandoff;
-    };
     join?.addEventListener("click", async () => {
       const handoff = consumeHandoff();
       translation?.setContext(handoff);
@@ -139,6 +154,11 @@
     const start = radioCard.querySelector('[data-group-radio-action="start"]');
     const stop = radioCard.querySelector('[data-group-radio-action="stop"]');
     const leave = radioCard.querySelector('[data-group-radio-action="leave"]');
+    const deviceActions = radioCard.querySelector("[data-group-radio-device-actions]");
+    const translationEnable = radioCard.querySelector("[data-group-radio-translation-enable]");
+    const radioAutoRead = radioCard.querySelector("[data-group-radio-auto-read]");
+    const translationState = radioCard.querySelector("[data-group-radio-translation-state]");
+    const roster = radioCard.querySelector("[data-group-radio-roster-list]");
     const readyNote = text("group_radio_ready", "Radio is in a design state; no microphone permission was requested.");
     const degradedNote = text("group_radio_degraded", "The Radio provider is unavailable; no microphone or floor lease was created.");
     const radioStateNotes = {
@@ -147,19 +167,75 @@
       TALKING: text("group_talking_note", readyNote),
       FINALIZING_BURST: text("group_finalizing_note", readyNote),
       DEVICE_LOST: text("group_device_lost_note", degradedNote),
+      RECONNECTING: text("group_call_reconnecting", degradedNote),
       ENDED: degradedNote,
     };
     const setRadioActionVisibility = (state) => {
       const talking = state === "TALKING";
       if (start) start.hidden = talking || ["FLOOR_BUSY", "DEVICE_LOST", "ENDED"].includes(state);
       if (stop) stop.hidden = !talking;
+      if (deviceActions) deviceActions.hidden = state !== "DEVICE_LOST";
     };
     const applyRadioState = (state, noteOverride = "") => {
       setState(radioCard, state);
       setRadioActionVisibility(state);
       if (note) note.textContent = noteOverride || radioStateNotes[state] || degradedNote;
     };
-    const radio = window.GroupRadioClient?.create({ onState: (state) => applyRadioState(state) });
+    const renderParticipants = (participants) => {
+      if (!roster) return;
+      const values = Array.isArray(participants) ? participants.filter(Boolean) : [];
+      if (!values.length) {
+        const empty = document.createElement("div");
+        empty.className = "group-radio-empty-roster";
+        const avatar = document.createElement("span");
+        avatar.className = "group-ui-avatar";
+        avatar.setAttribute("aria-hidden", "true");
+        avatar.textContent = "T";
+        const message = document.createElement("p");
+        message.textContent = text("group_channel_waiting", "Waiting for listeners.");
+        empty.append(avatar, message);
+        roster.replaceChildren(empty);
+        return;
+      }
+      roster.replaceChildren(...values.map((identity) => {
+        const row = document.createElement("div");
+        row.className = "group-radio-participant";
+        const avatar = document.createElement("span");
+        avatar.className = "group-ui-avatar";
+        avatar.setAttribute("aria-hidden", "true");
+        avatar.textContent = String(identity).split(":").pop().slice(0, 2).toUpperCase();
+        const label = document.createElement("strong");
+        label.textContent = String(identity);
+        row.append(avatar, label);
+        return row;
+      }));
+    };
+    const radio = window.GroupRadioClient?.create({
+      audioHost: radioCard.querySelector("[data-group-radio-remote-audio]"),
+      onState: (state) => applyRadioState(state),
+      onRemoteTrack: (track, participantId) => {
+        remoteTracks.add(track);
+        if (translationManager?.enabled) void translationManager.startForTrack(track, participantId);
+      },
+      onRemoteTrackRemoved: (track) => {
+        remoteTracks.delete(track);
+        translationManager?.removeTrack(track);
+      },
+      onParticipants: renderParticipants,
+    });
+    const radioHandoff = () => {
+      const handoff = consumeHandoff();
+      if (!handoff) return null;
+      const sessionId = handoff.radio_session_id || handoff.session_id || "";
+      const context = { ...handoff, room_id: `group-radio:${sessionId}` };
+      radio?.setContext(context);
+      translationManager?.setContext(context);
+      if (radioAutoRead) {
+        radioAutoRead.checked = Boolean(context.language_profile?.auto_read_translation);
+        if (translationManager) translationManager.autoRead = radioAutoRead.checked;
+      }
+      return context;
+    };
     radioCard.querySelectorAll("[data-group-radio-state]").forEach((button) => {
       button.addEventListener("click", () => {
         const state = button.dataset.groupRadioState;
@@ -167,11 +243,14 @@
       });
     });
     start?.addEventListener("click", () => {
-      const handoff = activeHandoff || window.GroupCommunicationHandoff?.getState?.() || null;
-      radio?.setContext(handoff);
+      const handoff = radioHandoff();
       if (!radio) return;
       void Promise.resolve(radio.start({ conversationId: handoff?.conversation_id })).then(() => {
         applyRadioState("TALKING");
+        if (handoff?.language_profile?.auto_translate && handoff?.translation_consent_version) {
+          void translationManager?.enable(remoteTracks);
+          if (translationState) translationState.textContent = "WAITING";
+        }
       }).catch((error) => {
         const message = String(error?.message || "");
         if (message.includes("floor_busy")) applyRadioState("FLOOR_BUSY");
@@ -184,9 +263,37 @@
       });
     });
     leave?.addEventListener("click", () => {
-      void Promise.resolve(radio?.leave()).finally(() => {
+      void Promise.all([radio?.leave(), translationManager?.stop()]).finally(() => {
         applyRadioState("ENDED");
       });
+    });
+    radioCard.querySelectorAll("[data-group-radio-route]").forEach((button) => {
+      button.addEventListener("click", () => {
+        button.disabled = true;
+        void Promise.resolve(radio?.chooseOutputRoute(button.dataset.groupRadioRoute)).catch((error) => {
+          applyRadioState("DEVICE_LOST", String(error?.message || radioStateNotes.DEVICE_LOST));
+        }).finally(() => { button.disabled = false; });
+      });
+    });
+    translationEnable?.addEventListener("click", async () => {
+      const handoff = radioHandoff();
+      if (!handoff || !translationManager) {
+        if (translationState) translationState.textContent = "HANDOFF_REQUIRED";
+        return;
+      }
+      if (translationState) translationState.textContent = "STARTING";
+      if (!handoff.translation_consent_version) {
+        const granted = await translationManager.grantConsent();
+        if (!granted) {
+          if (translationState) translationState.textContent = "CONSENT_UNAVAILABLE";
+          return;
+        }
+      }
+      await translationManager.enable(remoteTracks);
+      if (translationState) translationState.textContent = remoteTracks.size ? "STREAMING" : "WAITING";
+    });
+    radioAutoRead?.addEventListener("change", () => {
+      if (translationManager) translationManager.autoRead = radioAutoRead.checked;
     });
     applyRadioState("READY");
   }

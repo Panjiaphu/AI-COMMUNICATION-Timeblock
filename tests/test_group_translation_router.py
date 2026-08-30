@@ -193,6 +193,9 @@ def test_group_radio_runtime_scripts_are_loaded_and_teardown_safe():
     assert "group_radio_lifecycle.js" in template
     assert "group_radio_translation.js" in template
     assert "floor/heartbeat" in radio
+    assert "getUserMedia" in radio
+    assert "selectAudioOutput" in radio
+    assert "livekit-cloud" in radio
     assert "resource_zero" in lifecycle
     assert "partial_translation" not in translation
     assert "translationStatus !== \"final\"" in translation

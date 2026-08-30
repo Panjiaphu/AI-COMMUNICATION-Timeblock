@@ -38,7 +38,12 @@
           <span class="group-radio-stop-icon" aria-hidden="true"></span><span>{{ copy.group_stop_commit }}</span>
         </button>
       </div>
+      <div class="group-radio-device-actions" data-group-radio-device-actions hidden role="group" aria-label="{{ copy.group_device_lost }}">
+        <button type="button" class="group-ui-button group-ui-button-primary" data-group-radio-route="private">{{ copy.group_reconnect_private_audio }}</button>
+        <button type="button" class="group-ui-button" data-group-radio-route="speaker">{{ copy.group_use_speaker }}</button>
+      </div>
       <p class="group-ui-inline-status" data-group-radio-note>{{ copy.group_radio_ready }}</p>
+      <div data-group-radio-remote-audio hidden aria-hidden="true"></div>
     </div>
     <div class="group-ui-state-picker" aria-label="{{ copy.group_state_label }}" hidden>
       <button type="button" data-group-radio-state="READY" class="is-selected">READY</button>
@@ -51,8 +56,17 @@
 
   <aside class="group-radio-roster" aria-label="{{ copy.group_participants }}">
     <div class="group-radio-roster-heading"><strong>{{ copy.group_participants }}</strong><span aria-hidden="true">•••</span></div>
-    <div class="group-radio-empty-roster"><span class="group-ui-avatar" aria-hidden="true">T</span><p>{{ copy.group_channel_waiting }}</p></div>
-    <div class="group-radio-recent"><p class="group-ui-kicker">{{ copy.group_recent_burst }}</p><strong>{{ copy.group_no_content }}</strong><small>{{ copy.group_one_floor }}</small></div>
+    <div class="group-radio-roster-list" data-group-radio-roster-list>
+      <div class="group-radio-empty-roster"><span class="group-ui-avatar" aria-hidden="true">T</span><p>{{ copy.group_channel_waiting }}</p></div>
+    </div>
+    <section class="group-radio-translation-plugin" aria-label="{{ copy.group_translation }}">
+      <div class="group-radio-plugin-heading"><p class="group-ui-kicker">{{ copy.group_translation }}</p><span class="group-ui-state" data-group-radio-translation-state>OFF</span></div>
+      <div class="group-radio-recent"><p class="group-ui-kicker">{{ copy.group_recent_burst }}</p><strong data-group-radio-final>{{ copy.group_no_content }}</strong><small data-group-radio-original>{{ copy.group_one_floor }}</small></div>
+      <div class="group-radio-plugin-actions">
+        <button type="button" class="group-ui-button" data-group-radio-translation-enable>{{ copy.group_enable_translation }}</button>
+        <label class="group-ui-toggle"><input type="checkbox" data-group-radio-auto-read> <span>{{ copy.group_auto_read }}</span></label>
+      </div>
+    </section>
     <button type="button" class="group-ui-button group-ui-button-danger group-radio-leave" data-group-radio-action="leave">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 17l5-5-5-5M15 12H3M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/></svg><span>{{ copy.group_leave }}</span>
     </button>
