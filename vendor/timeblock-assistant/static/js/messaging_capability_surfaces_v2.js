@@ -380,6 +380,18 @@
     translationPreferenceButton.title = `${text("conversationTranslation")}: ${pair}`;
   }
 
+  function emitGroupTranslationPreference() {
+    const preference = conversationPreference();
+    app.dispatchEvent(new CustomEvent("timeblock:group-translation-preference", {
+      detail: {
+        active: Boolean(preference.active),
+        sourceLanguage: preference.sourceLanguage,
+        targetLanguage: preference.targetLanguage,
+        label: languagePairLabel(preference.sourceLanguage, preference.targetLanguage),
+      },
+    }));
+  }
+
   function syncTranslationSwap() {
     if (!translationSwapButton || !translationSourceSelect) return;
     translationSwapButton.disabled = translationSourceSelect.value === "auto";
@@ -411,6 +423,7 @@
     const bubble = pendingTranslationBubble;
     pendingTranslationBubble = null;
     syncTranslationPreferenceBar();
+    emitGroupTranslationPreference();
     translationDialog?.close();
     translationDialogReturnFocus?.focus?.();
     translationDialogReturnFocus = null;
@@ -539,6 +552,7 @@
       event.detail?.conversation?.id || app.dataset.activeMessagingConversationId || "",
     );
     syncTranslationPreferenceBar();
+    emitGroupTranslationPreference();
   }
 
   function voiceRuntimeRoot() {
@@ -697,6 +711,9 @@
   app.addEventListener("timeblock:messaging:conversation", handleConversationDetail);
   app.addEventListener("timeblock:messaging:messages", handleConversationDetail);
   app.addEventListener("timeblock:messaging:call-state", syncVoicePresentation);
+  app.addEventListener("timeblock:group-translation-preferences", () => {
+    openTranslationPreferences();
+  });
   enhanceMessageTranslations();
   enhanceVoiceComposer();
 

@@ -1420,6 +1420,66 @@
       : (Array.isArray(group?.members) ? group.members.length : 0);
   }
 
+  function groupMemberProfiles(group) {
+    const profiles = Array.isArray(group?.member_profiles)
+      ? group.member_profiles.filter(Boolean)
+      : [];
+    if (profiles.length) return profiles;
+    return Array.isArray(group?.members) ? group.members.filter(Boolean) : [];
+  }
+
+  function renderGroupDetailMembers(group, query = "") {
+    const list = $('[data-group-detail-members]');
+    const count = $('[data-group-detail-count]');
+    if (!list || !count) return;
+    const members = groupMemberProfiles(group);
+    count.textContent = String(members.length);
+    const normalizedQuery = String(query || "").trim().toLocaleLowerCase(app.dataset.locale || "vi");
+    const visible = members.filter((member) => {
+      const searchable = [member.display_name, member.public_id, member.owner_type, member.owner_id]
+        .filter((value) => value != null)
+        .join(" ")
+        .toLocaleLowerCase(app.dataset.locale || "vi");
+      return !normalizedQuery || searchable.includes(normalizedQuery);
+    });
+    if (!visible.length) {
+      const message = members.length
+        ? copy("groupMembersPanelSearchEmpty")
+        : copy("groupMembersPanelEmpty");
+      list.replaceChildren(createElement("p", "assistant-group-detail-empty", message));
+      return;
+    }
+    list.replaceChildren(...visible.map((member) => {
+      const row = createElement("div", "assistant-group-detail-member");
+      const avatar = createElement("span", "assistant-list-avatar", initials(member));
+      const content = createElement("span", "assistant-list-copy");
+      const displayName = member.display_name || member.public_id || `${member.owner_type || ""}:${member.owner_id || ""}`;
+      content.append(
+        createElement("strong", "", displayName),
+        createElement("small", "", member.public_id || member.owner_type || ""),
+      );
+      const presence = createElement("span", "assistant-group-member-presence");
+      presence.classList.toggle("is-online", Boolean(member.online || member.is_online));
+      presence.setAttribute("aria-hidden", "true");
+      row.append(avatar, content, presence);
+      return row;
+    }));
+  }
+
+  function setGroupDetail(group) {
+    const layout = $('[data-messaging-layout]');
+    const panel = $('[data-group-detail-panel]');
+    const toggle = $('[data-group-detail-toggle]');
+    const isGroup = group?.kind === "group";
+    layout?.classList.toggle("has-group-detail", isGroup);
+    layout?.classList.remove("is-group-detail-open");
+    if (panel) panel.hidden = !isGroup;
+    if (toggle) toggle.setAttribute("aria-expanded", "false");
+    const search = $('[data-group-detail-search]');
+    if (search) search.value = "";
+    renderGroupDetailMembers(isGroup ? group : null);
+  }
+
   function setSelectedGroup(group) {
     const title = $('[data-group-selected-title]');
     const meta = $('[data-group-selected-meta]');
@@ -2381,6 +2441,7 @@
         button.classList.toggle('is-active', button.dataset.groupContextSurface === 'chat');
       });
     }
+    setGroupDetail(state.conversation);
     $('[data-message-form]').hidden = false;
     $('[data-call-actions]').hidden = isGroup;
     $('[data-messaging-layout]').classList.add("has-thread");
@@ -2501,7 +2562,35 @@
       }
     });
     $('[data-thread-back]').addEventListener("click", () => {
-      $('[data-messaging-layout]').classList.remove("has-thread");
+      const layout = $('[data-messaging-layout]');
+      layout.classList.remove("has-thread", "is-group-detail-open");
+      $('[data-group-detail-toggle]')?.setAttribute("aria-expanded", "false");
+    });
+    $('[data-group-detail-toggle]')?.addEventListener("click", () => {
+      const layout = $('[data-messaging-layout]');
+      if (!layout.classList.contains("has-group-detail")) return;
+      if (window.matchMedia("(max-width: 1180px)").matches) {
+        const isOpen = layout.classList.toggle("is-group-detail-open");
+        $('[data-group-detail-toggle]')?.setAttribute("aria-expanded", String(isOpen));
+        if (isOpen) $('[data-group-detail-search]')?.focus();
+        return;
+      }
+      $('[data-group-detail-panel]')?.focus({ preventScroll: true });
+    });
+    $('[data-group-detail-close]')?.addEventListener("click", () => {
+      $('[data-messaging-layout]').classList.remove("is-group-detail-open");
+      $('[data-group-detail-toggle]')?.setAttribute("aria-expanded", "false");
+      $('[data-group-detail-toggle]')?.focus();
+    });
+    $('[data-group-detail-search]')?.addEventListener("input", (event) => {
+      renderGroupDetailMembers(state.conversation, event.currentTarget.value);
+    });
+    $('[data-group-translation-preferences]')?.addEventListener("click", () => {
+      app.dispatchEvent(new CustomEvent("timeblock:group-translation-preferences"));
+    });
+    app.addEventListener("timeblock:group-translation-preference", (event) => {
+      const pair = $('[data-group-translation-pair]');
+      if (pair && event.detail?.label) pair.textContent = String(event.detail.label);
     });
     app.addEventListener("timeblock:messaging:filter", (event) => {
       loadConversations(event.detail || {}).catch((error) => {

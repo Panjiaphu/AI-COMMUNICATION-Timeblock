@@ -33,7 +33,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css', v='call-v1-hotfix-20260820b') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/live_translate.css', v='live-translate-v1-20260822') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_core_v2.css', v='uiux-20260729') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/group_communication_v2.css', v='uiux-20260830') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/group_communication_v2.css', v='uiux-20260831a') }}">
   {% if config.MESSAGING_ADVANCED_ATTACHMENTS_ENABLED %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_composer_attachments_v2.css', v='uiux-20260729') }}" data-messaging-composer-attachments-v2>
   {% endif %}
@@ -319,6 +319,9 @@
   data-copy-group-launching="{{ t('assistant.communication.group_launching') }}"
   data-copy-group-launch-error="{{ t('assistant.communication.group_launch_error') }}"
   data-copy-group-radio-auth="{{ t('assistant.communication.group_radio_auth') }}"
+  data-copy-group-members-panel-empty="{{ t('assistant.communication.group_members_panel_empty') }}"
+  data-copy-group-members-panel-search-empty="{{ t('assistant.communication.group_members_panel_search_empty') }}"
+  data-copy-group-translation-pair="{{ t('assistant.communication.group_translation_pair') }}"
   data-copy-call-empty="{{ t('assistant.communication.call_empty') }}"
   data-copy-call-open="{{ t('assistant.communication.call_open') }}"
   data-copy-ptt-message="{{ t('assistant.communication.ptt_message') }}"
@@ -533,7 +536,7 @@
                 <button class="assistant-danger-button" type="button" data-call-end hidden>{{ t('assistant.call.end') }}</button>
               </div>
               <nav class="assistant-group-context-toolbar" data-group-context-toolbar hidden role="toolbar" aria-label="{{ t('assistant.communication.group_surfaces') }}">
-                <span class="assistant-group-context-plugin">{{ icon('translate') }} {{ t('assistant.communication.group_plugin') }}</span>
+                <button class="assistant-group-context-plugin" type="button" data-group-detail-toggle aria-controls="assistant-group-detail-panel" aria-expanded="false">{{ icon('translate') }} <span>{{ t('assistant.communication.group_plugin') }}</span></button>
                 <button class="assistant-group-context-button is-active" type="button" data-group-context-surface="chat">{{ icon('message') }}<span>{{ t('assistant.communication.group_chat') }}</span></button>
                 <button class="assistant-group-context-button" type="button" data-group-context-surface="call">{{ icon('phone') }}<span>{{ t('assistant.communication.group_call') }}</span></button>
                 <button class="assistant-group-context-button" type="button" data-group-context-surface="video">{{ icon('video') }}<span>{{ t('assistant.communication.group_video') }}</span></button>
@@ -666,6 +669,31 @@
               <p class="assistant-composer-meta" data-call-status>{{ t('assistant.network.encryption_note') }}</p>
             </form>
           </section>
+          <aside class="assistant-group-detail-panel" id="assistant-group-detail-panel" data-group-detail-panel hidden tabindex="-1" aria-label="{{ t('assistant.communication.group_details') }}">
+            <header class="assistant-group-detail-heading">
+              <div>
+                <p class="assistant-group-kicker">{{ t('assistant.communication.group_contract') }}</p>
+                <h3>{{ t('assistant.communication.group_members_panel') }} <span data-group-detail-count>0</span></h3>
+              </div>
+              <button class="assistant-icon-button assistant-group-detail-close" type="button" data-group-detail-close aria-label="{{ t('assistant.common.close') }}">{{ icon('close') }}</button>
+            </header>
+            <label class="assistant-group-detail-search">
+              <span class="assistant-sr-only">{{ t('assistant.communication.group_members_panel_search') }}</span>
+              <input type="search" autocomplete="off" data-group-detail-search placeholder="{{ t('assistant.communication.group_members_panel_search') }}">
+            </label>
+            <div class="assistant-group-detail-members" data-group-detail-members>
+              <p class="assistant-group-detail-empty">{{ t('assistant.communication.group_members_panel_empty') }}</p>
+            </div>
+            <section class="assistant-group-translation-card" aria-labelledby="assistant-group-translation-card-title">
+              <div class="assistant-group-translation-card-heading">
+                <span class="assistant-group-translation-mark">{{ icon('translate') }}</span>
+                <div><p class="assistant-group-kicker">{{ t('assistant.communication.group_plugin') }}</p><h3 id="assistant-group-translation-card-title">{{ t('assistant.communication.group_translation_title') }}</h3></div>
+              </div>
+              <p>{{ t('assistant.communication.group_translation_note') }}</p>
+              <span class="assistant-group-translation-pair" data-group-translation-pair>{{ t('assistant.communication.group_translation_pair') }}</span>
+              <button class="assistant-primary-button" type="button" data-group-translation-preferences>{{ t('assistant.communication.group_translation_preferences') }}</button>
+            </section>
+          </aside>
         </div>
         <section class="assistant-communication-workspace assistant-group-workspace" data-communication-panel="groups" data-group-design-version="2" hidden>
           <header class="assistant-communication-heading assistant-group-heading">
