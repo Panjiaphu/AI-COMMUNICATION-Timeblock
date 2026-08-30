@@ -28,6 +28,9 @@
   const initialSurface = ["call", "video", "radio"].includes(runtimeConfig.initial_surface)
     ? runtimeConfig.initial_surface
     : "";
+  const initialQaState = ["READY", "FLOOR_BUSY", "TALKING", "FINALIZING_BURST", "DEVICE_LOST"].includes(runtimeConfig.initial_qa_state)
+    ? runtimeConfig.initial_qa_state
+    : "";
   root.dataset.initialSurface = initialSurface;
   if (initialSurface) {
     document.body.classList.add("group-runtime-mode", `group-runtime-${initialSurface}`);
@@ -295,7 +298,7 @@
     radioAutoRead?.addEventListener("change", () => {
       if (translationManager) translationManager.autoRead = radioAutoRead.checked;
     });
-    applyRadioState("READY");
+    applyRadioState(initialSurface === "radio" && initialQaState ? initialQaState : "READY");
   }
 
   const translationPanel = root.querySelector(".group-translation-panel");
@@ -336,7 +339,11 @@
     initialCard.setAttribute("tabindex", "-1");
     window.requestAnimationFrame(() => {
       initialCard.focus({ preventScroll: true });
-      initialCard.scrollIntoView({ block: "center", behavior: "auto" });
+      if (document.body.classList.contains("group-runtime-mode")) {
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      } else {
+        initialCard.scrollIntoView({ block: "center", behavior: "auto" });
+      }
     });
   }
 }(window));

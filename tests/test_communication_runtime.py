@@ -102,6 +102,19 @@ def test_communication_exposes_only_allowlisted_initial_surface():
         assert '"initial_surface": ""' in unsafe.text
 
 
+def test_group_visual_state_query_is_development_only_and_allowlisted():
+    with client_for() as client:
+        safe = client.get('/communication?surface=radio&state=DEVICE_LOST&lang=vi')
+        unsafe = client.get('/communication?surface=radio&state=JOINED&lang=vi')
+        assert '"initial_qa_state": "DEVICE_LOST"' in safe.text
+        assert '"initial_qa_state": ""' in unsafe.text
+
+    production = client_for(app_env='production', debug=False, allow_development_session_fallback=False)
+    with production as client:
+        response = client.get('/communication?surface=radio&state=DEVICE_LOST&lang=vi')
+        assert '"initial_qa_state": ""' in response.text
+
+
 def test_websocket_authorization_and_origin_policy():
     with client_for() as client:
         with client.websocket_connect(ws_path(), headers={'origin': 'http://testserver'}) as ws:
