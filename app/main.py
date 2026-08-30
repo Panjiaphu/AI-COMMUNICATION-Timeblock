@@ -39,6 +39,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             task.cancel()
             with suppress(asyncio.CancelledError):
                 await task
+            close_client = getattr(getattr(app, "state", None), "timeblock_client", None)
+            close_method = getattr(close_client, "aclose", None)
+            if close_method:
+                await close_method()
 
     application = FastAPI(title=runtime_settings.app_name, debug=runtime_settings.debug, lifespan=lifespan)
     application.state.settings = runtime_settings

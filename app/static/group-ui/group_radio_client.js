@@ -96,7 +96,10 @@
     async leave() {
       await this.stop();
       if (!this.sessionId) return false;
-      const response = await fetch(`/api/group-radio/sessions/${encodeURIComponent(this.sessionId)}/leave`, { method: "POST", credentials: "same-origin" });
+      const response = await fetch(`/api/group-radio/sessions/${encodeURIComponent(this.sessionId)}/leave`, {
+        method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ participant_id: this.participantId }),
+      });
       this.onState?.("ENDED");
       return response.ok;
     }

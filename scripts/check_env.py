@@ -22,9 +22,11 @@ def main(argv: list[str] | None = None) -> int:
     timeblock_app_url = os.getenv('TIMEBLOCK_APP_URL', '')
     timeblock_api_url = os.getenv('TIMEBLOCK_API_URL', '')
     timeblock_api_key = os.getenv('TIMEBLOCK_API_KEY', '')
+    # Render's immutable build identity is authoritative. DEPLOYMENT_VERSION
+    # is only a fallback for non-Render production runtimes.
     deployment_version = (
-        os.getenv('DEPLOYMENT_VERSION', '').strip()
-        or os.getenv('RENDER_GIT_COMMIT', '').strip()
+        os.getenv('RENDER_GIT_COMMIT', '').strip()
+        or os.getenv('DEPLOYMENT_VERSION', '').strip()
     )
     fallback_enabled = is_true(os.getenv('ALLOW_DEVELOPMENT_SESSION_FALLBACK', 'false'))
     errors: list[str] = []

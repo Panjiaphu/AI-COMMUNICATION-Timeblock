@@ -61,6 +61,14 @@ services:
         sync: false
       - key: OPENAI_REALTIME_TRANSLATION_MODEL
         value: gpt-realtime-translate
+      - key: GROUP_TRANSLATION_MAX_TARGETS
+        value: "2"
+      - key: GROUP_RADIO_FLOOR_LEASE_SECONDS
+        value: "15"
+      - key: GROUP_RADIO_MAX_BURST_SECONDS
+        value: "30"
+      - key: GROUP_RADIO_MAX_ROOMS
+        value: "20"
       - key: ALLOWED_WEBSOCKET_ORIGINS
         value: https://guilua.onrender.com
       - key: ALLOWED_TIMEBLOCK_HANDOFF_ORIGINS
