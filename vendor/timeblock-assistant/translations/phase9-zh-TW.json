@@ -24,7 +24,7 @@
   "phase9.treasury.allocate_member_fgo_body": "此操作會建立會員 Internal FGO 錢包，並寫入會員錢包帳本與金庫帳本。Internal FGO 仍屬 Timeblock 內部治理餘額，不是鏈上資產。",
   "phase9.treasury.allocate_business_fgo": "配置 Internal FGO 給企業",
   "phase9.treasury.allocate_business_fgo_body": "此操作會增加企業 Internal FGO 餘額，並寫入企業錢包帳本與金庫帳本。企業不可繞過 Timeblock 服務層直接變更餘額。",
-  "phase9.treasury.demo_business_points": "示範企業點數配置",
+  "phase9.treasury.business_points": "配置內部點數給企業",
   "phase9.treasury.go_live_checklist": "第九階段上線檢查",
   "phase9.governance.title": "FGO 治理",
   "phase9.governance.eyebrow": "治理政策",

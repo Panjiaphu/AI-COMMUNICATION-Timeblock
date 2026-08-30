@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK_PATH = ROOT / "vendor" / "timeblock-assistant" / "SOURCE_LOCK.json"
-EXPECTED_SOURCE_SHA = "e37da9fc398b03546191a7193ecc05c77b21ab84"
+EXPECTED_SOURCE_SHA = "49ecd1abb00b032d66b8d517dcb63c414b069d49"
 EXPECTED_SOURCE_COUNT = 214
 EXPECTED_DESTINATION_COUNT = 420
 

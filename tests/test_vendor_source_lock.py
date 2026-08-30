@@ -12,7 +12,7 @@ from scripts.sync_timeblock_assistant_ui import git_blob
 ROOT = Path(__file__).resolve().parents[1]
 ASSISTANT_VENDOR = ROOT / "vendor/timeblock-assistant"
 LOCK_PATH = ASSISTANT_VENDOR / "SOURCE_LOCK.json"
-SOURCE_SHA = "e37da9fc398b03546191a7193ecc05c77b21ab84"
+SOURCE_SHA = "49ecd1abb00b032d66b8d517dcb63c414b069d49"
 
 
 def _lock() -> dict[str, Any]:

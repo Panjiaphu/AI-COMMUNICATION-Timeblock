@@ -203,12 +203,22 @@ def _localized_url(request: Request, locale: str) -> str:
     return f"{request.url.path}?{urlencode(values, doseq=True)}"
 
 
-def _template_config(settings: Settings) -> SimpleNamespace:
-    return SimpleNamespace(
+class TemplateConfig(SimpleNamespace):
+    """Flask-config-compatible read-only adapter for source-locked templates."""
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return getattr(self, key, default)
+
+
+def _template_config(settings: Settings) -> TemplateConfig:
+    public_base_url = str(settings.public_base_url or "").strip().rstrip("/")
+    return TemplateConfig(
         ADSENSE_CLIENT="",
+        COMMUNICATION_GROUP_UI_URL=f"{public_base_url}/communication",
         MESSAGING_ADVANCED_ATTACHMENTS_ENABLED=settings.messaging_advanced_attachments_enabled,
         MESSAGING_REALTIME_ENABLED=settings.messaging_realtime_enabled,
         MESSAGING_MAILBOX_LOCK_ENABLED=settings.messaging_mailbox_lock_enabled,
+        TRANSLATOR_REALTIME_ENABLED=False,
     )
 
 

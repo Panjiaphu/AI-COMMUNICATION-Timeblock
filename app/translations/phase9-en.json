@@ -24,7 +24,7 @@
   "phase9.treasury.allocate_member_fgo_body": "This creates a member Internal FGO wallet and writes both member wallet and treasury ledger records. Internal FGO remains a Timeblock governed internal balance, not an on-chain asset.",
   "phase9.treasury.allocate_business_fgo": "Allocate Internal FGO to business",
   "phase9.treasury.allocate_business_fgo_body": "This increases the business Internal FGO balance and writes both business wallet and treasury ledger records. Businesses cannot bypass the Timeblock service layer to mutate balances.",
-  "phase9.treasury.demo_business_points": "Demo business points allocation",
+  "phase9.treasury.business_points": "Allocate internal points to a business",
   "phase9.treasury.go_live_checklist": "Phase 9 go-live checklist",
   "phase9.governance.title": "FGO governance",
   "phase9.governance.eyebrow": "Governance policy",

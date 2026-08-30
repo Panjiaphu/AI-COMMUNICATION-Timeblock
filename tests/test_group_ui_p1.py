@@ -34,6 +34,8 @@ def test_group_ui_templates_are_mounted_without_mixing_direct_runtime():
     assert "LiveKit" not in script
     assert "speechSynthesis" not in script
     assert "fetch(" not in script
+    assert 'runtimeConfig.initial_surface' in script
+    assert 'scrollIntoView({ block: "center", behavior: "auto" })' in script
 
 
 def test_group_copy_has_vi_en_zh_tw_parity():

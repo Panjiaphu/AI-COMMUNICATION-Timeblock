@@ -47,7 +47,7 @@
         <link rel="stylesheet" href="{{ url_for('static', filename='css/opportunities.css', v='phase10-opportunities-3') }}">
       {% endif %}
       <link rel="stylesheet" href="{{ url_for('static', filename='css/market_enterprise_sentiment.css') }}">
-      <link rel="stylesheet" href="{{ url_for('static', filename='css/exchange_rates.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/exchange_rates.css', v='timeblock-v2-exchange-3') }}">
       <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
       <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_i18n_fix.css') }}">
       <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_' ~ 'pha' ~ 'se16.css') }}">
@@ -57,9 +57,10 @@
     {% endif %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/security.css', v='20260801-firewall-evidence-v3') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/i18n_shared_shell.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/timeblock_v2.css', v='timeblock-v2-pr1-8') }}">
     {% block head %}{% endblock %}
   </head>
-  <body class="{% block body_class %}{% endblock %}">
+  <body class="tbv2-shell {% block body_class %}{% endblock %}">
     <a class="skip-link" href="#main-content">{{ t('layout.skip_to_content') }}</a>
     {% include "partials/nav.html" %}
     <main id="main-content" tabindex="-1">
@@ -72,7 +73,7 @@
     {% if not is_assistant_page %}
       {% include "partials/market_assistant.html" %}
     {% endif %}
-    <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/main.js', v='timeblock-v2-exchange-3') }}" defer></script>
     {% if not is_assistant_page %}
       <script src="{{ url_for('static', filename='js/missions.js') }}" defer></script>
       <script src="{{ url_for('static', filename='js/chat.js') }}" defer></script>
@@ -97,6 +98,7 @@
       <script src="{{ url_for('static', filename='js/equities.js') }}" defer></script>
       <script src="{{ url_for('static', filename='js/market_assistant.js') }}" defer></script>
     {% endif %}
+    <script src="{{ url_for('static', filename='js/timeblock_v2.js', v='timeblock-v2-pr1-5') }}" defer></script>
     {% block scripts %}{% endblock %}
     {% if active_user and active_user.role in ['member', 'business'] and not is_call_v3_page and not request.path.startswith('/assistant') %}
       <script src="{{ url_for('static', filename='js/call_audio_ownership.js', v='call-v1-ring-owner-20260822') }}" defer></script>

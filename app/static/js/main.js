@@ -78,7 +78,8 @@ if (exchangeRateDashboard) {
   const panels = Array.from(exchangeRateDashboard.querySelectorAll("[data-exchange-rate-panel]"));
   const marketPanel = exchangeRateDashboard.querySelector('[data-exchange-rate-panel="vietnam"]');
   const manualPanel = exchangeRateDashboard.querySelector('[data-exchange-rate-panel="taiwan"]');
-  let activeTab = "vietnam";
+  let activeTab = "taiwan";
+  let activeTabUserSelected = false;
   let marketRateController = null;
 
   const getPanel = (name) => panels.find((panel) => panel.dataset.exchangeRatePanel === name);
@@ -114,9 +115,8 @@ if (exchangeRateDashboard) {
 
     panels.forEach((panel) => {
       const selected = panel.dataset.exchangeRatePanel === name;
-      panel.classList.toggle("is-tab-inactive", mobileQuery.matches && !selected);
-      if (mobileQuery.matches) panel.setAttribute("aria-hidden", String(!selected));
-      else panel.removeAttribute("aria-hidden");
+      panel.classList.toggle("is-tab-inactive", !selected);
+      panel.setAttribute("aria-hidden", String(!selected));
     });
   };
 
@@ -128,32 +128,14 @@ if (exchangeRateDashboard) {
     exchangeRateDashboard.hidden = availableNames.length === 0;
     if (availableNames.length === 0) return;
 
+    if (!activeTabUserSelected && availableNames.includes("taiwan")) activeTab = "taiwan";
+    else if (!activeTabUserSelected && availableNames.includes("vietnam")) activeTab = "vietnam";
     if (!availableNames.includes(activeTab)) activeTab = availableNames[0];
 
-    if (mobileQuery.matches) {
-      activateExchangeRateTab(activeTab);
-    } else {
-      tabs.forEach((tab) => {
-        tab.removeAttribute("role");
-        tab.removeAttribute("aria-selected");
-        tab.tabIndex = 0;
-      });
-      panels.forEach((panel) => {
-        panel.classList.remove("is-tab-inactive");
-        panel.removeAttribute("role");
-        panel.removeAttribute("aria-hidden");
-        panel.removeAttribute("aria-labelledby");
-      });
-      if (tabsContainer) tabsContainer.removeAttribute("role");
-    }
+    activateExchangeRateTab(activeTab);
   };
 
   const initializeExchangeRateTabs = () => {
-    if (!mobileQuery.matches) {
-      syncExchangeRateDashboard();
-      return;
-    }
-
     if (tabsContainer) tabsContainer.setAttribute("role", "tablist");
     tabs.forEach((tab) => {
       const name = tab.dataset.exchangeRateTab;
@@ -168,8 +150,75 @@ if (exchangeRateDashboard) {
     syncExchangeRateDashboard();
   };
 
+  const rateTracks = Array.from(exchangeRateDashboard.querySelectorAll("[data-exchange-rate-track]"));
+  const reduceMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const rateTrackTimers = new Map();
+  const rateTrackStates = new Map();
+
+  const rateTrackStep = (track) => {
+    const card = track.querySelector("article");
+    if (!card) return 0;
+    const styles = window.getComputedStyle(track);
+    const gap = Number.parseFloat(styles.columnGap || styles.gap || "0") || 0;
+    return card.getBoundingClientRect().width + gap;
+  };
+
+  const stopRateTrack = (track) => {
+    const timer = rateTrackTimers.get(track);
+    if (timer) window.clearInterval(timer);
+    rateTrackTimers.delete(track);
+  };
+
+  const startRateTrack = (track) => {
+    stopRateTrack(track);
+    if (reduceMotionQuery.matches || track.dataset.autoplay === "false") return;
+
+    const state = rateTrackStates.get(track) || { paused: false };
+    rateTrackStates.set(track, state);
+    const pause = () => {
+      state.paused = true;
+    };
+    const resume = () => {
+      state.paused = false;
+    };
+
+    if (track.dataset.rateMotionBound !== "true") {
+      track.addEventListener("mouseenter", pause);
+      track.addEventListener("mouseleave", resume);
+      track.addEventListener("focusin", pause);
+      track.addEventListener("focusout", (event) => {
+        if (!track.contains(event.relatedTarget)) resume();
+      });
+      track.addEventListener("pointerdown", () => {
+        pause();
+        window.setTimeout(resume, 2400);
+      });
+      track.dataset.rateMotionBound = "true";
+    }
+
+    const timer = window.setInterval(() => {
+      if (state.paused || document.hidden || track.clientWidth === 0 || track.scrollWidth <= track.clientWidth + 4) return;
+      const step = rateTrackStep(track);
+      if (!step) return;
+      const atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
+      if (atEnd) {
+        track.scrollTo({ left: 0, behavior: "auto" });
+        return;
+      }
+      track.scrollBy({ left: step, behavior: "smooth" });
+    }, 6000);
+    rateTrackTimers.set(track, timer);
+  };
+
+  const initializeRateTracks = () => {
+    rateTracks.forEach((track) => startRateTrack(track));
+  };
+
   tabs.forEach((tab) => {
-    tab.addEventListener("click", () => activateExchangeRateTab(tab.dataset.exchangeRateTab));
+    tab.addEventListener("click", () => {
+      activeTabUserSelected = true;
+      activateExchangeRateTab(tab.dataset.exchangeRateTab);
+    });
     tab.addEventListener("keydown", (event) => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
       const availableTabs = tabs.filter((candidate) => !candidate.hidden);
@@ -247,11 +296,89 @@ if (exchangeRateDashboard) {
 
   setAvailability("taiwan", exchangeRateDashboard.dataset.manualRateAvailable === "true");
   initializeExchangeRateTabs();
+  initializeRateTracks();
   mobileQuery.addEventListener("change", initializeExchangeRateTabs);
+  reduceMotionQuery.addEventListener("change", initializeRateTracks);
   loadMarketRate();
   window.setInterval(loadMarketRate, 10000);
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) loadMarketRate();
+  });
+}
+
+const homeExchangeRail = document.querySelector("[data-home-exchange-rail]");
+
+if (homeExchangeRail) {
+  const vietnamMarket = homeExchangeRail.querySelector('[data-home-rate-market="vietnam"]');
+  const marqueeTracks = Array.from(homeExchangeRail.querySelectorAll("[data-v2-rate-marquee]"));
+  let homeRateController = null;
+
+  marqueeTracks.forEach((track) => {
+    const pause = () => track.classList.add("is-paused");
+    const resume = () => track.classList.remove("is-paused");
+    track.addEventListener("mouseenter", pause);
+    track.addEventListener("mouseleave", resume);
+    track.addEventListener("focusin", pause);
+    track.addEventListener("focusout", (event) => {
+      if (!track.contains(event.relatedTarget)) resume();
+    });
+    track.addEventListener("pointerdown", () => {
+      pause();
+      window.setTimeout(resume, 2400);
+    });
+  });
+
+  const setHomeRateField = (field, value) => {
+    homeExchangeRail.querySelectorAll(`[data-home-rate-field="${field}"]`).forEach((target) => {
+      target.textContent = value || "-";
+    });
+  };
+
+  const updateHomeMarketRate = (payload) => {
+    if (!vietnamMarket) return;
+    const available = Boolean(
+      (payload.enabled && payload.available) ||
+      (payload.vnd_usdt_enabled && payload.vnd_usdt_available)
+    );
+    setHomeRateField("market_buy_twd_vnd", payload.market_buy_twd_vnd);
+    setHomeRateField("market_sell_twd_vnd", payload.market_sell_twd_vnd);
+    setHomeRateField("market_buy_vnd_usdt", payload.market_buy_vnd_usdt);
+    setHomeRateField("market_sell_vnd_usdt", payload.market_sell_vnd_usdt);
+    const status = vietnamMarket.querySelector("[data-home-rate-status]");
+    if (status) {
+      status.textContent = available
+        ? vietnamMarket.dataset.liveLabel || "Cập nhật · UTC+8"
+        : vietnamMarket.dataset.pendingLabel || "Đang chờ dữ liệu";
+    }
+  };
+
+  const loadHomeMarketRate = async () => {
+    if (document.hidden) return;
+    if (homeRateController) homeRateController.abort();
+    homeRateController = new AbortController();
+    const timeout = window.setTimeout(() => homeRateController.abort(), 6000);
+    try {
+      const response = await fetch("/api/public/exchange-rates/market", {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+        signal: homeRateController.signal,
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      updateHomeMarketRate(await response.json());
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        const status = vietnamMarket?.querySelector("[data-home-rate-status]");
+        if (status) status.textContent = vietnamMarket.dataset.errorLabel || "Mất kết nối nguồn dữ liệu.";
+      }
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  };
+
+  loadHomeMarketRate();
+  window.setInterval(loadHomeMarketRate, 10000);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) loadHomeMarketRate();
   });
 }
 

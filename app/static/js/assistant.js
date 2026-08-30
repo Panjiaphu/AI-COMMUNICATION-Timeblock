@@ -1414,33 +1414,184 @@
     }));
   }
 
+  function groupMemberCount(group) {
+    return Array.isArray(group?.member_profiles)
+      ? group.member_profiles.filter(Boolean).length
+      : (Array.isArray(group?.members) ? group.members.length : 0);
+  }
+
+  function setSelectedGroup(group) {
+    const title = $('[data-group-selected-title]');
+    const meta = $('[data-group-selected-meta]');
+    const count = groupMemberCount(group);
+    if (title) title.textContent = group?.title || copy("group");
+    if (meta) {
+      meta.textContent = group
+        ? copy("groupSelectedMeta").replace("{count}", String(count))
+        : copy("groupSelectMeta");
+    }
+    $$('[data-group-surface]').forEach((button) => {
+      button.disabled = !group;
+      button.classList.toggle("is-active", button.dataset.groupSurface === "chat");
+    });
+    const surface = $('[data-communication-panel="groups"]');
+    if (surface) surface.dataset.selectedGroupId = group?.id ? String(group.id) : "";
+  }
+
+  function groupRuntimeTarget(surface) {
+    const raw = String(app.dataset.groupUiUrl || "").trim();
+    if (!raw) throw new Error("group_runtime_unavailable");
+    const target = new URL(raw);
+    if (!["http:", "https:"].includes(target.protocol)) throw new Error("group_runtime_unavailable");
+    target.searchParams.set("surface", surface);
+    target.searchParams.set("lang", app.dataset.locale || "vi");
+    return target;
+  }
+
+  function sendGroupHandoff(popup, target, payload) {
+    const eventName = app.dataset.groupHandoffEvent || "timeblock.group.communication.handoff.v2";
+    const targetOrigin = target.origin;
+    const message = { type: eventName, payload };
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      if (!popup || popup.closed || attempts > 24) {
+        window.clearInterval(timer);
+        return;
+      }
+      try { popup.postMessage(message, targetOrigin); } catch (_error) { /* popup may still be navigating */ }
+    }, 250);
+  }
+
+  function groupParticipantId() {
+    const ownerType = state.me?.owner_type || app.dataset.actorType || "member";
+    const ownerId = state.me?.owner_id || app.dataset.actorId || "";
+    return ownerId ? `${ownerType}:${ownerId}` : "";
+  }
+
+  async function launchGroupSurface(group, surface) {
+    if (!group?.id) return;
+    setSelectedGroup(group);
+    if (surface === "chat") {
+      activateCommunicationTab("conversations");
+      await selectConversation(group);
+      return;
+    }
+    const launchStatus = $('[data-group-launch-status]');
+    const popup = window.open("about:blank", "timeblock-group-runtime");
+    if (!popup) {
+      setFeedback(launchStatus, copy("groupLaunchError"), true);
+      return;
+    }
+    setFeedback(launchStatus, copy("groupLaunching"), false);
+    try {
+      const target = groupRuntimeTarget(surface);
+      let handoff;
+      if (surface === "radio") {
+        const radioPayload = await api(
+          `/api/messaging/conversations/${encodeURIComponent(group.id)}/radio-sessions`,
+          jsonOptions("POST", {}),
+        );
+        const radio = radioPayload.radio_session || {};
+        if (!radio.id) throw new Error("group_radio_session_unavailable");
+        const profilePayload = await api(
+          `/api/messaging/conversations/${encodeURIComponent(group.id)}/group-language-profile`,
+        ).catch(() => ({}));
+        const profile = profilePayload.profile || {
+          spoken_language: "vi",
+          preferred_output_language: "zh-TW",
+          secondary_language: null,
+          auto_detect_enabled: true,
+          auto_translate: true,
+          auto_read_translation: true,
+          show_original: true,
+          show_translation: true,
+          tts_voice_profile: "default",
+        };
+        handoff = {
+          contract_version: "2",
+          authority: "timeblock",
+          handoff_type: "group",
+          handoff_id: createClientMessageId(),
+          generation: createClientMessageId(),
+          surface: "group_radio",
+          mode: "audio",
+          radio_session_id: String(radio.id),
+          session_id: String(radio.id),
+          participant_id: groupParticipantId(),
+          workspace_id: `conversation:${group.id}`,
+          source_language: profile.spoken_language || "vi",
+          target_language: profile.preferred_output_language || "zh-TW",
+          language_profile: profile,
+          expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        };
+      } else {
+        const roomPayload = await api(
+          `/api/messaging/groups/${encodeURIComponent(group.id)}/call-rooms`,
+          jsonOptions("POST", { media: surface === "video" ? "video" : "audio" }),
+        );
+        const room = roomPayload.room || {};
+        if (!room.id) throw new Error("group_room_unavailable");
+        handoff = await api("/api/communication/group/bootstrap", jsonOptions("POST", {
+          room_id: String(room.id),
+          source_language: "vi",
+          target_language: "zh-TW",
+        }));
+      }
+      popup.location.href = target.toString();
+      sendGroupHandoff(popup, target, handoff);
+      setFeedback(launchStatus, copy("groupLaunch"), false);
+    } catch (error) {
+      try { popup.close(); } catch (_closeError) { /* already closed */ }
+      const message = error?.message === "group_radio_session_unavailable"
+        ? copy("groupLaunchError")
+        : error?.message === "group_runtime_unavailable"
+          ? copy("groupLaunchError")
+          : errorMessage(error);
+      setFeedback(launchStatus, message, true);
+    }
+  }
+
   function renderGroups(items) {
     state.groups = Array.isArray(items) ? items : [];
     const list = $('[data-group-list]');
     if (!list) return;
     if (!state.groups.length) {
       replaceWithEmpty(list, copy("groupEmpty"));
+      setSelectedGroup(null);
       return;
     }
     list.replaceChildren(...state.groups.map((group) => {
       const row = createElement("article", "assistant-communication-row");
       const avatar = createElement("span", "assistant-list-avatar", initials({ display_name: group.title }));
       const content = createElement("span", "assistant-list-copy");
-      const memberCount = Array.isArray(group.member_profiles)
-        ? group.member_profiles.filter(Boolean).length
-        : (group.members || []).length;
+      const memberCount = groupMemberCount(group);
       content.append(
         createElement("strong", "", group.title || copy("group")),
         createElement("small", "", copy("groupMembersCount").replace("{count}", String(memberCount))),
       );
-      const open = miniButton(copy("groupOpen"), async () => {
-        activateCommunicationTab("conversations");
-        await selectConversation(group);
+      const actions = createElement("div", "assistant-group-row-actions");
+      const open = miniButton(copy("groupOpen"), () => launchGroupSurface(group, "chat"));
+      open.className = "assistant-secondary-button assistant-communication-action assistant-group-row-chat";
+      const audio = miniButton(copy("groupCall"), () => launchGroupSurface(group, "call"));
+      audio.className = "assistant-secondary-button assistant-group-row-call";
+      const video = miniButton(copy("groupVideo"), () => launchGroupSurface(group, "video"));
+      video.className = "assistant-secondary-button assistant-group-row-video";
+      const radio = miniButton(copy("groupRadio"), () => launchGroupSurface(group, "radio"));
+      radio.className = "assistant-secondary-button assistant-group-row-radio";
+      actions.append(open, audio, video, radio);
+      row.classList.add("assistant-group-row");
+      row.dataset.groupId = String(group.id || "");
+      row.addEventListener("click", (event) => {
+        if (event.target.closest("button")) return;
+        setSelectedGroup(group);
       });
-      open.className = "assistant-secondary-button assistant-communication-action";
-      row.append(avatar, content, open);
+      row.append(avatar, content, actions);
       return row;
     }));
+    const selectedId = $('[data-communication-panel="groups"]')?.dataset.selectedGroupId;
+    const selected = state.groups.find((group) => String(group.id) === String(selectedId));
+    if (selected) setSelectedGroup(selected);
   }
 
   async function loadGroups() {
@@ -2222,6 +2373,14 @@
         String(state.conversation.member_profiles?.filter(Boolean).length || state.conversation.members?.length || 0),
       )
       : (peer.public_id || "");
+    const groupToolbar = $('[data-group-context-toolbar]');
+    if (groupToolbar) {
+      groupToolbar.hidden = !isGroup;
+      groupToolbar.dataset.groupId = isGroup ? String(state.conversation.id) : "";
+      groupToolbar.querySelectorAll('[data-group-context-surface]').forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.groupContextSurface === 'chat');
+      });
+    }
     $('[data-message-form]').hidden = false;
     $('[data-call-actions]').hidden = isGroup;
     $('[data-messaging-layout]').classList.add("has-thread");
@@ -2379,6 +2538,18 @@
     });
     $('[data-call-history-refresh]')?.addEventListener("click", () => {
       loadCallHistory().catch((error) => setFeedback($('[data-call-history-feedback]'), errorMessage(error), true));
+    });
+    app.querySelectorAll('[data-group-context-surface]').forEach((button) => {
+      button.addEventListener('click', () => {
+        if (state.conversation?.kind !== 'group') return;
+        const surface = button.dataset.groupContextSurface || 'chat';
+        app.querySelectorAll('[data-group-context-surface]').forEach((item) => {
+          item.classList.toggle('is-active', item === button);
+        });
+        launchGroupSurface(state.conversation, surface).catch((error) => {
+          setFeedback($('[data-network-feedback]'), errorMessage(error), true);
+        });
+      });
     });
   }
 
@@ -3984,6 +4155,7 @@
     initRingtone();
     initCalls();
     initCommunicationTabs();
+    setSelectedGroup(null);
     initModes();
     initVisualViewport();
     state.ready = true;

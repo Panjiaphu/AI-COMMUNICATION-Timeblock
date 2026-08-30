@@ -5,6 +5,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlencode
 from uuid import uuid4
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect, status
@@ -22,6 +23,7 @@ from app.integrations.timeblock.client import TimeblockIntegrationError
 logger = logging.getLogger('guilua.communication')
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[1] / 'templates')
+SAFE_GROUP_SURFACES = frozenset({'call', 'video', 'radio'})
 
 
 def now_iso() -> str:
@@ -102,6 +104,13 @@ async def _assistant_page(
 
 @router.get('/', response_class=HTMLResponse)
 async def home(request: Request) -> HTMLResponse:
+    requested_surface = str(request.query_params.get('surface') or '').strip().lower()
+    if requested_surface in SAFE_GROUP_SURFACES:
+        locale = resolve_timeblock_locale(request, request.app.state.settings.default_locale)
+        # Authentication stays in the one-time postMessage handoff. Only this
+        # allowlisted presentation hint and normalized locale enter the URL.
+        query = urlencode({'surface': requested_surface, 'lang': locale})
+        return RedirectResponse(f'/communication?{query}', status_code=307)
     return await _assistant_page(request)
 
 
@@ -173,6 +182,8 @@ async def call_deep_link(request: Request, call_id: str) -> HTMLResponse:
 async def communication(request: Request) -> HTMLResponse:
     settings = request.app.state.settings
     locale = resolve_timeblock_locale(request, settings.default_locale)
+    requested_surface = str(request.query_params.get('surface') or '').strip().lower()
+    initial_surface = requested_surface if requested_surface in SAFE_GROUP_SURFACES else ''
     copy = communication_copy(locale)
     runtime_config = {
         'handoff_event': 'timeblock.communication.handoff.v1',
@@ -182,6 +193,7 @@ async def communication(request: Request) -> HTMLResponse:
         'development_query_handoff': settings.development_query_handoff_enabled,
         'timeblock_entry_url': settings.primary_timeblock_handoff_origin,
         'locale': locale,
+        'initial_surface': initial_surface,
         'copy': copy,
     }
     return templates.TemplateResponse(

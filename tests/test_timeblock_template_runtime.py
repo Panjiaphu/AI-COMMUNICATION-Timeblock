@@ -120,6 +120,7 @@ def test_authenticated_assistant_renders_canonical_vendor_dom_and_locale(runtime
     assert 'data-actor-id="member-42"' in response.text
     assert 'data-messaging-realtime-enabled="true"' in response.text
     assert 'data-messaging-mailbox-lock-enabled="true"' in response.text
+    assert 'data-group-ui-url="http://testserver/communication"' in response.text
     assert 'data-initial-mode="messages"' in response.text
     assert 'data-initial-conversation="42"' in response.text
     assert 'data-mode-tab="ai"' in response.text
@@ -196,7 +197,7 @@ def test_authenticated_settings_renders_canonical_assets_and_local_back_link(run
     assert response.headers["cache-control"] == "no-store"
     assert "microphone=(self)" in response.headers["permissions-policy"]
     assert '<html lang="en">' in response.text
-    assert 'class="app-settings-page"' in response.text
+    assert 'class="tbv2-shell app-settings-page"' in response.text
     assert 'class="app-settings"' in response.text
     assert 'id="app-settings"' in response.text
     assert 'data-locale="en"' in response.text

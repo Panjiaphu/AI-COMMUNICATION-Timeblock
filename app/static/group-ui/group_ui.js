@@ -14,16 +14,21 @@
     surfaceObserver.observe(root);
   }
 
+  let runtimeConfig = {};
+  try {
+    const configNode = document.getElementById("guilua-runtime-config");
+    runtimeConfig = JSON.parse(configNode?.textContent || "{}");
+  } catch (_error) {
+    runtimeConfig = {};
+  }
   let copy = window.__GROUP_UI_COPY__ || {};
   if (!Object.keys(copy).length) {
-    try {
-      const configNode = document.getElementById("guilua-runtime-config");
-      const runtimeConfig = JSON.parse(configNode?.textContent || "{}");
-      copy = runtimeConfig.copy || {};
-    } catch (_error) {
-      copy = {};
-    }
+    copy = runtimeConfig.copy || {};
   }
+  const initialSurface = ["call", "video", "radio"].includes(runtimeConfig.initial_surface)
+    ? runtimeConfig.initial_surface
+    : "";
+  root.dataset.initialSurface = initialSurface;
   const text = (key, fallback) => String(copy[key] || fallback || "");
   const applyLanguageProfile = (profile) => {
     if (!profile) return;
@@ -217,4 +222,14 @@
     const status = preferences.querySelector("[data-group-preferences-status]");
     if (status) status.textContent = text("group_preferences_saved", "UI preferences were saved for this session.");
   });
+
+  const initialCard = initialSurface === "radio" ? radioCard : (["call", "video"].includes(initialSurface) ? callCard : null);
+  if (initialCard) {
+    initialCard.dataset.initialMode = initialSurface;
+    initialCard.setAttribute("tabindex", "-1");
+    window.requestAnimationFrame(() => {
+      initialCard.focus({ preventScroll: true });
+      initialCard.scrollIntoView({ block: "center", behavior: "auto" });
+    });
+  }
 }(window));

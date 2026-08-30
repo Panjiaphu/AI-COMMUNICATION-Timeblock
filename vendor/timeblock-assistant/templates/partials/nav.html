@@ -1,88 +1,176 @@
-<header class="site-header" data-header>
-  <a class="brand-mark" href="{{ url_for('home', lang=current_locale) }}" aria-label="{{ t('layout.default_title') }}">
+{% macro tbv2_icon(name) -%}
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    {% if name == 'community' %}
+      <circle cx="9" cy="8" r="3"></circle><circle cx="17" cy="9" r="2.4"></circle><path d="M3.5 19c.5-3.2 2.4-5 5.5-5s5 1.8 5.5 5"></path><path d="M14.5 15c2.6-.9 5.2.6 6 3.2"></path>
+    {% elif name == 'work' %}
+      <rect x="3" y="6.5" width="18" height="13" rx="2"></rect><path d="M8 6.5V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1.5M3 11h18M10 11v2h4v-2"></path>
+    {% elif name == 'shop' %}
+      <path d="M4 9.5h16l-1.4-5H5.4L4 9.5Z"></path><path d="M5 9.5v9.2A2.3 2.3 0 0 0 7.3 21h9.4a2.3 2.3 0 0 0 2.3-2.3V9.5M9 21v-5h6v5"></path><path d="M4 9.5a3 3 0 0 0 5 0 3 3 0 0 0 5 0 3 3 0 0 0 5 0"></path>
+    {% elif name == 'event' %}
+      <rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M7 3v4M17 3v4M3 10h18M8 14h3M8 17h5"></path>
+    {% elif name == 'market' %}
+      <path d="M4 19V5M4 19h17"></path><path d="m7 15 3-4 3 2 5-7"></path><path d="M15 6h3v3"></path>
+    {% elif name == 'discover' %}
+      <path d="m12 3 1.6 5.4L19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6L12 3Z"></path><path d="m19 16 .7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7L19 16Z"></path>
+    {% elif name == 'assistant' %}
+      <path d="M12 3v3M5.6 6.6l2.1 2.1M3 13h3M18.4 6.6l-2.1 2.1M21 13h-3"></path><path d="M8 18.2V16a4 4 0 1 1 8 0v2.2a2.8 2.8 0 0 1-2.8 2.8h-2.4A2.8 2.8 0 0 1 8 18.2Z"></path><path d="M10 17h4M10.5 19h3"></path>
+    {% elif name == 'center' %}
+      <path d="M4 21V5.5L12 3l8 2.5V21"></path><path d="M8 9h1M15 9h1M8 13h1M15 13h1M10 21v-4h4v4"></path>
+    {% elif name == 'services' %}
+      <rect x="4" y="4" width="6" height="6" rx="1.4"></rect><rect x="14" y="4" width="6" height="6" rx="1.4"></rect><rect x="4" y="14" width="6" height="6" rx="1.4"></rect><rect x="14" y="14" width="6" height="6" rx="1.4"></rect><path d="M10 7h4M10 17h4M7 10v4M17 10v4"></path>
+    {% endif %}
+  </svg>
+{%- endmacro %}
+
+{% set community_active = request.endpoint and request.endpoint.startswith('opportunities.') and request.args.get('surface', 'community') != 'work' %}
+{% set work_active = request.endpoint and (request.endpoint.startswith('jobs.') or (request.endpoint.startswith('opportunities.') and request.args.get('surface') == 'work')) %}
+{% set center_href = url_for('auth.login', lang=current_locale) %}
+{% if active_user and active_user.role == 'member' %}
+  {% set center_href = url_for('member.dashboard', lang=current_locale) %}
+{% elif active_user and active_user.role == 'business' %}
+  {% set center_href = url_for('business_auth.dashboard', lang=current_locale) %}
+{% elif active_user and active_user.role == 'admin' %}
+  {% set center_href = url_for('admin.dashboard', lang=current_locale) %}
+{% endif %}
+{% set nav_assistant_destination = url_for('assistant.workspace', lang=current_locale) %}
+{% set nav_assistant_href = nav_assistant_destination if active_user else url_for('auth.login', next=nav_assistant_destination, lang=current_locale) %}
+
+<header class="site-header tbv2-header" data-header data-v2-header>
+  <a class="brand-mark tbv2-brand" href="{{ url_for('home', lang=current_locale) }}" aria-label="{{ t('layout.default_title') }}">
     <span class="brand-symbol"><img src="{{ url_for('static', filename='img/timeblock-icon.svg') }}" alt="" aria-hidden="true"></span>
-    <span>
-      <strong>{{ t('brand.name') }}</strong>
+    <span class="tbv2-brand-copy">
+      <strong>TimeblockFGo</strong>
       <small>{{ t('brand.tagline') }}</small>
     </span>
   </a>
 
-  <nav class="desktop-nav" aria-label="{{ t('nav.primary') }}">
-    <a class="nav-secondary" href="{{ url_for('business_auth.login', lang=current_locale) }}">{{ t('nav.business_login') }}</a>
-    <a href="{{ url_for('utilities.index', lang=current_locale) }}">{{ t('nav.utilities') }}</a>
-    <a href="{{ url_for('opportunities.index', lang=current_locale) }}">{{ t('nav.opportunities') }}</a>
-    <a href="{{ url_for('flights.index', lang=current_locale) }}">{{ t('nav.flights') }}</a>
-    <a href="{{ url_for('market.dashboard', lang=current_locale) }}">{{ t('nav.market') }}</a>
-    <a href="{{ url_for('equities.dashboard', lang=current_locale) }}">{{ t('nav.equities') }}</a>
-    <a href="{{ url_for('missions.list_missions', lang=current_locale) }}">{{ t('nav.missions') }}</a>
-    {% set nav_assistant_destination = url_for('assistant.workspace', lang=current_locale) %}
-    {% if not active_user or active_user.role in ['member', 'business'] %}<a href="{{ nav_assistant_destination if active_user else url_for('auth.login', next=nav_assistant_destination, lang=current_locale) }}">{{ t('assistant.title') }}</a>{% endif %}
-    <a href="{{ url_for('events.list_events', lang=current_locale) }}">{{ t('nav.events') }}</a>
-    <a class="nav-tertiary" href="{{ url_for('shop.marketplace', lang=current_locale) }}">{{ t('nav.shop') }}</a>
-    <a class="nav-tertiary" href="{{ url_for('delivery.index', lang=current_locale) }}">{{ t('nav.delivery') }}</a>
-    <a class="nav-tertiary" href="{{ url_for('redeem_shop.list_products', lang=current_locale) }}">{{ t('nav.redeem_shop') }}</a>
-    <a class="nav-tertiary" href="{{ url_for('block_ledger.public_explorer', lang=current_locale) }}">{{ t('nav.block_ledger') }}</a>
-    <a class="nav-secondary" href="{{ url_for('member.dashboard', lang=current_locale) }}">{{ t('nav.member_center') }}</a>
+  <nav class="desktop-nav tbv2-primary-nav" aria-label="{{ t('nav.primary') }}">
+    <a class="{% if community_active %}active{% endif %}" href="{{ url_for('opportunities.index', surface='community', lang=current_locale) }}"><span class="tbv2-nav-icon">{{ tbv2_icon('community') }}</span><span>{{ t('nav.community') }}</span></a>
+    <a class="{% if work_active %}active{% endif %}" href="{{ url_for('opportunities.index', surface='work', lang=current_locale) }}"><span class="tbv2-nav-icon">{{ tbv2_icon('work') }}</span><span>{{ t('nav.work') }}</span></a>
+    <a class="{% if request.endpoint and request.endpoint.startswith('shop.') %}active{% endif %}" href="{{ url_for('shop.marketplace', lang=current_locale) }}"><span class="tbv2-nav-icon">{{ tbv2_icon('shop') }}</span><span>{{ t('nav.shop') }}</span></a>
+    <a class="{% if request.endpoint and request.endpoint.startswith('events.') %}active{% endif %}" href="{{ url_for('events.list_events', lang=current_locale) }}"><span class="tbv2-nav-icon">{{ tbv2_icon('event') }}</span><span>{{ t('nav.events') }}</span></a>
+
+    <details class="tbv2-nav-menu" data-v2-menu>
+      <summary><span class="tbv2-nav-icon">{{ tbv2_icon('market') }}</span><span>{{ t('nav.market_group') }}</span> <span aria-hidden="true">⌄</span></summary>
+      <div class="tbv2-nav-popover tbv2-nav-popover-compact">
+        <a href="{{ url_for('market.dashboard', lang=current_locale) }}">
+          <strong>{{ t('nav.market') }}</strong><small>{{ t('nav.market_crypto_summary') }}</small>
+        </a>
+        <a href="{{ url_for('equities.dashboard', lang=current_locale) }}">
+          <strong>{{ t('nav.equities') }}</strong><small>{{ t('nav.market_equities_summary') }}</small>
+        </a>
+      </div>
+    </details>
+
+    <details class="tbv2-nav-menu" data-v2-menu>
+      <summary><span class="tbv2-nav-icon">{{ tbv2_icon('discover') }}</span><span>{{ t('nav.discover') }}</span> <span aria-hidden="true">⌄</span></summary>
+      <div class="tbv2-mega-menu" aria-label="{{ t('nav.services') }}">
+        <section>
+          <h2>{{ t('nav.market_group') }}</h2>
+          <a href="{{ url_for('market.dashboard', lang=current_locale) }}"><strong>{{ t('nav.market') }}</strong><small>{{ t('nav.market_crypto_summary') }}</small></a>
+          <a href="{{ url_for('equities.dashboard', lang=current_locale) }}"><strong>{{ t('nav.equities') }}</strong><small>{{ t('nav.market_equities_summary') }}</small></a>
+        </section>
+        <section>
+          <h2>{{ t('nav.participate') }}</h2>
+          <a href="{{ url_for('missions.list_missions', lang=current_locale) }}"><strong>{{ t('nav.missions') }}</strong><small>{{ t('nav.missions_summary') }}</small></a>
+          <a href="{{ url_for('redeem_shop.list_products', lang=current_locale) }}"><strong>{{ t('nav.redeem_shop') }}</strong><small>{{ t('nav.redeem_summary') }}</small></a>
+        </section>
+        <section>
+          <h2>{{ t('nav.technology') }}</h2>
+          <a href="{{ nav_assistant_href }}"><strong>{{ t('assistant.title') }}</strong><small>{{ t('nav.assistant_summary') }}</small></a>
+          {% if config.get('TIMEBLOCK_BLOCK_PUBLIC_NAV_ENABLED', false) %}
+            <a href="{{ url_for('block_ledger.public_explorer', lang=current_locale) }}"><strong>{{ t('nav.block_ledger') }}</strong><small>{{ t('nav.block_summary') }}</small></a>
+          {% endif %}
+          <a href="{{ url_for('utilities.index', lang=current_locale) }}"><strong>{{ t('nav.discover') }}</strong><small>{{ t('nav.utilities_summary') }}</small></a>
+        </section>
+        <section>
+          <h2>{{ t('nav.center') }}</h2>
+          <a href="{{ center_href }}"><strong>{{ t('nav.account_center') }}</strong><small>{{ t('nav.center_summary') }}</small></a>
+          <a href="{{ url_for('flights.index', lang=current_locale) }}"><strong>{{ t('nav.flights') }}</strong><small>{{ t('nav.flights_summary') }}</small></a>
+          {% if config.get('TIMEBLOCK_DELIVERY_NAV_ENABLED', false) %}
+            <a href="{{ url_for('delivery.index', lang=current_locale) }}"><strong>{{ t('nav.delivery') }}</strong><small>{{ t('nav.delivery_summary') }}</small></a>
+          {% endif %}
+        </section>
+      </div>
+    </details>
+
+    <a class="tbv2-assistant-link" href="{{ nav_assistant_href }}" aria-label="{{ t('assistant.title') }}">
+      <span class="tbv2-nav-icon">{{ tbv2_icon('assistant') }}</span><span>{{ t('nav.assistant_short') }}</span>
+      <b class="assistant-nav-badge" data-global-assistant-badge hidden>0</b>
+    </a>
+    <a href="{{ center_href }}"><span class="tbv2-nav-icon">{{ tbv2_icon('center') }}</span><span>{{ t('nav.center') }}</span></a>
   </nav>
 
-  <div class="nav-actions">
-    <nav class="language-switcher" aria-label="{{ t('language.label') }}">
+  <div class="nav-actions tbv2-nav-actions">
+    <nav class="language-switcher tbv2-language-switcher" aria-label="{{ t('language.label') }}">
       {% for locale in supported_locales %}
-        <a class="ghost-link{% if locale.code == current_locale %} active{% endif %}" href="{{ localized_url(locale.code) }}" {% if locale.code == current_locale %}aria-current="true"{% endif %}>{{ t('language.' ~ locale.code, locale.label) }}</a>
+        <a class="ghost-link{% if locale.code == current_locale %} active{% endif %}" href="{{ localized_url(locale.code) }}" {% if locale.code == current_locale %}aria-current="true"{% endif %}>{{ t('language.short.' ~ locale.code, locale.label) }}</a>
       {% endfor %}
     </nav>
     {% if active_user %}
-      {% if active_user.role == "admin" %}
-        <a class="ghost-link account-link" href="{{ url_for('admin.dashboard', lang=current_locale) }}">{{ t('nav.admin_center') }}</a>
-        <a class="primary-link" href="{{ url_for('auth.logout') }}">{{ t('nav.logout') }}</a>
-      {% elif active_user.role == "business" %}
-        <span class="account-chip" title="{{ active_user.email }}">{{ t('nav.business_account') }}</span>
-        <a class="ghost-link account-link" href="{{ url_for('business_auth.dashboard', lang=current_locale) }}">{{ t('nav.business_console') }}</a>
+      <a class="ghost-link account-link" href="{{ center_href }}">{{ t('nav.center') }}</a>
+      {% if active_user.role == 'business' %}
         <a class="primary-link" href="{{ url_for('business_auth.logout') }}">{{ t('nav.logout') }}</a>
       {% else %}
-        <span class="account-chip" title="{{ active_user.email }}">{{ active_user.display_name or active_user.email }}</span>
-        <a class="ghost-link account-link" href="{{ url_for('member.dashboard', lang=current_locale) }}">{{ t('nav.member_center') }}</a>
         <a class="primary-link" href="{{ url_for('auth.logout') }}">{{ t('nav.logout') }}</a>
       {% endif %}
     {% else %}
-      <a class="ghost-link" href="{{ url_for('business_auth.login', lang=current_locale) }}">{{ t('nav.business_login') }}</a>
-      <a class="ghost-link" href="{{ url_for('auth.login', lang=current_locale) }}">{{ t('nav.member_login') }}</a>
-      <a class="primary-link" href="{{ url_for('checkout.pricing', tab='business', lang=current_locale) }}">{{ t('nav.view_business_plans') }}</a>
+      <a class="ghost-link tbv2-login-link" href="{{ url_for('auth.login', lang=current_locale) }}">{{ t('nav.login_short') }}</a>
+      <a class="primary-link tbv2-business-link" href="{{ url_for('business_auth.login', lang=current_locale) }}">{{ t('nav.business_login') }}</a>
     {% endif %}
+
+    <details class="tbv2-mobile-locale" data-v2-menu>
+      <summary aria-label="{{ t('language.label') }}">{{ t('language.short.' ~ current_locale, current_locale|upper) }}</summary>
+      <nav aria-label="{{ t('language.label') }}">
+        {% for locale in supported_locales %}
+          <a class="{% if locale.code == current_locale %}active{% endif %}" href="{{ localized_url(locale.code) }}" {% if locale.code == current_locale %}aria-current="true"{% endif %}>{{ t('language.' ~ locale.code, locale.label) }}</a>
+        {% endfor %}
+      </nav>
+    </details>
+
+    <details class="tbv2-mobile-services" data-v2-menu>
+      <summary aria-label="{{ t('nav.services') }}"><span class="tbv2-nav-icon">{{ tbv2_icon('services') }}</span><b>{{ t('nav.services') }}</b></summary>
+      <div class="tbv2-mobile-sheet">
+        <div class="tbv2-mobile-sheet-heading">
+          <strong>{{ t('nav.services') }}</strong>
+          <small>{{ t('nav.services_summary') }}</small>
+        </div>
+        <nav aria-label="{{ t('nav.services') }}">
+          <a href="{{ url_for('market.dashboard', lang=current_locale) }}">{{ t('nav.market') }}</a>
+          <a href="{{ url_for('equities.dashboard', lang=current_locale) }}">{{ t('nav.equities') }}</a>
+          <a href="{{ url_for('missions.list_missions', lang=current_locale) }}">{{ t('nav.missions') }}</a>
+          <a href="{{ nav_assistant_href }}">{{ t('assistant.title') }}</a>
+          <a href="{{ url_for('redeem_shop.list_products', lang=current_locale) }}">{{ t('nav.redeem_shop') }}</a>
+          {% if config.get('TIMEBLOCK_BLOCK_PUBLIC_NAV_ENABLED', false) %}
+            <a href="{{ url_for('block_ledger.public_explorer', lang=current_locale) }}">{{ t('nav.block_ledger') }}</a>
+          {% endif %}
+          <a href="{{ url_for('utilities.index', lang=current_locale) }}">{{ t('nav.discover') }}</a>
+          <a href="{{ center_href }}">{{ t('nav.center') }}</a>
+        </nav>
+        <nav class="tbv2-mobile-language" aria-label="{{ t('language.label') }}">
+          {% for locale in supported_locales %}
+            <a class="{% if locale.code == current_locale %}active{% endif %}" href="{{ localized_url(locale.code) }}">{{ t('language.' ~ locale.code, locale.label) }}</a>
+          {% endfor %}
+        </nav>
+      </div>
+    </details>
   </div>
 </header>
 
-<nav class="mobile-bottom-nav" aria-label="{{ t('nav.mobile') }}">
-  <a href="{{ url_for('home', lang=current_locale) }}" class="{% if request.endpoint == 'home' %}active{% endif %}" aria-label="{{ t('nav.home') }}">
-    <span>T</span>
-    {{ t('nav.home') }}
+<nav class="mobile-bottom-nav tbv2-bottom-nav" aria-label="{{ t('nav.mobile') }}">
+  <a href="{{ url_for('opportunities.index', surface='community', lang=current_locale) }}" class="{% if community_active %}active{% endif %}" aria-label="{{ t('nav.community') }}">
+    <span class="tbv2-nav-icon">{{ tbv2_icon('community') }}</span>{{ t('nav.community') }}
   </a>
-  <a href="{{ url_for('market.dashboard', lang=current_locale) }}" class="{% if request.endpoint and request.endpoint.startswith('market.') %}active{% endif %}" aria-label="{{ t('nav.market') }}">
-    <span>M</span>
-    {{ t('nav.market') }}
+  <a href="{{ url_for('opportunities.index', surface='work', lang=current_locale) }}" class="{% if work_active %}active{% endif %}" aria-label="{{ t('nav.work') }}">
+    <span class="tbv2-nav-icon">{{ tbv2_icon('work') }}</span>{{ t('nav.work') }}
   </a>
-  <a href="{{ url_for('flights.index', lang=current_locale) }}" class="{% if request.endpoint and request.endpoint.startswith('flights.') %}active{% endif %}" aria-label="{{ t('nav.flights') }}">
-    <span>✈</span>
-    {{ t('nav.flights') }}
+  <a href="{{ url_for('shop.marketplace', lang=current_locale) }}" class="{% if request.endpoint and request.endpoint.startswith('shop.') %}active{% endif %}" aria-label="{{ t('nav.shop') }}">
+    <span class="tbv2-nav-icon">{{ tbv2_icon('shop') }}</span>{{ t('nav.shop') }}
   </a>
-  {% if active_user and active_user.role in ['member', 'business'] %}
-  <a href="{{ url_for('assistant.workspace', lang=current_locale) }}" class="assistant-mobile-nav-link{% if request.endpoint and request.endpoint.startswith('assistant.') %} active{% endif %}" aria-label="{{ t('assistant.mode.messages') }}">
-    <span>AI</span>
-    {{ t('assistant.mode.messages') }}
-    <b class="assistant-nav-badge" data-global-assistant-badge hidden>0</b>
+  <a href="{{ url_for('events.list_events', lang=current_locale) }}" class="{% if request.endpoint and request.endpoint.startswith('events.') %}active{% endif %}" aria-label="{{ t('nav.events') }}">
+    <span class="tbv2-nav-icon">{{ tbv2_icon('event') }}</span>{{ t('nav.events') }}
   </a>
-  {% else %}
-  <a href="{{ url_for('auth.login', next=url_for('assistant.workspace'), lang=current_locale) }}" class="assistant-mobile-nav-link" aria-label="{{ t('assistant.mode.messages') }}">
-    <span>AI</span>
-    {{ t('assistant.mode.messages') }}
-  </a>
-  {% endif %}
-  <a href="{{ url_for('equities.dashboard', lang=current_locale) }}" class="{% if request.endpoint and request.endpoint.startswith('equities.') %}active{% endif %}" aria-label="{{ t('nav.equities') }}">
-    <span>STK</span>
-    {{ t('nav.equities') }}
-  </a>
-  <a href="{% if active_user and active_user.role == 'member' %}{{ url_for('member.dashboard', lang=current_locale) }}{% elif active_user and active_user.role == 'business' %}{{ url_for('business_auth.dashboard', lang=current_locale) }}{% elif active_user and active_user.role == 'admin' %}{{ url_for('admin.dashboard', lang=current_locale) }}{% else %}{{ url_for('auth.login', lang=current_locale) }}{% endif %}" class="{% if request.endpoint and (request.endpoint.startswith('member.') or request.endpoint.startswith('business_auth.') or request.endpoint.startswith('admin.')) %}active{% endif %}" aria-label="{{ t('nav.account_center') }}">
-    <span>ME</span>
-    {% if active_user and active_user.role == "admin" %}{{ t('nav.admin_short') }}{% elif active_user and active_user.role == "business" %}{{ t('nav.business_short') }}{% else %}{{ t('nav.member_short') }}{% endif %}
+  <a href="{{ center_href }}" class="{% if request.endpoint and (request.endpoint.startswith('member.') or request.endpoint.startswith('business_auth.') or request.endpoint.startswith('admin.')) %}active{% endif %}" aria-label="{{ t('nav.center') }}">
+    <span class="tbv2-nav-icon">{{ tbv2_icon('center') }}</span>{{ t('nav.center') }}
   </a>
 </nav>
