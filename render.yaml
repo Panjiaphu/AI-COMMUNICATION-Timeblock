@@ -63,6 +63,12 @@ services:
         value: gpt-realtime-translate
       - key: GROUP_TRANSLATION_MAX_TARGETS
         value: "2"
+      - key: GROUP_V3_ENABLED
+        value: "false"
+      - key: GROUP_HANDOFF_AUDIENCE
+        value: ai-communication-group-v3
+      - key: GROUP_HANDOFF_MAX_BYTES
+        value: "8192"
       - key: GROUP_RADIO_FLOOR_LEASE_SECONDS
         value: "15"
       - key: GROUP_RADIO_MAX_BURST_SECONDS

@@ -268,6 +268,8 @@ def _session(request: Request) -> BffSession:
 
 
 def _require_scopes(session: BffSession, spec: ProxyRouteSpec) -> None:
+    if session.session_kind != "direct" or not session.timeblock_token:
+        raise HTTPException(status_code=403, detail="direct_session_required")
     granted = set(session.scope)
     if not set(spec.scope_all).issubset(granted):
         raise HTTPException(status_code=403, detail="scope_denied")

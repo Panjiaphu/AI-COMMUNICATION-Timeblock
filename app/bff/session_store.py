@@ -16,6 +16,10 @@ class BffSession:
     principal: dict[str, Any]
     scope: tuple[str, ...]
     expires_at: float
+    session_kind: str = "direct"
+    handoff_id: str = ""
+    surface: str = ""
+    entitlement: dict[str, Any] | None = None
 
 
 @dataclass(slots=True)
@@ -176,6 +180,35 @@ class SessionStore:
                 principal=dict(principal),
                 scope=tuple(scope),
                 expires_at=self._session_expiry(expires_at),
+                session_kind="direct",
+            )
+            self._sessions[session_id] = session
+            self._enforce_bounds()
+            return session
+
+    def create_group_session(
+        self,
+        *,
+        principal: dict[str, Any],
+        scope: list[str],
+        expires_at: str,
+        handoff_id: str,
+        surface: str,
+        entitlement: dict[str, Any],
+    ) -> BffSession:
+        with self._lock:
+            self._purge()
+            session_id = secrets.token_urlsafe(32)
+            session = BffSession(
+                session_id=session_id,
+                timeblock_token="",
+                principal=dict(principal),
+                scope=tuple(scope),
+                expires_at=self._session_expiry(expires_at),
+                session_kind="group",
+                handoff_id=str(handoff_id),
+                surface=str(surface),
+                entitlement=dict(entitlement),
             )
             self._sessions[session_id] = session
             self._enforce_bounds()
@@ -200,6 +233,10 @@ class SessionStore:
                 principal=dict(principal),
                 scope=tuple(scope),
                 expires_at=self._session_expiry(expires_at),
+                session_kind=current.session_kind,
+                handoff_id=current.handoff_id,
+                surface=current.surface,
+                entitlement=dict(current.entitlement or {}),
             )
             self._sessions[session_id] = updated
             return updated

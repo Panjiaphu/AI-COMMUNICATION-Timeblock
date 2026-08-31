@@ -12,6 +12,7 @@ from app.communication.router import router as communication_router
 from app.group_translation.router import router as group_translation_router
 from app.group_radio import RadioFloorManager, RadioRoomCapacity
 from app.group_radio.router import router as group_radio_router
+from app.handoff.router_v3 import router as group_handoff_v3_router
 from app.bff.router import router as bff_router
 from app.bff.session_store import SessionStore
 from app.core.config import BASE_DIR, Settings, get_settings
@@ -73,6 +74,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return response
 
     application.include_router(bff_router)
+    application.include_router(group_handoff_v3_router)
     application.include_router(communication_router)
     application.include_router(group_translation_router)
     application.include_router(group_radio_router)

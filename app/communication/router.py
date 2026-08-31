@@ -23,7 +23,7 @@ from app.integrations.timeblock.client import TimeblockIntegrationError
 logger = logging.getLogger('guilua.communication')
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[1] / 'templates')
-SAFE_GROUP_SURFACES = frozenset({'call', 'video', 'radio'})
+SAFE_GROUP_SURFACES = frozenset({'chat', 'call', 'video', 'radio'})
 SAFE_GROUP_QA_STATES = frozenset({'READY', 'FLOOR_BUSY', 'TALKING', 'FINALIZING_BURST', 'DEVICE_LOST'})
 
 
@@ -64,6 +64,8 @@ async def _assistant_page(
         request.cookies.get(settings.guilua_session_cookie)
     )
     if session:
+        if session.session_kind == 'group':
+            return RedirectResponse('/communication', status_code=303)
         usage = None
         try:
             usage_result = await request.app.state.timeblock_client.client_get(
@@ -164,10 +166,11 @@ async def local_logout(request: Request) -> RedirectResponse:
         request.cookies.get(settings.guilua_session_cookie)
     )
     if session:
-        try:
-            await request.app.state.timeblock_client.revoke_guilua_session(session.timeblock_token)
-        except TimeblockIntegrationError:
-            pass
+        if session.session_kind == 'direct' and session.timeblock_token:
+            try:
+                await request.app.state.timeblock_client.revoke_guilua_session(session.timeblock_token)
+            except TimeblockIntegrationError:
+                pass
         request.app.state.bff_session_store.delete(session.session_id)
     response = RedirectResponse(f'/?lang={locale}', status_code=303)
     response.delete_cookie(settings.guilua_session_cookie, path='/')
@@ -194,8 +197,8 @@ async def communication(request: Request) -> HTMLResponse:
     copy = communication_copy(locale)
     runtime_config = {
         'handoff_event': 'timeblock.communication.handoff.v1',
-        'group_handoff_event': 'timeblock.group.communication.handoff.v2',
-        'group_handoff_contract_version': '2',
+        'group_handoff_event': 'timeblock.group.handoff.v3',
+        'group_handoff_contract_version': '3',
         'allowed_handoff_origins': sorted(settings.timeblock_handoff_origins),
         'development_query_handoff': settings.development_query_handoff_enabled,
         'timeblock_entry_url': settings.primary_timeblock_handoff_origin,

@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_realtime_translation_model: str = 'gpt-realtime-translate'
     group_translation_max_targets: int = Field(default=2, ge=1, le=3)
+    group_v3_enabled: bool = False
+    group_handoff_audience: str = 'ai-communication-group-v3'
+    group_handoff_max_bytes: int = Field(default=8192, ge=1024, le=65536)
     group_radio_floor_lease_seconds: int = Field(default=15, ge=5, le=120)
     group_radio_max_burst_seconds: int = Field(default=30, ge=5, le=300)
     group_radio_max_rooms: int = Field(default=20, ge=1, le=1000)
@@ -139,6 +142,8 @@ class Settings(BaseSettings):
             raise ValueError('ALLOWED_WEBSOCKET_ORIGINS must be configured in production')
         if self.is_production and not self.timeblock_handoff_origins:
             raise ValueError('ALLOWED_TIMEBLOCK_HANDOFF_ORIGINS must be configured in production')
+        if not self.group_handoff_audience.strip():
+            raise ValueError('GROUP_HANDOFF_AUDIENCE must be non-empty')
         return self
 
 
