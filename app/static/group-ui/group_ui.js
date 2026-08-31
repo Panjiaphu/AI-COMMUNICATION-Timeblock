@@ -162,6 +162,7 @@
     const radioAutoRead = radioCard.querySelector("[data-group-radio-auto-read]");
     const translationState = radioCard.querySelector("[data-group-radio-translation-state]");
     const roster = radioCard.querySelector("[data-group-radio-roster-list]");
+    const pluginToggle = radioCard.querySelector("[data-group-radio-plugin-toggle]");
     const readyNote = text("group_radio_ready", "Radio is in a design state; no microphone permission was requested.");
     const degradedNote = text("group_radio_degraded", "The Radio provider is unavailable; no microphone or floor lease was created.");
     const radioStateNotes = {
@@ -297,6 +298,10 @@
     });
     radioAutoRead?.addEventListener("change", () => {
       if (translationManager) translationManager.autoRead = radioAutoRead.checked;
+    });
+    pluginToggle?.addEventListener("click", () => {
+      const isOpen = radioCard.classList.toggle("is-plugin-open");
+      pluginToggle.setAttribute("aria-expanded", String(isOpen));
     });
     applyRadioState(initialSurface === "radio" && initialQaState ? initialQaState : "READY");
   }

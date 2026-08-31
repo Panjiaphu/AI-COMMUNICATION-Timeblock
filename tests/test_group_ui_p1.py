@@ -34,6 +34,7 @@ def test_group_ui_templates_are_mounted_without_mixing_direct_runtime():
     assert 'data-group-radio-route="private"' in radio_template
     assert 'data-group-radio-route="speaker"' in radio_template
     assert 'data-group-radio-translation-enable' in radio_template
+    assert 'data-group-radio-plugin-toggle' in radio_template
     assert "getUserMedia" not in script
     assert "LiveKit" not in script
     assert "speechSynthesis" not in script
@@ -42,6 +43,7 @@ def test_group_ui_templates_are_mounted_without_mixing_direct_runtime():
     assert 'scrollIntoView({ block: "center", behavior: "auto" })' in script
     assert 'group-runtime-mode' in template
     assert 'group-runtime-radio' in styles
+    assert '.group-radio-panel.is-plugin-open' in styles
     assert 'consumeHandoff()' in script
 
 

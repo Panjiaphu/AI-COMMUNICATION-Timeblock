@@ -21,7 +21,10 @@
   <div class="group-radio-stage">
     <header class="group-radio-stage-header">
       <div><p class="group-ui-kicker">{{ copy.group_radio }}</p><strong>{{ copy.group_channel }}</strong></div>
-      <span class="group-ui-state" data-group-radio-state>READY</span>
+      <div class="group-radio-stage-status">
+        <button type="button" class="group-radio-plugin-toggle" data-group-radio-plugin-toggle aria-expanded="false" aria-controls="group-radio-translation-plugin">{{ copy.group_translation }}</button>
+        <span class="group-ui-state" data-group-radio-state>READY</span>
+      </div>
     </header>
     <div class="group-radio-floor" aria-live="polite">
       <div class="group-radio-floor-copy radio-ready-copy"><span class="radio-floor-orbit" aria-hidden="true"></span><strong>{{ copy.group_floor_available }}</strong><small>{{ copy.group_radio_ready }}</small></div>
@@ -59,7 +62,7 @@
     <div class="group-radio-roster-list" data-group-radio-roster-list>
       <div class="group-radio-empty-roster"><span class="group-ui-avatar" aria-hidden="true">T</span><p>{{ copy.group_channel_waiting }}</p></div>
     </div>
-    <section class="group-radio-translation-plugin" aria-label="{{ copy.group_translation }}">
+    <section class="group-radio-translation-plugin" id="group-radio-translation-plugin" aria-label="{{ copy.group_translation }}">
       <div class="group-radio-plugin-heading"><p class="group-ui-kicker">{{ copy.group_translation }}</p><span class="group-ui-state" data-group-radio-translation-state>OFF</span></div>
       <div class="group-radio-recent"><p class="group-ui-kicker">{{ copy.group_recent_burst }}</p><strong data-group-radio-final>{{ copy.group_no_content }}</strong><small data-group-radio-original>{{ copy.group_one_floor }}</small></div>
       <div class="group-radio-plugin-actions">
