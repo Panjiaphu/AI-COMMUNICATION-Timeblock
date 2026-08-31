@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     database_max_overflow: int = Field(default=5, ge=0, le=40)
     group_message_encryption_key: str | None = None
     group_attachment_max_bytes: int = Field(default=5 * 1024 * 1024, ge=1024, le=25 * 1024 * 1024)
+    group_media_enabled: bool = False
+    group_livekit_url: str | None = None
+    group_livekit_api_key: str | None = None
+    group_livekit_api_secret: str | None = None
+    group_livekit_region: str = 'Singapore'
+    group_livekit_token_ttl_seconds: int = Field(default=300, ge=60, le=600)
+    group_media_max_participants: int = Field(default=8, ge=2, le=50)
     group_radio_floor_lease_seconds: int = Field(default=15, ge=5, le=120)
     group_radio_max_burst_seconds: int = Field(default=30, ge=5, le=300)
     group_radio_max_rooms: int = Field(default=20, ge=1, le=1000)
@@ -154,6 +161,13 @@ class Settings(BaseSettings):
                 raise ValueError('DATABASE_URL must use PostgreSQL when GROUP_V3_ENABLED is true in production')
             if not self.group_message_encryption_key:
                 raise ValueError('GROUP_MESSAGE_ENCRYPTION_KEY is required when GROUP_V3_ENABLED is true in production')
+            if self.group_media_enabled:
+                if not all((self.group_livekit_url, self.group_livekit_api_key, self.group_livekit_api_secret)):
+                    raise ValueError('Group LiveKit configuration is required when GROUP_MEDIA_ENABLED is true')
+                if self.group_livekit_region != 'Singapore':
+                    raise ValueError('GROUP_LIVEKIT_REGION must remain Singapore')
+                if self.group_livekit_token_ttl_seconds != 300:
+                    raise ValueError('GROUP_LIVEKIT_TOKEN_TTL_SECONDS must remain 300')
         return self
 
 

@@ -185,3 +185,54 @@ class GroupIdempotencyRecord(Base):
     status_code: Mapped[int] = mapped_column(Integer, nullable=False)
     response_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class GroupMediaSession(Base):
+    __tablename__ = "group_media_sessions"
+    __table_args__ = (
+        CheckConstraint("media_kind IN ('audio','video')", name="ck_group_media_sessions_kind"),
+        CheckConstraint("status IN ('ringing','active','ended')", name="ck_group_media_sessions_status"),
+        Index("ix_group_media_sessions_space_status", "space_id", "status", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    space_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_spaces.id", ondelete="CASCADE"), nullable=False)
+    media_kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    title: Mapped[str] = mapped_column(String(120), nullable=False, default="", server_default="")
+    initiated_by_membership_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_memberships.id", ondelete="RESTRICT"), nullable=False)
+    livekit_room_name: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="ringing", server_default="ringing")
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ended_by_membership_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("group_memberships.id", ondelete="SET NULL"))
+    end_reason: Mapped[str] = mapped_column(String(40), nullable=False, default="", server_default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class GroupMediaParticipant(Base):
+    __tablename__ = "group_media_participants"
+    __table_args__ = (
+        UniqueConstraint("session_id", "membership_id", name="uq_group_media_participant_member"),
+        UniqueConstraint("session_id", "livekit_identity", name="uq_group_media_participant_identity"),
+        CheckConstraint("invite_status IN ('invited','joined','rejected','left')", name="ck_group_media_participants_invite"),
+        Index("ix_group_media_participants_session_status", "session_id", "invite_status"),
+        Index("ix_group_media_participants_principal", "principal_type", "principal_id", "principal_user_id", "invite_status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_media_sessions.id", ondelete="CASCADE"), nullable=False)
+    membership_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_memberships.id", ondelete="RESTRICT"), nullable=False)
+    principal_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    principal_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    principal_user_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    livekit_identity: Mapped[str] = mapped_column(String(80), nullable=False)
+    invite_status: Mapped[str] = mapped_column(String(16), nullable=False, default="invited", server_default="invited")
+    desired_video_subscriptions_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
+    invited_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    joined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    left_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())

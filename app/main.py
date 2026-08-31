@@ -11,7 +11,10 @@ from app.communication.manager import RoomManager
 from app.communication.router import router as communication_router
 from app.group_translation.router import router as group_translation_router
 from app.group_v3.crypto import GroupCrypto
+from app.group_v3.media import LiveKitGroupMediaProvider
 from app.group_v3.router import router as group_v3_router
+from app.group_v3.session_router import router as group_v3_session_router
+from app.group_v3.session_service import GroupMediaSessionService
 from app.group_v3.service import GroupService, GroupServiceError
 from app.group_radio import RadioFloorManager, RadioRoomCapacity
 from app.group_radio.router import router as group_radio_router
@@ -59,6 +62,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         application.state.database,
         GroupCrypto(runtime_settings),
     )
+    application.state.group_media_session_service = GroupMediaSessionService(
+        application.state.database,
+        runtime_settings,
+        LiveKitGroupMediaProvider(runtime_settings),
+    )
     application.state.room_manager = RoomManager(runtime_settings)
     application.state.radio_floor = RadioFloorManager(
         lease_seconds=runtime_settings.group_radio_floor_lease_seconds,
@@ -88,6 +96,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(bff_router)
     application.include_router(group_handoff_v3_router)
     application.include_router(group_v3_router)
+    application.include_router(group_v3_session_router)
     application.include_router(communication_router)
     application.include_router(group_translation_router)
     application.include_router(group_radio_router)

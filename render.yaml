@@ -79,6 +79,20 @@ services:
         sync: false
       - key: GROUP_ATTACHMENT_MAX_BYTES
         value: "5242880"
+      - key: GROUP_MEDIA_ENABLED
+        value: "false"
+      - key: GROUP_LIVEKIT_URL
+        sync: false
+      - key: GROUP_LIVEKIT_API_KEY
+        sync: false
+      - key: GROUP_LIVEKIT_API_SECRET
+        sync: false
+      - key: GROUP_LIVEKIT_REGION
+        value: Singapore
+      - key: GROUP_LIVEKIT_TOKEN_TTL_SECONDS
+        value: "300"
+      - key: GROUP_MEDIA_MAX_PARTICIPANTS
+        value: "8"
       - key: GROUP_RADIO_FLOOR_LEASE_SECONDS
         value: "15"
       - key: GROUP_RADIO_MAX_BURST_SECONDS
