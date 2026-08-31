@@ -120,7 +120,7 @@ def test_authenticated_assistant_renders_canonical_vendor_dom_and_locale(runtime
     assert 'data-actor-id="member-42"' in response.text
     assert 'data-messaging-realtime-enabled="true"' in response.text
     assert 'data-messaging-mailbox-lock-enabled="true"' in response.text
-    assert 'data-group-ui-url="http://testserver/communication"' in response.text
+    assert "data-group-ui-url" not in response.text
     assert 'data-initial-mode="messages"' in response.text
     assert 'data-initial-conversation="42"' in response.text
     assert 'data-mode-tab="ai"' in response.text

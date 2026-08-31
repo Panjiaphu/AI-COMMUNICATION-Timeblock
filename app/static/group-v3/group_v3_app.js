@@ -586,7 +586,7 @@
     return '<div class="plugin-workspace surface-content"><div class="plugin-heading"><div><span>' + esc(t("translationPlugin")) +
       "</span><h1>" + esc(t("translationHistory")) + "</h1></div>" + badge("VI · EN · ZH-TW", "mint") +
       '</div><div class="segmented-control"><button type="button" class="is-active">' + icon("history", 15) + esc(t("history")) +
-      "</button><button type="button">" + icon("languages", 15) + esc(t("settings")) + '</button></div><div class="history-list is-focused">' +
+      '</button><button type="button">' + icon("languages", 15) + esc(t("settings")) + '</button></div><div class="history-list is-focused">' +
       history + '</div><form class="settings-form" data-form="save-profile"><div class="settings-title">' + icon("languages", 17) +
       "<strong>" + esc(t("translationSettings")) + '</strong></div><label class="language-select"><span>' + esc(t("sourceLanguage")) +
       '</span><select name="spoken_language">' + languageOptions(profile.spoken_language || state.locale) +

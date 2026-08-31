@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="retired Timeblock-proxy Group translation router; covered by test_group_v3_native")
+
 from app.core.config import Settings
 from app.group_translation.provider import TranslationClientSecret
 from app.main import create_app
