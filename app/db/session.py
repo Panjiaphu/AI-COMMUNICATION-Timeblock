@@ -13,9 +13,20 @@ class Base(DeclarativeBase):
     pass
 
 
+def normalize_database_url(database_url: str) -> str:
+    """Select the installed psycopg v3 driver for Render-style PostgreSQL URLs."""
+
+    normalized = database_url.strip()
+    if normalized.startswith("postgresql://"):
+        return "postgresql+psycopg://" + normalized.removeprefix("postgresql://")
+    if normalized.startswith("postgres://"):
+        return "postgresql+psycopg://" + normalized.removeprefix("postgres://")
+    return normalized
+
+
 class Database:
     def __init__(self, settings: Settings):
-        database_url = settings.database_url.strip()
+        database_url = normalize_database_url(settings.database_url)
         if database_url.startswith("sqlite:///./"):
             relative = database_url.removeprefix("sqlite:///./")
             Path(relative).parent.mkdir(parents=True, exist_ok=True)
