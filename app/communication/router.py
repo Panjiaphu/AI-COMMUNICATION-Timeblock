@@ -207,9 +207,10 @@ async def communication(request: Request) -> HTMLResponse:
         'initial_qa_state': initial_qa_state,
         'copy': copy,
     }
+    template_name = "group_communication_v3.html" if initial_surface else "communication.html"
     return templates.TemplateResponse(
         request=request,
-        name='communication.html',
+        name=template_name,
         context={'runtime_config': runtime_config, 'locale': locale, 'copy': copy, 'settings': settings},
     )
 

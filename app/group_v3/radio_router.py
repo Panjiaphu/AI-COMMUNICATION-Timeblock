@@ -55,6 +55,18 @@ async def join_radio_session(request: Request, space_id: str, session_id: str) -
     return _json({"session": session})
 
 
+@router.post("/spaces/{space_id}/radio/sessions/{session_id}/reject")
+async def reject_radio_session(request: Request, space_id: str, session_id: str) -> JSONResponse:
+    require_write_origin(request)
+    actor = require_group_actor(request, "group.radio.use")
+    session = request.app.state.group_radio_service.reject(
+        actor,
+        _id(space_id, "space_id"),
+        _id(session_id, "session_id"),
+    )
+    return _json({"session": session, "rejected": True})
+
+
 @router.post("/spaces/{space_id}/radio/sessions/{session_id}/leave")
 async def leave_radio_session(request: Request, space_id: str, session_id: str) -> JSONResponse:
     require_write_origin(request)

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="{{ locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0F6858">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="AI-COMMUNICATION Group V3">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <title>AI-COMMUNICATION · Group V3</title>
+  <link rel="stylesheet" href="/static/group-v3/group_v3.css?v=1">
+  <link rel="stylesheet" href="/static/group-v3/group_v3_runtime.css?v=1">
+</head>
+<body class="group-v3-body">
+  <main
+    id="group-native-app"
+    class="group-native-app"
+    data-group-ui
+    data-handoff-state="WAITING"
+    data-runtime-state="WAITING"
+    aria-live="polite"
+  >
+    <section class="group-v3-bootstrap" data-bootstrap>
+      <img src="/static/group-v3/timeblock-chat.svg" width="56" height="56" alt="">
+      <strong>AI-COMMUNICATION</strong>
+      <span data-bootstrap-state>WAITING</span>
+    </section>
+  </main>
+  <div class="toast" data-toast role="status" aria-live="polite"></div>
+  <script id="guilua-runtime-config" type="application/json">{{ runtime_config | tojson }}</script>
+  <script src="/static/group-ui/group_handoff_v3.js?v=2" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.21.0/dist/livekit-client.umd.min.js" integrity="sha384-/0L8HD1sXzBDqZAU0s9eTwBbWz4KHVXXXT/aIZRsdbLZRm2z8jkLs5VYHJgnHTqj" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+  <script src="/static/group-v3/group_v3_i18n.js?v=1" defer></script>
+  <script src="/static/group-v3/group_v3_app.js?v=1" defer></script>
+  <script src="/static/group-v3/group_v3_translation.js?v=1" defer></script>
+</body>
+</html>

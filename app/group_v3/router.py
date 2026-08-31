@@ -43,6 +43,30 @@ def _bounded_id(value: str, name: str) -> str:
     return normalized
 
 
+@router.get("/session")
+async def group_session(request: Request) -> JSONResponse:
+    """Return non-secret browser context for the active native Group session."""
+
+    actor = require_group_actor(request)
+    return _json(
+        {
+            "contract_version": "3",
+            "authority": "ai-communication",
+            "surface": actor.surface,
+            "handoff_id": actor.handoff_id,
+            "principal": {
+                "type": actor.principal_type,
+                "id": actor.principal_id,
+                "user_id": actor.principal_user_id,
+                "display_name": actor.display_name,
+                "locale": actor.locale,
+            },
+            "scope": sorted(actor.scope),
+            "entitlement": actor.entitlement,
+        }
+    )
+
+
 @router.get("/spaces")
 async def list_spaces(request: Request) -> JSONResponse:
     actor = require_group_actor(request, "group.spaces.read")

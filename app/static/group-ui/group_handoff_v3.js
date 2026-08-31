@@ -101,6 +101,20 @@
     void redeem(event.data, sourceOrigin);
   });
 
+  const announceReady = () => {
+    if (!window.opener || window.opener.closed) return;
+    const surface = text(runtimeConfig.initial_surface, 16).toLowerCase();
+    if (!surfaces.has(surface)) return;
+    allowedOrigins.forEach((origin) => {
+      window.opener.postMessage({
+        type: `${eventName}.ready`,
+        contract_version: expectedVersion,
+        surface,
+      }, origin);
+    });
+  };
+  announceReady();
+
   window.GroupCommunicationHandoff = Object.freeze({
     getState: () => ({
       status: state.status,

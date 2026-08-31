@@ -161,6 +161,29 @@ class GroupRadioService:
                 db.flush()
                 return self._session_payload(db, session)
 
+    def reject(self, actor: GroupActor, space_id: str, session_id: str) -> dict:
+        self._enabled()
+        with self.database.session() as db:
+            with db.begin():
+                self._membership(db, space_id, actor)
+                session = self._session(db, space_id, session_id, for_update=True)
+                participant = self._participant(db, session.id, actor, for_update=True)
+                if session.status != "ready" or participant.status != "invited":
+                    raise GroupServiceError("group_radio_reject_not_allowed", 409)
+                participant.status = "left"
+                participant.left_at = _now()
+                participant.updated_at = _now()
+                self._audit(
+                    db,
+                    actor,
+                    space_id,
+                    "radio.participant_rejected",
+                    "radio_session",
+                    session.id,
+                )
+                db.flush()
+                return self._session_payload(db, session)
+
     def leave(self, actor: GroupActor, space_id: str, session_id: str) -> dict:
         self._enabled()
         with self.database.session() as db:
