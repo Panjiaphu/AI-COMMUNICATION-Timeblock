@@ -32,6 +32,11 @@ owner.
 - Do not reuse Direct 1:1 routes or media ownership as Group runtime code.
 - Do not maintain the Group UI by mirroring Timeblock source-lock files.
 
+Phase 9 source-lock boundary: the retired `group_communication_v2.css` mirror
+is removed. The lock may mirror only Timeblock's four-button launcher shell;
+the native Group application, state, media, translation and Radio assets live
+under `app/static/group-v3/` and are never generated from Timeblock.
+
 ## Required native boundaries
 
 - Persistent Group data uses the AI-COMMUNICATION database and reversible

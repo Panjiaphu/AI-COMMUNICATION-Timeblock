@@ -212,5 +212,8 @@
   "business.control.mobile.overview": "總覽",
   "business.control.mobile.integrations": "整合",
   "business.control.mobile.profile": "資料",
-  "business.control.mobile.center": "中心"
+  "business.control.mobile.center": "中心",
+  "business.control.mobile.menu": "選單",
+  "business.control.mobile.open_menu": "開啟企業選單",
+  "business.control.mobile.close_menu": "關閉企業選單"
 }

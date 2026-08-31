@@ -9,7 +9,6 @@ from fastapi.staticfiles import StaticFiles
 
 from app.communication.manager import RoomManager
 from app.communication.router import router as communication_router
-from app.group_translation.router import router as group_translation_router
 from app.group_translation.provider import OpenAIGroupTranslationProvider
 from app.group_v3.crypto import GroupCrypto
 from app.group_v3.media import LiveKitGroupMediaProvider
@@ -22,8 +21,6 @@ from app.group_v3.session_service import GroupMediaSessionService
 from app.group_v3.translation_router import router as group_v3_translation_router
 from app.group_v3.translation_service import GroupTranslationService
 from app.group_v3.service import GroupService, GroupServiceError
-from app.group_radio import RadioFloorManager, RadioRoomCapacity
-from app.group_radio.router import router as group_radio_router
 from app.handoff.router_v3 import router as group_handoff_v3_router
 from app.bff.router import router as bff_router
 from app.bff.session_store import SessionStore
@@ -44,7 +41,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             while True:
                 await asyncio.sleep(30)
                 await app.state.room_manager.cleanup()
-                await app.state.radio_floor.cleanup()
                 if app.state.settings.group_radio_v3_enabled:
                     try:
                         await app.state.group_radio_service.reconcile_device_loss(app.state.group_radio_floor)
@@ -93,11 +89,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         livekit_provider,
     )
     application.state.room_manager = RoomManager(runtime_settings)
-    application.state.radio_floor = RadioFloorManager(
-        lease_seconds=runtime_settings.group_radio_floor_lease_seconds,
-        max_burst_seconds=runtime_settings.group_radio_max_burst_seconds,
-    )
-    application.state.radio_capacity = RadioRoomCapacity(runtime_settings.group_radio_max_rooms)
     application.state.timeblock_client = TimeblockClient(runtime_settings)
     application.state.bff_session_store = SessionStore(
         session_ttl_seconds=runtime_settings.guilua_session_ttl_seconds,
@@ -125,8 +116,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(group_v3_translation_router)
     application.include_router(group_v3_radio_router)
     application.include_router(communication_router)
-    application.include_router(group_translation_router)
-    application.include_router(group_radio_router)
 
     @application.exception_handler(GroupServiceError)
     async def group_service_error(_request: Request, exc: GroupServiceError) -> JSONResponse:
