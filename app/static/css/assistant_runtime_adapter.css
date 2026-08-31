@@ -27,3 +27,178 @@
   grid-column: 4;
   grid-row: 1;
 }
+
+/*
+ * The source-locked Timeblock shell uses inline SVG icons without intrinsic
+ * dimensions. Keep the fix in this Guilua adapter so the vendored template
+ * and mirrored canonical assets remain unchanged.
+ */
+.assistant-workspace-page .tbv2-header {
+  gap: clamp(12px, 1.5vw, 24px);
+  padding-inline: clamp(12px, 1.6vw, 20px);
+  overflow: visible;
+}
+
+.assistant-workspace-page .tbv2-primary-nav {
+  gap: clamp(4px, 0.8vw, 12px);
+  overflow: visible;
+}
+
+.assistant-workspace-page .tbv2-primary-nav > a,
+.assistant-workspace-page .tbv2-primary-nav > .tbv2-nav-menu > summary {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.assistant-workspace-page .tbv2-nav-icon {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  place-items: center;
+}
+
+.assistant-workspace-page .tbv2-nav-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.assistant-workspace-page .tbv2-nav-menu > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.assistant-workspace-page .tbv2-nav-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.assistant-workspace-page .tbv2-nav-menu[open] > summary {
+  color: var(--accent);
+}
+
+.assistant-workspace-page .tbv2-primary-nav > a.active,
+.assistant-workspace-page .tbv2-primary-nav > a:hover,
+.assistant-workspace-page .tbv2-nav-menu > summary:hover,
+.assistant-workspace-page .tbv2-nav-menu > summary:focus-visible {
+  color: var(--accent);
+}
+
+.assistant-workspace-page .tbv2-nav-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.assistant-workspace-page .tbv2-nav-popover {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 8px);
+  left: 50%;
+  display: grid;
+  min-width: 248px;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid rgba(29, 111, 95, 0.18);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 16px 34px rgba(20, 23, 18, 0.16);
+  transform: translateX(-50%);
+}
+
+.assistant-workspace-page .tbv2-nav-popover a {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  color: var(--ink);
+  text-align: left;
+  white-space: normal;
+}
+
+.assistant-workspace-page .tbv2-nav-popover a:hover,
+.assistant-workspace-page .tbv2-nav-popover a:focus-visible {
+  color: var(--accent-strong);
+  background: rgba(29, 111, 95, 0.08);
+}
+
+.assistant-workspace-page .tbv2-nav-popover strong,
+.assistant-workspace-page .tbv2-nav-popover small {
+  display: block;
+}
+
+.assistant-workspace-page .tbv2-nav-popover small {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 1500px) and (min-width: 1081px) {
+  /* Keep the primary destinations visible while secondary destinations stay
+   * reachable from the Services sheet in the header. */
+  .assistant-workspace-page .tbv2-primary-nav {
+    justify-content: flex-start;
+    gap: 4px;
+  }
+
+  .assistant-workspace-page .tbv2-primary-nav > .tbv2-nav-menu {
+    display: none;
+  }
+
+  .assistant-workspace-page .tbv2-primary-nav > a {
+    gap: 5px;
+    padding-inline: 5px;
+    font-size: 0.78rem;
+  }
+
+  .assistant-workspace-page .tbv2-primary-nav > a .tbv2-nav-icon {
+    width: 20px;
+    height: 20px;
+    flex-basis: 20px;
+  }
+
+  .assistant-workspace-page .tbv2-primary-nav > a .tbv2-nav-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .assistant-workspace-page .tbv2-nav-actions > .account-link,
+  .assistant-workspace-page .tbv2-nav-actions > .tbv2-mobile-locale {
+    display: none;
+  }
+}
+
+@media (max-width: 1080px) {
+  .assistant-workspace-page .mobile-bottom-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .assistant-workspace-page .mobile-bottom-nav a {
+    min-width: 0;
+    padding-inline: 4px;
+    line-height: 1.12;
+  }
+
+  .assistant-workspace-page .mobile-bottom-nav .tbv2-nav-icon {
+    width: 21px;
+    height: 21px;
+    flex-basis: 21px;
+  }
+
+  .assistant-workspace-page .mobile-bottom-nav .tbv2-nav-icon svg {
+    width: 21px;
+    height: 21px;
+  }
+}
