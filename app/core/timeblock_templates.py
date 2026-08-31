@@ -57,7 +57,7 @@ _TIMEBLOCK_ENDPOINTS = {
 _ASSISTANT_BUCKETS = ("text", "image", "audio", "video", "speech")
 _ASSISTANT_RUNTIME_ADAPTER = (
     '<link rel="stylesheet" '
-    'href="/static/css/assistant_runtime_adapter.css?v=20260826-composer-grid-1" '
+    'href="/static/css/assistant_runtime_adapter.css?v=20260831-nav-icons-3" '
     'data-guilua-assistant-runtime-adapter>'
 )
 
