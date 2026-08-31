@@ -1,7 +1,7 @@
 {
   "source_repo": "Panjiaphu/fumap-bot-life",
-  "source_sha": "666e0af16568a34d997a19095f2c8e576124fae7",
-  "source_checkout_head": "666e0af16568a34d997a19095f2c8e576124fae7",
+  "source_sha": "64fc29ec29d2c4668f1bc9062086f8e4b7d49a40",
+  "source_checkout_head": "64fc29ec29d2c4668f1bc9062086f8e4b7d49a40",
   "source_paths": [
     "templates/base.html",
     "templates/partials/nav.html",
@@ -220,7 +220,7 @@
     "translations/timeblock_agent-zh-TW.json"
   ],
   "source_hashes": {
-    "templates/base.html": "11d667cfc0c8997167c11454cad843fe98420a387eac933f9afccefe1e7a7949",
+    "templates/base.html": "98c4b6f40eb09881807daed29e8ae43af9df6aa37fb11bcbb0937654f27a8899",
     "templates/partials/nav.html": "f8ae3c28e5d99509dad955451b3aa584ea7ecf8bc735c46df2f35809b774c6ea",
     "templates/partials/footer.html": "769a603ea8922b7efde245bd618a11046e227aecc0a3c802be04509d1d6fad2c",
     "templates/partials/market_assistant.html": "d9e832a39b4be320a9db46c288e2a74cbb92aa422d0bbdf6ff22add6a627f435",
@@ -359,7 +359,7 @@
     "translations/messaging_contact_v1-vi.json": "fda3436adfc6bcc5cf56325bc8a9d4009d450a9d4d079528b92b4ea69f87fff9",
     "translations/assistant-vi.json": "6fc9da5515e393e2ef28307af4ad87e55b68eaa788a5e398fc11717b448c5cc7",
     "translations/translator-vi.json": "12c00328186064b00f6c4efa40a396bcc85e914ae548f92257bb6522a783ee13",
-    "translations/admin-vi.json": "96a9f44fe6e7fc1e7ffc616f1f9327eaa00b4cc553d22b12c1ab27d039b2a976",
+    "translations/admin-vi.json": "5fb8685eaed8823f08a680a451c21d47d72314ce4bea1a8bf47b21018b6e170d",
     "translations/admin_forms-vi.json": "ca4daf1958adc58ac82d927e61c092450f153d6843a2010764b5e5f40e237fc0",
     "translations/activity-vi.json": "f64da632814a1d5630b4d75272bdecd3603f8a8136a24d4924149927c2128ceb",
     "translations/utilities-vi.json": "3b3176919f7c9bf9ed4b546e3395da22ad06d2f2d94baa5d2c643bbe03d5ce67",
@@ -389,7 +389,7 @@
     "translations/messaging_contact_v1-en.json": "54a1eed083191e6d6d7a7dd28eb0752977a17375ccfeb7027175477b0d90f103",
     "translations/assistant-en.json": "85ddf9aa3c9af39f9d7a5d8f10b12c1c4104e367abb7cc0f35c8cb03d814d800",
     "translations/translator-en.json": "38c2c4a4f49e615b2a231da678806382756d54aceaa06f81ca9ffd80965332fa",
-    "translations/admin-en.json": "59f4e6887ecf30379b26bf0c9935bc46acf5443205af96f5d2d331706014f779",
+    "translations/admin-en.json": "610c1eeeec0b567fdb343e0b8f5193f172ce5f439162f9cc733d0bbff1bd7ca3",
     "translations/admin_forms-en.json": "7c99c2319de172f5b0a9650577fb5e872152dee0723a594035a2aac49a5c681e",
     "translations/activity-en.json": "8d03f01640898d29c8c9a1cb8ba5a6e64079ed795b6ac8abe8b43a5559f39d4b",
     "translations/utilities-en.json": "78b1a899a1a6956c0521038009883e06fc76d3e2a52c43ead6b811b5efd403a7",
@@ -419,7 +419,7 @@
     "translations/messaging_contact_v1-zh-TW.json": "59fe7d6a8e676d19d672f3a0b3379b026b6efc261587c350489986cda3118074",
     "translations/assistant-zh-TW.json": "c8ea079f807518b95483a999c3c0aef1b90298c9de56d603c25dea7ef30e75d7",
     "translations/translator-zh-TW.json": "49aad5abbdaf978e66ab4fba356a416e7abc1818898f62b139fe0ecb04b7f424",
-    "translations/admin-zh-TW.json": "255a8fd26c25b9a87cd71bd32079ffe6b9348c3f1291acfb16f77541a09704dc",
+    "translations/admin-zh-TW.json": "cc056b7cdc6f8573a54ac709da9c54c5f3d708933b33c08c982c6ee6a4fc598c",
     "translations/admin_forms-zh-TW.json": "29dff8d4d2f6fa040eaef821ff1c21f3dccba0f2ba52717cad35df882ae205fd",
     "translations/activity-zh-TW.json": "7e4461d4d5cf30ed2841d389ab7c67486c212d77a0aa60354feddbdf69e4a994",
     "translations/utilities-zh-TW.json": "db69bb66d52f3ec021ba6c3aa27a068d51224820acb85bead0b0721b40b9b284",
@@ -1717,9 +1717,9 @@
   "entries": [
     {
       "source_path": "templates/base.html",
-      "source_sha256": "11d667cfc0c8997167c11454cad843fe98420a387eac933f9afccefe1e7a7949",
+      "source_sha256": "98c4b6f40eb09881807daed29e8ae43af9df6aa37fb11bcbb0937654f27a8899",
       "destination_path": "vendor/timeblock-assistant/templates/base.html",
-      "destination_sha256": "11d667cfc0c8997167c11454cad843fe98420a387eac933f9afccefe1e7a7949",
+      "destination_sha256": "98c4b6f40eb09881807daed29e8ae43af9df6aa37fb11bcbb0937654f27a8899",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -3607,16 +3607,16 @@
     },
     {
       "source_path": "translations/admin-vi.json",
-      "source_sha256": "96a9f44fe6e7fc1e7ffc616f1f9327eaa00b4cc553d22b12c1ab27d039b2a976",
+      "source_sha256": "5fb8685eaed8823f08a680a451c21d47d72314ce4bea1a8bf47b21018b6e170d",
       "destination_path": "vendor/timeblock-assistant/translations/admin-vi.json",
-      "destination_sha256": "96a9f44fe6e7fc1e7ffc616f1f9327eaa00b4cc553d22b12c1ab27d039b2a976",
+      "destination_sha256": "5fb8685eaed8823f08a680a451c21d47d72314ce4bea1a8bf47b21018b6e170d",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "translations/admin-vi.json",
-      "source_sha256": "96a9f44fe6e7fc1e7ffc616f1f9327eaa00b4cc553d22b12c1ab27d039b2a976",
+      "source_sha256": "5fb8685eaed8823f08a680a451c21d47d72314ce4bea1a8bf47b21018b6e170d",
       "destination_path": "app/translations/admin-vi.json",
-      "destination_sha256": "96a9f44fe6e7fc1e7ffc616f1f9327eaa00b4cc553d22b12c1ab27d039b2a976",
+      "destination_sha256": "5fb8685eaed8823f08a680a451c21d47d72314ce4bea1a8bf47b21018b6e170d",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -4027,16 +4027,16 @@
     },
     {
       "source_path": "translations/admin-en.json",
-      "source_sha256": "59f4e6887ecf30379b26bf0c9935bc46acf5443205af96f5d2d331706014f779",
+      "source_sha256": "610c1eeeec0b567fdb343e0b8f5193f172ce5f439162f9cc733d0bbff1bd7ca3",
       "destination_path": "vendor/timeblock-assistant/translations/admin-en.json",
-      "destination_sha256": "59f4e6887ecf30379b26bf0c9935bc46acf5443205af96f5d2d331706014f779",
+      "destination_sha256": "610c1eeeec0b567fdb343e0b8f5193f172ce5f439162f9cc733d0bbff1bd7ca3",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "translations/admin-en.json",
-      "source_sha256": "59f4e6887ecf30379b26bf0c9935bc46acf5443205af96f5d2d331706014f779",
+      "source_sha256": "610c1eeeec0b567fdb343e0b8f5193f172ce5f439162f9cc733d0bbff1bd7ca3",
       "destination_path": "app/translations/admin-en.json",
-      "destination_sha256": "59f4e6887ecf30379b26bf0c9935bc46acf5443205af96f5d2d331706014f779",
+      "destination_sha256": "610c1eeeec0b567fdb343e0b8f5193f172ce5f439162f9cc733d0bbff1bd7ca3",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -4447,16 +4447,16 @@
     },
     {
       "source_path": "translations/admin-zh-TW.json",
-      "source_sha256": "255a8fd26c25b9a87cd71bd32079ffe6b9348c3f1291acfb16f77541a09704dc",
+      "source_sha256": "cc056b7cdc6f8573a54ac709da9c54c5f3d708933b33c08c982c6ee6a4fc598c",
       "destination_path": "vendor/timeblock-assistant/translations/admin-zh-TW.json",
-      "destination_sha256": "255a8fd26c25b9a87cd71bd32079ffe6b9348c3f1291acfb16f77541a09704dc",
+      "destination_sha256": "cc056b7cdc6f8573a54ac709da9c54c5f3d708933b33c08c982c6ee6a4fc598c",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "translations/admin-zh-TW.json",
-      "source_sha256": "255a8fd26c25b9a87cd71bd32079ffe6b9348c3f1291acfb16f77541a09704dc",
+      "source_sha256": "cc056b7cdc6f8573a54ac709da9c54c5f3d708933b33c08c982c6ee6a4fc598c",
       "destination_path": "app/translations/admin-zh-TW.json",
-      "destination_sha256": "255a8fd26c25b9a87cd71bd32079ffe6b9348c3f1291acfb16f77541a09704dc",
+      "destination_sha256": "cc056b7cdc6f8573a54ac709da9c54c5f3d708933b33c08c982c6ee6a4fc598c",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
