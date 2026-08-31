@@ -110,6 +110,30 @@ def parse_group_handoff_v3(
         raise GroupHandoffV3Error("group_entitlement_required")
     if str(entitlement_value.get("billing_authority") or "") != "timeblock":
         raise GroupHandoffV3Error("invalid_billing_authority")
+    quota_value = entitlement_value.get("group_translation_quota")
+    if not isinstance(quota_value, Mapping):
+        quota_value = {}
+    quota = {
+        "authority": str(quota_value.get("authority") or "timeblock")[:32],
+        "period": str(quota_value.get("period") or "monthly")[:16],
+        "period_start": str(quota_value.get("period_start") or "unavailable")[:40],
+        "period_end": str(quota_value.get("period_end") or "unavailable")[:40],
+    }
+    for key in (
+        "audio_limit_target_seconds",
+        "audio_remaining_target_seconds",
+        "video_limit_target_seconds",
+        "video_remaining_target_seconds",
+    ):
+        try:
+            parsed = int(quota_value.get(key) or 0)
+        except (TypeError, ValueError) as exc:
+            raise GroupHandoffV3Error("invalid_translation_quota") from exc
+        if parsed < 0 or parsed > 100_000_000:
+            raise GroupHandoffV3Error("invalid_translation_quota")
+        quota[key] = parsed
+    if quota["authority"] != "timeblock" or quota["period"] != "monthly":
+        raise GroupHandoffV3Error("invalid_translation_quota")
     entitlement = {
         "group_communication": True,
         "billing_authority": "timeblock",
@@ -119,6 +143,7 @@ def parse_group_handoff_v3(
             maximum=160,
         ),
         "plan_code": str(entitlement_value.get("plan_code") or "")[:64],
+        "group_translation_quota": quota,
     }
 
     scope_value = payload.get("scope")

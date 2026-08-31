@@ -17,6 +17,7 @@ class GroupTranslationProviderError(RuntimeError):
 class TranslationClientSecret:
     value: str
     expires_at: int | None
+    session_id: str
     request_id: str | None = None
 
 
@@ -51,9 +52,21 @@ class OpenAIGroupTranslationProvider:
         if source_language == target_language:
             raise GroupTranslationProviderError("source_target_must_differ")
         payload = {
+            "expires_after": {
+                "anchor": "created_at",
+                "seconds": self.settings.group_translation_client_secret_ttl_seconds,
+            },
             "session": {
                 "model": self.settings.openai_realtime_translation_model,
-                "audio": {"output": {"language": target_language}},
+                "audio": {
+                    "input": {
+                        "transcription": {
+                            "model": self.settings.openai_realtime_transcription_model,
+                        },
+                        "noise_reduction": None,
+                    },
+                    "output": {"language": target_language},
+                },
             }
         }
         headers = {
@@ -85,4 +98,13 @@ class OpenAIGroupTranslationProvider:
         except (TypeError, ValueError):
             expires_at = None
         request_id = response.headers.get("x-request-id") or response.headers.get("x-openai-request-id")
-        return TranslationClientSecret(value=secret.strip(), expires_at=expires_at, request_id=request_id)
+        session_data = data.get("session") if isinstance(data, dict) else None
+        session_id = session_data.get("id") if isinstance(session_data, dict) else None
+        if not isinstance(session_id, str) or not session_id.strip() or len(session_id) > 128:
+            raise GroupTranslationProviderError("group_translation_provider_invalid_response")
+        return TranslationClientSecret(
+            value=secret.strip(),
+            expires_at=expires_at,
+            session_id=session_id.strip(),
+            request_id=request_id,
+        )

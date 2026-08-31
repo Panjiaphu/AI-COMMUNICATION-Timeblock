@@ -49,7 +49,12 @@ class Settings(BaseSettings):
     group_translation_enabled: bool = False
     openai_api_key: str | None = None
     openai_realtime_translation_model: str = 'gpt-realtime-translate'
+    openai_realtime_transcription_model: str = 'gpt-realtime-whisper'
     group_translation_max_targets: int = Field(default=2, ge=1, le=3)
+    group_translation_client_secret_ttl_seconds: int = Field(default=60, ge=10, le=300)
+    group_translation_reservation_ttl_seconds: int = Field(default=300, ge=60, le=900)
+    group_translation_max_segment_seconds: int = Field(default=300, ge=1, le=900)
+    group_translation_policy_version: str = 'group-translation-v3-2026-08-31'
     group_v3_enabled: bool = False
     group_handoff_audience: str = 'ai-communication-group-v3'
     group_handoff_max_bytes: int = Field(default=8192, ge=1024, le=65536)
@@ -168,6 +173,8 @@ class Settings(BaseSettings):
                     raise ValueError('GROUP_LIVEKIT_REGION must remain Singapore')
                 if self.group_livekit_token_ttl_seconds != 300:
                     raise ValueError('GROUP_LIVEKIT_TOKEN_TTL_SECONDS must remain 300')
+            if self.group_translation_enabled and not self.openai_api_key:
+                raise ValueError('OPENAI_API_KEY is required when GROUP_TRANSLATION_ENABLED is true')
         return self
 
 

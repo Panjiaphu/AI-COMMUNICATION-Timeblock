@@ -61,8 +61,18 @@ services:
         sync: false
       - key: OPENAI_REALTIME_TRANSLATION_MODEL
         value: gpt-realtime-translate
+      - key: OPENAI_REALTIME_TRANSCRIPTION_MODEL
+        value: gpt-realtime-whisper
       - key: GROUP_TRANSLATION_MAX_TARGETS
         value: "2"
+      - key: GROUP_TRANSLATION_CLIENT_SECRET_TTL_SECONDS
+        value: "60"
+      - key: GROUP_TRANSLATION_RESERVATION_TTL_SECONDS
+        value: "300"
+      - key: GROUP_TRANSLATION_MAX_SEGMENT_SECONDS
+        value: "300"
+      - key: GROUP_TRANSLATION_POLICY_VERSION
+        value: group-translation-v3-2026-08-31
       - key: GROUP_V3_ENABLED
         value: "false"
       - key: GROUP_HANDOFF_AUDIENCE
