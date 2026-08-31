@@ -71,6 +71,11 @@ class Settings(BaseSettings):
     group_livekit_token_ttl_seconds: int = Field(default=300, ge=60, le=600)
     group_media_max_participants: int = Field(default=8, ge=2, le=50)
     group_radio_floor_lease_seconds: int = Field(default=15, ge=5, le=120)
+    group_radio_v3_enabled: bool = False
+    group_radio_redis_url: str | None = None
+    group_radio_redis_namespace: str = 'ai-communication:group-radio:v3'
+    group_radio_heartbeat_seconds: int = Field(default=5, ge=1, le=30)
+    group_radio_device_lost_seconds: int = Field(default=10, ge=3, le=60)
     group_radio_max_burst_seconds: int = Field(default=30, ge=5, le=300)
     group_radio_max_rooms: int = Field(default=20, ge=1, le=1000)
 
@@ -175,6 +180,14 @@ class Settings(BaseSettings):
                     raise ValueError('GROUP_LIVEKIT_TOKEN_TTL_SECONDS must remain 300')
             if self.group_translation_enabled and not self.openai_api_key:
                 raise ValueError('OPENAI_API_KEY is required when GROUP_TRANSLATION_ENABLED is true')
+            if self.group_radio_v3_enabled:
+                if not self.group_media_enabled:
+                    raise ValueError('GROUP_MEDIA_ENABLED must be true when GROUP_RADIO_V3_ENABLED is true')
+                radio_url = str(self.group_radio_redis_url or '')
+                if not radio_url.startswith(('redis://', 'rediss://')):
+                    raise ValueError('GROUP_RADIO_REDIS_URL is required when GROUP_RADIO_V3_ENABLED is true')
+                if self.group_radio_floor_lease_seconds <= self.group_radio_heartbeat_seconds * 2:
+                    raise ValueError('GROUP_RADIO_FLOOR_LEASE_SECONDS must exceed two heartbeat intervals')
         return self
 
 

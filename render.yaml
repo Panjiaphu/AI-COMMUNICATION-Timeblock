@@ -105,6 +105,16 @@ services:
         value: "8"
       - key: GROUP_RADIO_FLOOR_LEASE_SECONDS
         value: "15"
+      - key: GROUP_RADIO_V3_ENABLED
+        value: "false"
+      - key: GROUP_RADIO_REDIS_URL
+        sync: false
+      - key: GROUP_RADIO_REDIS_NAMESPACE
+        value: ai-communication:group-radio:v3
+      - key: GROUP_RADIO_HEARTBEAT_SECONDS
+        value: "5"
+      - key: GROUP_RADIO_DEVICE_LOST_SECONDS
+        value: "10"
       - key: GROUP_RADIO_MAX_BURST_SECONDS
         value: "30"
       - key: GROUP_RADIO_MAX_ROOMS

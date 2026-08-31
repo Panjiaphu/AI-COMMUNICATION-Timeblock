@@ -13,6 +13,9 @@ from app.group_translation.router import router as group_translation_router
 from app.group_translation.provider import OpenAIGroupTranslationProvider
 from app.group_v3.crypto import GroupCrypto
 from app.group_v3.media import LiveKitGroupMediaProvider
+from app.group_v3.radio_floor import DistributedRadioFloor
+from app.group_v3.radio_router import router as group_v3_radio_router
+from app.group_v3.radio_service import GroupRadioService
 from app.group_v3.router import router as group_v3_router
 from app.group_v3.session_router import router as group_v3_session_router
 from app.group_v3.session_service import GroupMediaSessionService
@@ -42,6 +45,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 await asyncio.sleep(30)
                 await app.state.room_manager.cleanup()
                 await app.state.radio_floor.cleanup()
+                if app.state.settings.group_radio_v3_enabled:
+                    try:
+                        await app.state.group_radio_service.reconcile_device_loss(app.state.group_radio_floor)
+                    except GroupServiceError:
+                        pass
 
         task = asyncio.create_task(cleanup_loop())
         try:
@@ -57,16 +65,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             database = getattr(getattr(app, "state", None), "database", None)
             if database:
                 database.dispose()
+            group_radio_floor = getattr(getattr(app, "state", None), "group_radio_floor", None)
+            if group_radio_floor:
+                await group_radio_floor.close()
 
     application = FastAPI(title=runtime_settings.app_name, debug=runtime_settings.debug, lifespan=lifespan)
     application.state.settings = runtime_settings
     application.state.database = Database(runtime_settings)
     group_crypto = GroupCrypto(runtime_settings)
+    livekit_provider = LiveKitGroupMediaProvider(runtime_settings)
     application.state.group_service = GroupService(application.state.database, group_crypto)
     application.state.group_media_session_service = GroupMediaSessionService(
         application.state.database,
         runtime_settings,
-        LiveKitGroupMediaProvider(runtime_settings),
+        livekit_provider,
     )
     application.state.group_translation_service = GroupTranslationService(
         application.state.database,
@@ -74,6 +86,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         group_crypto,
     )
     application.state.openai_group_translation_provider = OpenAIGroupTranslationProvider(runtime_settings)
+    application.state.group_radio_floor = DistributedRadioFloor(runtime_settings)
+    application.state.group_radio_service = GroupRadioService(
+        application.state.database,
+        runtime_settings,
+        livekit_provider,
+    )
     application.state.room_manager = RoomManager(runtime_settings)
     application.state.radio_floor = RadioFloorManager(
         lease_seconds=runtime_settings.group_radio_floor_lease_seconds,
@@ -105,6 +123,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(group_v3_router)
     application.include_router(group_v3_session_router)
     application.include_router(group_v3_translation_router)
+    application.include_router(group_v3_radio_router)
     application.include_router(communication_router)
     application.include_router(group_translation_router)
     application.include_router(group_radio_router)
@@ -136,6 +155,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         'status': 'not_ready',
                         'service': 'guilua-communication-runtime',
                         'dependency': 'group_v3_database',
+                        'deployment_version': runtime_settings.deployment_version,
+                    },
+                    status_code=503,
+                )
+        if runtime_settings.group_v3_enabled and runtime_settings.group_radio_v3_enabled:
+            try:
+                await application.state.group_radio_floor.ping()
+            except GroupServiceError:
+                return JSONResponse(
+                    {
+                        'status': 'not_ready',
+                        'service': 'guilua-communication-runtime',
+                        'dependency': 'group_radio_valkey',
                         'deployment_version': runtime_settings.deployment_version,
                     },
                     status_code=503,

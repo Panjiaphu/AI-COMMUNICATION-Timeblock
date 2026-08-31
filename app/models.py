@@ -376,3 +376,92 @@ class GroupTtsJob(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     failure_code: Mapped[str] = mapped_column(String(80), nullable=False, default="", server_default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class GroupRadioSession(Base):
+    __tablename__ = "group_radio_sessions"
+    __table_args__ = (
+        CheckConstraint("status IN ('ready','ended')", name="ck_group_radio_sessions_status"),
+        Index("ix_group_radio_sessions_space_status", "space_id", "status", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    space_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_spaces.id", ondelete="CASCADE"), nullable=False)
+    title: Mapped[str] = mapped_column(String(120), nullable=False, default="", server_default="")
+    created_by_membership_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_memberships.id", ondelete="RESTRICT"), nullable=False)
+    livekit_room_name: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="ready", server_default="ready")
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    ended_by_membership_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("group_memberships.id", ondelete="SET NULL"))
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class GroupRadioParticipant(Base):
+    __tablename__ = "group_radio_participants"
+    __table_args__ = (
+        UniqueConstraint("radio_session_id", "membership_id", name="uq_group_radio_participant_member"),
+        UniqueConstraint("radio_session_id", "livekit_identity", name="uq_group_radio_participant_identity"),
+        CheckConstraint("status IN ('invited','joined','left','removed')", name="ck_group_radio_participants_status"),
+        CheckConstraint("device_state IN ('ready','lost')", name="ck_group_radio_participants_device"),
+        Index("ix_group_radio_participants_session_status", "radio_session_id", "status"),
+        Index("ix_group_radio_participants_principal", "principal_type", "principal_id", "principal_user_id", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    radio_session_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_radio_sessions.id", ondelete="CASCADE"), nullable=False)
+    membership_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_memberships.id", ondelete="RESTRICT"), nullable=False)
+    principal_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    principal_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    principal_user_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    livekit_identity: Mapped[str] = mapped_column(String(80), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="invited", server_default="invited")
+    device_state: Mapped[str] = mapped_column(String(16), nullable=False, default="ready", server_default="ready")
+    joined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    left_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    device_lost_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class GroupRadioBurst(Base):
+    __tablename__ = "group_radio_bursts"
+    __table_args__ = (
+        CheckConstraint("state IN ('talking','finalizing','final','device_lost','failed')", name="ck_group_radio_bursts_state"),
+        Index("ix_group_radio_bursts_session_created", "radio_session_id", "created_at"),
+        Index("ix_group_radio_bursts_state", "state", "updated_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    radio_session_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_radio_sessions.id", ondelete="CASCADE"), nullable=False)
+    space_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_spaces.id", ondelete="CASCADE"), nullable=False)
+    speaker_participant_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_radio_participants.id", ondelete="RESTRICT"), nullable=False)
+    speaker_membership_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_memberships.id", ondelete="RESTRICT"), nullable=False)
+    floor_token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False, default="talking", server_default="talking")
+    source_language: Mapped[str] = mapped_column(String(8), nullable=False, default="vi", server_default="vi")
+    target_languages_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
+    stop_reason: Mapped[str] = mapped_column(String(40), nullable=False, default="", server_default="")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class GroupRadioProcessingJob(Base):
+    __tablename__ = "group_radio_processing_jobs"
+    __table_args__ = (
+        UniqueConstraint("burst_id", name="uq_group_radio_processing_burst"),
+        CheckConstraint("status IN ('ready','processing','completed','failed','suppressed')", name="ck_group_radio_processing_status"),
+        Index("ix_group_radio_processing_status", "status", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    burst_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_radio_bursts.id", ondelete="CASCADE"), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="ready", server_default="ready")
+    failure_code: Mapped[str] = mapped_column(String(80), nullable=False, default="", server_default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())

@@ -82,6 +82,7 @@ class LiveKitGroupMediaProvider:
         identity: str,
         media_kind: str,
         desired_video_subscriptions: tuple[str, ...],
+        can_publish: bool = True,
     ) -> GroupMediaGrant:
         client_url = self._validated_client_url()
         if media_kind not in {"audio", "video"}:
@@ -91,10 +92,10 @@ class LiveKitGroupMediaProvider:
         grants = {
             "roomJoin": True,
             "room": room,
-            "canPublish": True,
+            "canPublish": can_publish,
             "canSubscribe": True,
             "canPublishData": True,
-            "canPublishSources": ["microphone"] if media_kind == "audio" else ["microphone", "camera"],
+            "canPublishSources": (["microphone"] if media_kind == "audio" else ["microphone", "camera"]) if can_publish else [],
         }
         header = {"alg": "HS256", "typ": "JWT"}
         payload = {
@@ -108,6 +109,7 @@ class LiveKitGroupMediaProvider:
                     "application": "ai-communication-group-v3",
                     "region": self.region,
                     "media_kind": media_kind,
+                    "can_publish": can_publish,
                     "desired_video_subscriptions": list(desired_video_subscriptions),
                 },
                 separators=(",", ":"),

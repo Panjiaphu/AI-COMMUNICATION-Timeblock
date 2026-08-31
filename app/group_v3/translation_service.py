@@ -18,6 +18,10 @@ from app.models import (
     GroupMediaParticipant,
     GroupMediaSession,
     GroupMembership,
+    GroupRadioBurst,
+    GroupRadioParticipant,
+    GroupRadioProcessingJob,
+    GroupRadioSession,
     GroupTranslationConsent,
     GroupTranslationEvent,
     GroupTranslationQuotaLedger,
@@ -233,7 +237,30 @@ class GroupTranslationService:
                 return self._quota_payload(ledger)
 
     @staticmethod
-    def _require_media_runtime(db, actor: GroupActor, space_id: str, runtime_kind: str, runtime_id: str) -> tuple[GroupMediaSession, GroupMediaParticipant]:
+    def _require_media_runtime(db, actor: GroupActor, space_id: str, runtime_kind: str, runtime_id: str):
+        if runtime_kind == "radio":
+            burst = db.get(GroupRadioBurst, runtime_id)
+            if not burst or burst.space_id != space_id or burst.state not in {"finalizing", "final"}:
+                raise GroupServiceError("group_translation_runtime_not_active", 409)
+            radio_session = db.get(GroupRadioSession, burst.radio_session_id)
+            if not radio_session or radio_session.status != "ready":
+                raise GroupServiceError("group_translation_runtime_not_active", 409)
+            participant = db.scalar(
+                select(GroupRadioParticipant).where(
+                    GroupRadioParticipant.radio_session_id == radio_session.id,
+                    GroupRadioParticipant.principal_type == actor.principal_type,
+                    GroupRadioParticipant.principal_id == actor.principal_id,
+                    GroupRadioParticipant.principal_user_id == actor.principal_user_id,
+                    GroupRadioParticipant.status == "joined",
+                )
+            )
+            if not participant or participant.membership_id != burst.speaker_membership_id:
+                raise GroupServiceError("group_translation_radio_speaker_required", 403)
+            joined_membership_ids = list(db.scalars(select(GroupRadioParticipant.membership_id).where(GroupRadioParticipant.radio_session_id == radio_session.id, GroupRadioParticipant.status == "joined")).all())
+            consented = set(db.scalars(select(GroupTranslationConsent.membership_id).where(GroupTranslationConsent.space_id == space_id, GroupTranslationConsent.membership_id.in_(joined_membership_ids), GroupTranslationConsent.status == "granted")).all())
+            if len(consented) != len(set(joined_membership_ids)):
+                raise GroupServiceError("group_translation_all_participant_consent_required", 409)
+            return burst, participant
         if runtime_kind not in {"call", "video"}:
             raise GroupServiceError("group_translation_runtime_not_ready", 409)
         session = db.get(GroupMediaSession, runtime_id)
@@ -287,7 +314,14 @@ class GroupTranslationService:
             try:
                 with db.begin():
                     membership = self._membership(db, space_id, actor)
-                    self._require_media_runtime(db, actor, space_id, values["runtime_kind"], values["runtime_id"])
+                    runtime, _runtime_participant = self._require_media_runtime(db, actor, space_id, values["runtime_kind"], values["runtime_id"])
+                    if values["runtime_kind"] == "radio":
+                        try:
+                            radio_targets = set(json.loads(runtime.target_languages_json))
+                        except json.JSONDecodeError:
+                            radio_targets = set()
+                        if values["target_language"] not in radio_targets or values["segment_id"] != runtime.id:
+                            raise GroupServiceError("group_radio_translation_target_not_planned", 409)
                     self._release_expired(db)
                     existing = db.scalar(select(GroupTranslationReservation).where(GroupTranslationReservation.space_id == space_id, GroupTranslationReservation.runtime_kind == values["runtime_kind"], GroupTranslationReservation.runtime_id == values["runtime_id"], GroupTranslationReservation.segment_id == values["segment_id"], GroupTranslationReservation.target_language == values["target_language"]).with_for_update())
                     if existing and existing.status in {"reserved", "settled"}:
@@ -332,6 +366,12 @@ class GroupTranslationService:
                         db.add(reservation)
                     ledger.reserved_target_seconds += seconds
                     ledger.updated_at = _now()
+                    if values["runtime_kind"] == "radio":
+                        processing = db.scalar(select(GroupRadioProcessingJob).where(GroupRadioProcessingJob.burst_id == runtime.id).with_for_update())
+                        if not processing or processing.status not in {"ready", "processing"}:
+                            raise GroupServiceError("group_radio_processing_not_ready", 409)
+                        processing.status = "processing"
+                        processing.updated_at = _now()
                     self._audit(db, actor, space_id, "translation.reserved", "translation_reservation", reservation.id, {"runtime_kind": reservation.runtime_kind, "target_language": reservation.target_language, "target_seconds": seconds})
                     db.flush()
                     return {
@@ -385,8 +425,11 @@ class GroupTranslationService:
                         raise GroupServiceError("group_translation_reservation_not_active", 409)
                     if values["actual_target_seconds"] > reservation.reserved_target_seconds:
                         raise GroupServiceError("group_translation_actual_exceeds_reservation", 409)
-                    session, _participant = self._require_media_runtime(db, actor, space_id, reservation.runtime_kind, reservation.runtime_id)
-                    speaker = db.scalar(select(GroupMediaParticipant).where(GroupMediaParticipant.session_id == session.id, GroupMediaParticipant.membership_id == values["speaker_membership_id"], GroupMediaParticipant.invite_status == "joined"))
+                    runtime, _participant = self._require_media_runtime(db, actor, space_id, reservation.runtime_kind, reservation.runtime_id)
+                    if reservation.runtime_kind == "radio":
+                        speaker = db.scalar(select(GroupRadioParticipant).where(GroupRadioParticipant.radio_session_id == runtime.radio_session_id, GroupRadioParticipant.membership_id == values["speaker_membership_id"], GroupRadioParticipant.status == "joined"))
+                    else:
+                        speaker = db.scalar(select(GroupMediaParticipant).where(GroupMediaParticipant.session_id == runtime.id, GroupMediaParticipant.membership_id == values["speaker_membership_id"], GroupMediaParticipant.invite_status == "joined"))
                     if not speaker:
                         raise GroupServiceError("group_translation_speaker_not_joined", 409)
                     original_ciphertext, original_nonce, version = self.crypto.encrypt_text(values["original_text"], aad=f"group-translation-original:{space_id}:{event_id}")
@@ -422,6 +465,14 @@ class GroupTranslationService:
                     reservation.status = "settled"
                     reservation.settled_target_seconds = values["actual_target_seconds"]
                     reservation.settled_at = now
+                    if reservation.runtime_kind == "radio":
+                        runtime.state = "final"
+                        runtime.finalized_at = now
+                        runtime.updated_at = now
+                        processing = db.scalar(select(GroupRadioProcessingJob).where(GroupRadioProcessingJob.burst_id == runtime.id).with_for_update())
+                        if processing:
+                            processing.status = "completed"
+                            processing.updated_at = now
                     recipients = list(
                         db.execute(
                             select(GroupMembership, GroupLanguageProfile)
