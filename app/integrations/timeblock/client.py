@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterable, AsyncIterator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
 
@@ -67,6 +67,21 @@ _SAFE_PROXY_METHODS = {'GET', 'POST', 'PUT', 'PATCH', 'DELETE'}
 @dataclass(slots=True)
 class TimeblockClient:
     settings: Settings
+    _client: httpx.AsyncClient | None = field(default=None, init=False, repr=False)
+
+    def _pooled_client(self) -> httpx.AsyncClient:
+        """Reuse one connection pool for non-streaming control-plane calls."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=self.settings.timeblock_timeout_seconds,
+                follow_redirects=False,
+            )
+        return self._client
+
+    async def aclose(self) -> None:
+        client, self._client = self._client, None
+        if client is not None and not client.is_closed:
+            await client.aclose()
 
     def _api_url(self, path: str) -> str:
         if not self.settings.timeblock_api_url or not self.settings.timeblock_api_key:
@@ -203,13 +218,12 @@ class TimeblockClient:
         if idempotency_key:
             headers['Idempotency-Key'] = idempotency_key
         try:
-            async with httpx.AsyncClient(timeout=self.settings.timeblock_timeout_seconds) as client:
-                response = await client.post(
-                    self._api_url(path),
-                    headers=headers,
-                    json=payload,
-                )
-                response.raise_for_status()
+            response = await self._pooled_client().post(
+                self._api_url(path),
+                headers=headers,
+                json=payload,
+            )
+            response.raise_for_status()
         except httpx.HTTPError as exc:
             raise TimeblockIntegrationError('timeblock_request_failed') from exc
         try:
@@ -223,13 +237,12 @@ class TimeblockClient:
     async def _get(self, path: str, *, client_session: str, params: dict[str, Any] | None = None) -> dict:
         headers = self._server_headers(client_session=client_session)
         try:
-            async with httpx.AsyncClient(timeout=self.settings.timeblock_timeout_seconds) as client:
-                response = await client.get(
-                    self._api_url(path),
-                    headers=headers,
-                    params=params or {},
-                )
-                response.raise_for_status()
+            response = await self._pooled_client().get(
+                self._api_url(path),
+                headers=headers,
+                params=params or {},
+            )
+            response.raise_for_status()
         except httpx.HTTPError as exc:
             raise TimeblockIntegrationError('timeblock_request_failed') from exc
         try:
@@ -242,12 +255,11 @@ class TimeblockClient:
 
     async def contract_capabilities(self) -> dict:
         try:
-            async with httpx.AsyncClient(timeout=self.settings.timeblock_timeout_seconds) as client:
-                response = await client.get(
-                    self._api_url('/api/guilua/v2/capabilities'),
-                    headers=self._server_headers(),
-                )
-                response.raise_for_status()
+            response = await self._pooled_client().get(
+                self._api_url('/api/guilua/v2/capabilities'),
+                headers=self._server_headers(),
+            )
+            response.raise_for_status()
         except httpx.HTTPError as exc:
             raise TimeblockIntegrationError('timeblock_contract_unavailable') from exc
         try:

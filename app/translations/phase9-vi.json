@@ -24,7 +24,7 @@
   "phase9.treasury.allocate_member_fgo_body": "Thao tác này tạo ví Internal FGO cho thành viên và ghi vào ledger ví thành viên cùng ledger kho quản trị. Internal FGO vẫn là số dư nội bộ có quản trị của Timeblock, không phải tài sản on-chain.",
   "phase9.treasury.allocate_business_fgo": "Phân bổ Internal FGO cho doanh nghiệp",
   "phase9.treasury.allocate_business_fgo_body": "Thao tác này tăng số dư Internal FGO của doanh nghiệp và ghi vào ledger ví doanh nghiệp cùng ledger kho quản trị. Doanh nghiệp không thể bỏ qua service layer của Timeblock để tự thay đổi số dư.",
-  "phase9.treasury.demo_business_points": "Phân bổ điểm nội bộ mẫu cho doanh nghiệp",
+  "phase9.treasury.business_points": "Phân bổ điểm nội bộ cho doanh nghiệp",
   "phase9.treasury.go_live_checklist": "Checklist phát hành Giai đoạn 9",
   "phase9.governance.title": "Quản trị FGO",
   "phase9.governance.eyebrow": "Chính sách quản trị",

@@ -37,6 +37,47 @@
   box-shadow: var(--shadow);
 }
 
+.auth-account-switcher {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f3f6ef;
+}
+
+.auth-account-switcher a {
+  min-height: 42px;
+  display: grid;
+  place-items: center;
+  padding: 8px 10px;
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 900;
+  text-align: center;
+  text-decoration: none;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.auth-account-switcher a:hover,
+.auth-account-switcher a:focus-visible {
+  color: var(--accent-strong);
+  background: #fff;
+}
+
+.auth-account-switcher a:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 1px;
+}
+
+.auth-account-switcher a.active {
+  color: var(--accent-strong);
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(15, 79, 68, 0.12);
+}
+
 .auth-form label {
   display: grid;
   gap: 8px;

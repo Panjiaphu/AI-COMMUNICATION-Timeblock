@@ -12,7 +12,7 @@ from scripts.sync_timeblock_assistant_ui import git_blob
 ROOT = Path(__file__).resolve().parents[1]
 ASSISTANT_VENDOR = ROOT / "vendor/timeblock-assistant"
 LOCK_PATH = ASSISTANT_VENDOR / "SOURCE_LOCK.json"
-SOURCE_SHA = "e37da9fc398b03546191a7193ecc05c77b21ab84"
+SOURCE_SHA = "64fc29ec29d2c4668f1bc9062086f8e4b7d49a40"
 
 
 def _lock() -> dict[str, Any]:
@@ -62,15 +62,15 @@ def test_assistant_lock_is_exactly_pinned_to_the_target_timeblock_source():
         "working_tree_filters_applied": False,
     }
     assert lock["runtime_network_source"] is False
-    assert len(lock["source_paths"]) == 214
-    assert len(set(lock["source_paths"])) == 214
-    assert len(lock["source_hashes"]) == 214
-    assert len(lock["destination_paths"]) == 214
-    assert len(lock["entries"]) == 420
-    assert len(lock["adaptation_class"]) == 420
+    assert len(lock["source_paths"]) == 215
+    assert len(set(lock["source_paths"])) == 215
+    assert len(lock["source_hashes"]) == 215
+    assert len(lock["destination_paths"]) == 215
+    assert len(lock["entries"]) == 422
+    assert len(lock["adaptation_class"]) == 422
 
 
-def test_all_420_locked_destinations_are_exact_hash_matches():
+def test_all_422_locked_destinations_are_exact_hash_matches():
     lock = _lock()
     source_paths = set(lock["source_paths"])
     destination_paths: set[str] = set()
@@ -94,7 +94,7 @@ def test_all_420_locked_destinations_are_exact_hash_matches():
         assert destination.is_file(), destination_path
         assert _sha256(destination) == entry["source_sha256"], destination_path
 
-    assert len(destination_paths) == 420
+    assert len(destination_paths) == 422
 
 
 def test_every_source_has_an_exact_vendor_mirror_and_required_runtime_copy():

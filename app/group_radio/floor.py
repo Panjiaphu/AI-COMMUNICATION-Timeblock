@@ -136,12 +136,26 @@ class RadioFloorManager:
                 "burst_seconds": max(0.0, (utcnow() - current.acquired_at).total_seconds()),
             }
 
-    async def leave(self, room_id: str, lease_id: str | None = None) -> dict:
+    async def leave(
+        self,
+        room_id: str,
+        lease_id: str | None = None,
+        participant_id: str | None = None,
+    ) -> dict:
         room = self._identity(room_id, "room_id")
+        participant = self._identity(participant_id, "participant_id") if participant_id else None
         async with self._lock:
             current = self._leases.get(room)
             if not current:
                 return {"status": "ready", "room_id": room}
+            # A listener leaving the room must never release another speaker's
+            # lease. The lease id remains the strongest owner proof when sent.
+            if participant and current.participant_id != participant:
+                return {
+                    "status": "ready",
+                    "room_id": room,
+                    "active_participant_id": current.participant_id,
+                }
             if lease_id and current.lease_id != str(lease_id).strip():
                 raise GroupRadioFloorError("floor_not_owned")
             self._leases.pop(room, None)

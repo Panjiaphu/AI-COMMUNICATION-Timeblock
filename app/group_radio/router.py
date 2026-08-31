@@ -107,7 +107,21 @@ async def session_action(request: Request, session_id: str, action: str) -> JSON
         raise HTTPException(status_code=404, detail="not_found")
     result = await _timeblock(request, session, normalized, action)
     if action in {"leave", "end"}:
-        await _floor(request).leave(f"group-radio:{normalized}")
+        try:
+            body = await request.json()
+        except ValueError:
+            body = {}
+        principal = session.principal if isinstance(session.principal, dict) else {}
+        participant_id = str(
+            body.get("participant_id")
+            or principal.get("participant_id")
+            or f"{principal.get('type') or principal.get('actor_type') or 'member'}:{principal.get('id') or principal.get('actor_id') or ''}"
+        ).strip()
+        await _floor(request).leave(
+            f"group-radio:{normalized}",
+            lease_id=str(body.get("lease_id") or "").strip() or None,
+            participant_id=participant_id or None,
+        )
         if action == "end":
             request.app.state.radio_capacity.release(normalized)
     return JSONResponse(result, headers={"Cache-Control": "no-store, private, max-age=0"})

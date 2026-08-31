@@ -119,6 +119,67 @@
     $('#messaging-composer').hidden = false; $('#messaging-call-actions').hidden = false;
     try { const payload = await api(`/api/messaging/conversations/${conversation.id}/messages`); renderMessages(payload.messages || []); status(''); }
     catch (error) { status(error.message); }
+    await loadGroupLanguageProfile(conversation);
+  }
+
+  function groupProfilePanel() { return app.querySelector('[data-group-language-profile]'); }
+
+  function setGroupProfileFields(profile) {
+    const panel = groupProfilePanel();
+    if (!panel) return;
+    panel.querySelectorAll('[data-group-profile-field]').forEach((field) => {
+      const key = field.dataset.groupProfileField;
+      if (field.type === 'checkbox') field.checked = Boolean(profile[key]);
+      else field.value = profile[key] == null ? '' : String(profile[key]);
+    });
+  }
+
+  async function loadGroupLanguageProfile(conversation) {
+    const panel = groupProfilePanel();
+    if (!panel) return;
+    const isGroup = conversation && conversation.kind === 'group';
+    panel.hidden = !isGroup;
+    if (!isGroup) return;
+    const profileStatus = panel.querySelector('[data-group-profile-status]');
+    if (profileStatus) profileStatus.textContent = copy('groupProfileLoading');
+    try {
+      const payload = await api(`/api/messaging/conversations/${conversation.id}/group-language-profile`);
+      setGroupProfileFields(payload.profile || {});
+      panel.dataset.conversationId = String(conversation.id);
+      if (profileStatus) profileStatus.textContent = '';
+    } catch (error) {
+      if (profileStatus) profileStatus.textContent = copy('groupProfileUnavailable');
+      status(error.message);
+    }
+  }
+
+  async function saveGroupLanguageProfile() {
+    const panel = groupProfilePanel();
+    const conversationId = panel?.dataset.conversationId;
+    if (!panel || !conversationId || !state.conversation || state.conversation.kind !== 'group') {
+      status(copy('groupProfileUnavailable'));
+      return;
+    }
+    const body = {};
+    panel.querySelectorAll('[data-group-profile-field]').forEach((field) => {
+      const key = field.dataset.groupProfileField;
+      body[key] = field.type === 'checkbox' ? field.checked : (field.value || null);
+    });
+    const profileStatus = panel.querySelector('[data-group-profile-status]');
+    if (profileStatus) profileStatus.textContent = copy('groupProfileLoading');
+    try {
+      const payload = await api(`/api/messaging/conversations/${conversationId}/group-language-profile`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      setGroupProfileFields(payload.profile || {});
+      if (profileStatus) profileStatus.textContent = copy('groupProfileSaved');
+      status('');
+    } catch (error) {
+      if (profileStatus) profileStatus.textContent = copy('groupProfileUnavailable');
+      status(error.message);
+    }
   }
 
   async function sendMessage(event) {
@@ -147,8 +208,74 @@
   function escapeHtml(value) { const node = document.createElement('div'); node.textContent = value == null ? '' : String(value); return node.innerHTML; }
   function formatDate(value) { if (!value) return ''; const date = new Date(value.replace(' ', 'T') + 'Z'); return Number.isNaN(date.getTime()) ? value : date.toLocaleString(); }
 
+  function initGroupCommunicationSurface() {
+    const panel = $('#group-communication-panel');
+    if (!panel || panel.dataset.initialized === 'true') return;
+    panel.dataset.initialized = 'true';
+    const title = $('#group-communication-state-title');
+    const note = $('#group-communication-state-note');
+    const surfaceButtons = Array.from(panel.querySelectorAll('[data-group-surface]'));
+    const actionButtons = Array.from(panel.querySelectorAll('[data-group-action]'));
+    const copyValue = (key, fallback) => app.dataset[key] || fallback;
+    const copy = {
+      active: copyValue('groupActive', 'ACTIVE'),
+      chatReady: copyValue('groupChatReady', 'Group Chat remains available in this UI-only preview.'),
+      handoffTitle: copyValue('groupHandoffTitle', 'Secure handoff required'),
+      handoffNote: copyValue('groupHandoffNote', 'Open AI-COMMUNICATION after the secure contract is available. No media is acquired here.'),
+      handoffOpen: copyValue('groupHandoffOpen', 'Open AI-COMMUNICATION'),
+      radioReady: copyValue('groupRadioReady', 'Radio floor is available in the design state; provider connection is not started.'),
+      radioDegraded: copyValue('groupRadioDegraded', 'Radio provider is unavailable. No microphone or floor lease was acquired.'),
+      startTalking: copyValue('groupStartTalking', 'Start talking'),
+      stopCommit: copyValue('groupStopCommit', 'Stop / commit'),
+      stateLabel: copyValue('groupStateLabel', 'Group communication state'),
+    };
+    const setActionVisible = (name, visible) => {
+      const button = panel.querySelector(`[data-group-action="${name}"]`);
+      if (button) button.hidden = !visible;
+    };
+    const setSurface = (surface) => {
+      surfaceButtons.forEach((button) => button.classList.toggle('is-active', button.dataset.groupSurface === surface));
+      setActionVisible('open-handoff', surface === 'call' || surface === 'video');
+      setActionVisible('join', false);
+      setActionVisible('reject', false);
+      setActionVisible('start-talking', surface === 'radio');
+      setActionVisible('stop-commit', false);
+      if (surface === 'chat') {
+        title.textContent = copy.active;
+        note.textContent = copy.chatReady;
+        return;
+      }
+      if (surface === 'radio') {
+        title.textContent = 'READY';
+        note.textContent = copy.radioReady;
+        return;
+      }
+      title.textContent = copy.handoffTitle;
+      note.textContent = copy.handoffNote;
+    };
+    const setRadioDegraded = () => {
+      surfaceButtons.forEach((button) => button.classList.toggle('is-active', button.dataset.groupSurface === 'radio'));
+      title.textContent = 'AI_DEGRADED';
+      note.textContent = copy.radioDegraded;
+      setActionVisible('open-handoff', false);
+      setActionVisible('start-talking', false);
+      setActionVisible('stop-commit', true);
+    };
+    surfaceButtons.forEach((button) => button.addEventListener('click', () => setSurface(button.dataset.groupSurface)));
+    actionButtons.forEach((button) => button.addEventListener('click', () => {
+      if (button.dataset.groupAction === 'start-talking') setRadioDegraded();
+      if (button.dataset.groupAction === 'stop-commit') setSurface('radio');
+      if (button.dataset.groupAction === 'open-handoff') status(copy.handoffNote);
+    }));
+    panel.setAttribute('aria-label', copy.stateLabel);
+    panel.querySelector('[data-group-profile-save]')?.addEventListener('click', saveGroupLanguageProfile);
+    setSurface('chat');
+  }
+
   async function init() {
     copy('emptyConnections');
+    // Mount the state-only Group surface before network reads so degraded UI remains usable.
+    initGroupCommunicationSurface();
     try { const payload = await api('/api/messaging/directory/me'); state.me = payload.entry; await loadConnections(); await loadConversations(); }
     catch (error) { status(error.message); }
     $('#messaging-search-form').addEventListener('submit', search);

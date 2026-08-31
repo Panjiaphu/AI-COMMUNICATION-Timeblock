@@ -2,7 +2,8 @@
   "use strict";
 
   const LANGUAGES = new Set(["vi", "zh-TW", "en"]);
-  const ROOM_PREFIX = "group-call:";
+  const CALL_ROOM_PREFIX = "group-call:";
+  const RADIO_ROOM_PREFIX = "group-radio:";
 
   const text = (value, maximum = 4096) => {
     if (typeof value !== "string") return "";
@@ -15,7 +16,10 @@
       this.manager = manager;
       this.track = track;
       this.speakerId = text(speakerId, 160);
-      this.roomId = text(roomId, 160).replace(ROOM_PREFIX, "");
+      const normalizedRoomId = text(roomId, 160);
+      this.roomId = normalizedRoomId.startsWith(RADIO_ROOM_PREFIX)
+        ? normalizedRoomId
+        : normalizedRoomId.replace(CALL_ROOM_PREFIX, "");
       this.generation = text(generation, 128);
       this.sourceLanguage = text(sourceLanguage, 16);
       this.targetLanguage = text(targetLanguage, 16);

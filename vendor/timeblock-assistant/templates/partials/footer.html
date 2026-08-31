@@ -7,15 +7,19 @@
     <div class="footer-links">
       <a href="{{ url_for('checkout.pricing', tab='business', lang=current_locale) }}">{{ t('nav.business_plans') }}</a>
       <a href="{{ url_for('business_auth.apply', lang=current_locale) }}">{{ t('footer.business_apply') }}</a>
-      <a href="{{ url_for('utilities.index', lang=current_locale) }}">{{ t('nav.utilities') }}</a>
+      <a href="{{ url_for('utilities.index', lang=current_locale) }}">{{ t('nav.discover') }}</a>
       <a href="{{ url_for('market.dashboard', lang=current_locale) }}">{{ t('nav.market') }}</a>
       <a href="{{ url_for('equities.dashboard', lang=current_locale) }}">{{ t('nav.equities') }}</a>
       <a href="{{ url_for('auth.login', lang=current_locale) }}">{{ t('nav.member_login') }}</a>
       <a href="{{ url_for('events.list_events', lang=current_locale) }}">{{ t('nav.events') }}</a>
       <a href="{{ url_for('shop.marketplace', lang=current_locale) }}">{{ t('nav.shop') }}</a>
-      <a href="{{ url_for('delivery.index', lang=current_locale) }}">{{ t('nav.delivery') }}</a>
+      {% if config.get('TIMEBLOCK_DELIVERY_NAV_ENABLED', false) %}
+        <a href="{{ url_for('delivery.index', lang=current_locale) }}">{{ t('nav.delivery') }}</a>
+      {% endif %}
       <a href="{{ url_for('redeem_shop.list_products', lang=current_locale) }}">{{ t('nav.redeem_shop') }}</a>
-      <a href="{{ url_for('block_ledger.public_explorer', lang=current_locale) }}">{{ t('nav.block_ledger') }}</a>
+      {% if config.get('TIMEBLOCK_BLOCK_PUBLIC_NAV_ENABLED', false) %}
+        <a href="{{ url_for('block_ledger.public_explorer', lang=current_locale) }}">{{ t('nav.block_ledger') }}</a>
+      {% endif %}
     </div>
     <div class="footer-contact" aria-label="{{ t('footer.contact_label') }}">
       <span>{{ t('footer.contact_label') }}</span>

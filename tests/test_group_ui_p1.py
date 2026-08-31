@@ -28,12 +28,23 @@ def test_group_ui_templates_are_mounted_without_mixing_direct_runtime():
     assert ".group-radio-roster" in styles
     radio_template = (ROOT / "app/templates/group_radio_panel.html").read_text(encoding="utf-8")
     assert 'data-group-radio-state="FINALIZING_BURST"' in radio_template
+    assert 'data-group-radio-state="DEVICE_LOST"' in radio_template
     assert "group-radio-ptt" in radio_template
     assert "group-radio-recent" in radio_template
+    assert 'data-group-radio-route="private"' in radio_template
+    assert 'data-group-radio-route="speaker"' in radio_template
+    assert 'data-group-radio-translation-enable' in radio_template
+    assert 'data-group-radio-plugin-toggle' in radio_template
     assert "getUserMedia" not in script
     assert "LiveKit" not in script
     assert "speechSynthesis" not in script
     assert "fetch(" not in script
+    assert 'runtimeConfig.initial_surface' in script
+    assert 'scrollIntoView({ block: "center", behavior: "auto" })' in script
+    assert 'group-runtime-mode' in template
+    assert 'group-runtime-radio' in styles
+    assert '.group-radio-panel.is-plugin-open' in styles
+    assert 'consumeHandoff()' in script
 
 
 def test_group_copy_has_vi_en_zh_tw_parity():
@@ -61,6 +72,9 @@ def test_group_copy_has_vi_en_zh_tw_parity():
         "group_talking",
         "group_finalizing",
         "group_device_lost",
+        "group_reconnect_private_audio",
+        "group_use_speaker",
+        "group_enable_translation",
         "group_recent_burst",
     }
     copies = {locale: communication_copy(locale) for locale in ("vi", "en", "zh-TW")}

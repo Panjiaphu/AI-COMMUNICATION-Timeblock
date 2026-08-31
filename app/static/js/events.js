@@ -1,4 +1,15 @@
 document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("[data-events-filter-toggle]").forEach((toggle) => {
+    const panelId = toggle.getAttribute("aria-controls");
+    const panel = panelId ? document.getElementById(panelId) : null;
+    if (!panel) return;
+
+    toggle.addEventListener("click", () => {
+      const isOpen = panel.classList.toggle("is-open");
+      toggle.setAttribute("aria-expanded", String(isOpen));
+    });
+  });
+
   document.querySelectorAll(".event-share-panel").forEach((panel) => {
     const shareUrl = panel.dataset.shareUrl || window.location.href;
     const shareTitle = panel.dataset.shareTitle || document.title;
