@@ -127,7 +127,7 @@ def test_authenticated_assistant_renders_canonical_vendor_dom_and_locale(runtime
     assert 'data-mode-panel="messages"' in response.text
     assert 'href="/static/css/assistant.css?' in response.text
     assert (
-        'href="/static/css/assistant_runtime_adapter.css?v=20260826-composer-grid-1" '
+        'href="/static/css/assistant_runtime_adapter.css?v=20260831-nav-icons-3" '
         "data-guilua-assistant-runtime-adapter"
     ) in response.text
     assert 'src="/static/js/call-v1/bootstrap.js?' in response.text
