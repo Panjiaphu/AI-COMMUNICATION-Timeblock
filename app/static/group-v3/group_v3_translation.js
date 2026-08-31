@@ -129,7 +129,7 @@
       await this.pc.setLocalDescription(offer);
       var sdpResponse;
       try {
-        sdpResponse = await window.fetch("https://api.openai.com/v1/realtime/translations/calls", {
+        sdpResponse = await window.fetch("https://api.openai.com/v1/realtime/calls", {
           method: "POST",
           mode: "cors",
           credentials: "omit",

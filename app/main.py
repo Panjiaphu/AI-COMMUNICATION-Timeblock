@@ -25,7 +25,7 @@ from app.handoff.router_v3 import router as group_handoff_v3_router
 from app.bff.router import router as bff_router
 from app.bff.session_store import SessionStore
 from app.core.config import BASE_DIR, Settings, get_settings
-from app.db import Database
+from app.db import Database, GROUP_V3_SCHEMA_REVISION
 from app.integrations.timeblock.client import TimeblockClient, TimeblockIntegrationError
 from app.telemetry.logging import configure_logging
 
@@ -135,6 +135,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @application.get('/readyz/')
     async def readyz():
+        schema_revision = None
         if runtime_settings.group_v3_enabled:
             try:
                 application.state.database.ping()
@@ -148,6 +149,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     },
                     status_code=503,
                 )
+            try:
+                revisions = application.state.database.migration_revisions()
+            except Exception:
+                revisions = ()
+            if revisions != (GROUP_V3_SCHEMA_REVISION,):
+                return JSONResponse(
+                    {
+                        'status': 'not_ready',
+                        'service': 'guilua-communication-runtime',
+                        'dependency': 'group_v3_schema',
+                        'expected_revision': GROUP_V3_SCHEMA_REVISION,
+                        'current_revisions': list(revisions),
+                        'deployment_version': runtime_settings.deployment_version,
+                    },
+                    status_code=503,
+                )
+            schema_revision = GROUP_V3_SCHEMA_REVISION
         if runtime_settings.group_v3_enabled and runtime_settings.group_radio_v3_enabled:
             try:
                 await application.state.group_radio_floor.ping()
@@ -162,12 +180,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     status_code=503,
                 )
         if runtime_settings.development_session_fallback_enabled:
-            return {
+            payload = {
                 'status': 'ready',
                 'service': 'guilua-communication-runtime',
                 'authority': 'development',
                 'deployment_version': runtime_settings.deployment_version,
             }
+            if runtime_settings.group_v3_enabled:
+                payload.update(
+                    {
+                        'contract_version': '3',
+                        'schema_revision': schema_revision,
+                        'capabilities': {
+                            'group_chat': True,
+                            'group_media': runtime_settings.group_media_enabled,
+                            'group_radio': runtime_settings.group_radio_v3_enabled,
+                            'group_translation': runtime_settings.group_translation_enabled,
+                        },
+                    }
+                )
+            return payload
         try:
             manifest = await application.state.timeblock_client.contract_capabilities()
         except TimeblockIntegrationError:
@@ -180,6 +212,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 },
                 status_code=503,
             )
+        if runtime_settings.group_v3_enabled:
+            return {
+                'status': 'ready',
+                'service': 'guilua-communication-runtime',
+                'authority': 'ai-communication',
+                'contract_version': '3',
+                'identity_authority': manifest['authority'],
+                'identity_contract_version': manifest['contract_version'],
+                'schema_revision': schema_revision,
+                'capabilities': {
+                    'group_chat': True,
+                    'group_media': runtime_settings.group_media_enabled,
+                    'group_radio': runtime_settings.group_radio_v3_enabled,
+                    'group_translation': runtime_settings.group_translation_enabled,
+                },
+                'deployment_version': runtime_settings.deployment_version,
+            }
         return {
             'status': 'ready',
             'service': 'guilua-communication-runtime',

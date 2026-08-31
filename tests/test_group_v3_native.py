@@ -10,6 +10,7 @@ from app.core.config import Settings
 from app.db import Base
 from app.main import create_app
 from app.models import GroupMessage
+from tests.test_group_radio_floor_v3 import FakeAsyncRedis
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -102,8 +103,8 @@ class RedeemStub:
         return None
 
 
-def _native_app(tmp_path):
-    app = create_app(_settings(tmp_path))
+def _native_app(tmp_path, **overrides):
+    app = create_app(_settings(tmp_path, **overrides))
     Base.metadata.create_all(app.state.database.engine)
     return app
 
@@ -186,6 +187,100 @@ def test_native_space_and_message_are_idempotent_and_encrypted_at_rest(tmp_path)
         assert stored.encryption_version == "aes-256-gcm-v1"
 
 
+def test_native_radio_floor_media_grant_stop_and_leave_are_end_to_end(tmp_path):
+    app = _native_app(
+        tmp_path,
+        group_media_enabled=True,
+        group_livekit_url="wss://group-v3.livekit.cloud",
+        group_livekit_api_key="livekit-api-key",
+        group_livekit_api_secret="livekit-api-secret",
+        group_radio_v3_enabled=True,
+        group_radio_redis_url="redis://group-radio.test:6379",
+    )
+    app.state.group_radio_floor._client = FakeAsyncRedis()
+    session = app.state.bff_session_store.create_group_session(
+        principal=_handoff_payload("radio")["principal"],
+        scope=SCOPES,
+        expires_at=_future(),
+        handoff_id="handoff-v3-native-radio",
+        surface="radio",
+        entitlement=_handoff_payload("radio")["entitlement"],
+    )
+    headers = {"Origin": PUBLIC_ORIGIN}
+
+    with TestClient(app) as client:
+        client.cookies.set(app.state.settings.guilua_session_cookie, session.session_id)
+        created_space = client.post(
+            "/api/group/spaces",
+            json={"title": "Dieu phoi radio", "description": "Native Radio V3"},
+            headers={**headers, "Idempotency-Key": "radio-space-0001"},
+        )
+        assert created_space.status_code == 201
+        space_id = created_space.json()["space"]["id"]
+
+        invitee = client.post(
+            f"/api/group/spaces/{space_id}/memberships",
+            json={
+                "principal_type": "member",
+                "principal_id": "84",
+                "principal_user_id": "84",
+                "display_name": "Tran An",
+                "role": "member",
+            },
+            headers=headers,
+        )
+        assert invitee.status_code == 201
+        invitee_id = invitee.json()["membership"]["id"]
+
+        created_radio = client.post(
+            f"/api/group/spaces/{space_id}/radio/sessions",
+            json={"title": "Kenh van hanh", "participant_membership_ids": [invitee_id]},
+            headers=headers,
+        )
+        assert created_radio.status_code == 201
+        radio_id = created_radio.json()["session"]["id"]
+
+        acquired = client.post(
+            f"/api/group/spaces/{space_id}/radio/sessions/{radio_id}/floor/acquire",
+            json={"source_language": "vi", "target_languages": []},
+            headers=headers,
+        )
+        assert acquired.status_code == 201
+        floor_token = acquired.json()["floor_token"]
+        assert acquired.json()["burst"]["state"] == "talking"
+
+        grant = client.post(
+            f"/api/group/spaces/{space_id}/radio/sessions/{radio_id}/media-grant",
+            json={"mode": "talk", "floor_token": floor_token},
+            headers=headers,
+        )
+        assert grant.status_code == 200
+        assert grant.json()["grant"]["publish_mode"] == "talk"
+        assert grant.json()["grant"]["provider"] == "livekit-cloud"
+
+        stopped = client.post(
+            f"/api/group/spaces/{space_id}/radio/sessions/{radio_id}/floor/stop",
+            json={"floor_token": floor_token},
+            headers=headers,
+        )
+        assert stopped.status_code == 200
+        assert stopped.json()["floor_released_before_downstream"] is True
+        assert stopped.json()["burst"]["state"] == "final"
+
+        history = client.get(
+            f"/api/group/spaces/{space_id}/radio/sessions/{radio_id}/history"
+        )
+        assert history.status_code == 200
+        assert history.json()["bursts"][0]["state"] == "final"
+
+        left = client.post(
+            f"/api/group/spaces/{space_id}/radio/sessions/{radio_id}/leave",
+            headers=headers,
+        )
+        assert left.status_code == 200
+        assert left.json()["ended_for_all"] is False
+
+
 def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     app = create_app(Settings(app_env="test", debug=True))
     route_paths = set(app.openapi()["paths"])
@@ -206,6 +301,8 @@ def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     assert "localStorage" not in app_js + translation_js
     assert "sessionStorage" not in app_js + translation_js
     assert "OPENAI_API_KEY" not in app_js + translation_js + template
+    assert "https://api.openai.com/v1/realtime/calls" in translation_js
+    assert "/v1/realtime/translations/calls" not in translation_js
     connect_media = app_js[
         app_js.index("async function connectMedia") : app_js.index("async function connectRadio")
     ]

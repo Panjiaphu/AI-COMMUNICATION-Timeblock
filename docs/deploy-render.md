@@ -8,25 +8,28 @@ authorize a Timeblock deployment, a paid-plan change, or a database mutation.
 The Blueprint service name must remain exactly `AI-COMMUNICATION-Timeblock` so
 it cannot be mistaken for a request to create a second `guilua` service.
 
-The AI service is deliberately fail-closed. Do not trigger a deployment while
-the live Timeblock control plane cannot return the authenticated Client
-Contract V2 capability manifest at `/api/guilua/v2/capabilities`; the AI
-`/readyz/` endpoint will return 503 and Render will reject the candidate.
+The AI service is deliberately fail-closed. Group V3 also requires the
+PostgreSQL schema at Alembic revision `20260831_0016`, a reachable Valkey floor
+store, and complete LiveKit/OpenAI provider configuration. Follow
+`docs/group-communication/GROUP_V3_RENDER_ACTIVATION.md`; `/readyz/` returns 503
+when any required dependency is missing.
 
 ## Service commands
 
 ```text
 Build Command: bash scripts/build_render.sh
+Pre-Deploy Command: bash scripts/predeploy_render.sh
 Start Command: bash scripts/start_render.sh
 Health Check Path: /readyz/
 Auto deploy: off
 Plan: starter
 ```
 
-The build verifies the production environment, the 214-source /
-420-destination canonical source lock, and Python compilation before Render can
-start the process. `/healthz/` is process liveness only; `/readyz/` is the
-release gate and requires Timeblock Client Contract V2.
+The build verifies the production environment, the canonical source lock and
+Python compilation. The pre-deploy command applies Alembic migrations and
+verifies the exact Group V3 schema head before Render starts the process.
+`/healthz/` is process liveness only; `/readyz/` is the dependency and release
+gate.
 
 Render supplies `RENDER_GIT_COMMIT` automatically at runtime. The application
 uses it as `deployment_version`, and the production environment gate rejects a
@@ -60,6 +63,22 @@ ALLOW_MISSING_BFF_ORIGIN=false
 MESSAGING_REALTIME_ENABLED=true
 MESSAGING_MAILBOX_LOCK_ENABLED=true
 MESSAGING_ADVANCED_ATTACHMENTS_ENABLED=true
+GROUP_V3_ENABLED=true
+GROUP_HANDOFF_AUDIENCE=ai-communication-group-v3
+DATABASE_URL=<PostgreSQL connection URL>
+GROUP_MESSAGE_ENCRYPTION_KEY=<32-byte hex or URL-safe base64 key>
+GROUP_MEDIA_ENABLED=true
+GROUP_LIVEKIT_URL=<credential-free WSS URL>
+GROUP_LIVEKIT_API_KEY=<server-only LiveKit key>
+GROUP_LIVEKIT_API_SECRET=<server-only LiveKit secret>
+GROUP_LIVEKIT_REGION=Singapore
+GROUP_LIVEKIT_TOKEN_TTL_SECONDS=300
+GROUP_RADIO_V3_ENABLED=true
+GROUP_RADIO_REDIS_URL=<private Redis/Valkey connection URL>
+GROUP_RADIO_FLOOR_LEASE_SECONDS=15
+GROUP_RADIO_HEARTBEAT_SECONDS=5
+GROUP_TRANSLATION_ENABLED=true
+OPENAI_API_KEY=<existing server-only OpenAI key>
 ALLOWED_TIMEBLOCK_HANDOFF_ORIGINS=https://timeblock-commercial-pro.onrender.com,https://fumapgo.com
 ALLOWED_WEBSOCKET_ORIGINS=https://guilua.onrender.com
 ALLOW_MISSING_WEBSOCKET_ORIGIN=false
@@ -71,14 +90,13 @@ ENDED_SESSION_CACHE_SECONDS=600
 IDEMPOTENCY_CACHE_SECONDS=1800
 ```
 
-`SECRET_KEY` and `TIMEBLOCK_API_KEY` are secret values. Record only whether
-they are configured; never copy their values into logs, commits, PRs, or
-reports. The shared API key must be configured on both services before paired
-acceptance.
+All API, encryption and provider credentials are secret values. Record only
+whether they are configured; never copy values into logs, commits, PRs or
+reports. Reuse the already-configured OpenAI key; do not create or rotate a key
+for this release.
 
-Legacy admin, SMTP, SLBo/BO, market-data, wallet, member, SQLite/Postgres and
-Alembic variables are not part of this runtime. Remove them from this service
-rather than carrying them into the Assistant release.
+Legacy admin, SMTP, SLBo/BO, market-data, wallet and member variables are not
+part of this runtime. Group V3 PostgreSQL and Alembic configuration is required.
 
 ## Exact-release procedure
 
@@ -97,13 +115,16 @@ rather than carrying them into the Assistant release.
    runtime logs for source-lock, environment, startup, dependency and health
    failures.
 7. Verify `/healthz/` returns process liveness and `/readyz/` returns 200 with
-   Contract V2 and reports the same SHA as Render's deployed commit. Then run
+   `authority=ai-communication`, `contract_version=3`, schema revision
+   `20260831_0016`, all four Group capabilities enabled, and the same SHA as
+   Render's deployed commit. Then run
    authenticated desktop/mobile Assistant, messaging, notification,
    translation and call smoke checks against the exact deploy.
 
 ## Rollback
 
-If the exact candidate fails, redeploy the recorded previous known-good AI SHA
-and restore only the environment snapshot captured before release. This
-Assistant release has no database migration or persistent-disk mutation.
-Rollback of AI-COMMUNICATION does not authorize rolling back Timeblock.
+If the exact candidate fails, disable the Timeblock Group launcher first,
+redeploy the recorded previous known-good AI SHA and restore only the
+environment snapshot captured before release. Group migrations are additive;
+do not downgrade or drop Group tables during rollback. Rollback of
+AI-COMMUNICATION does not authorize rolling back Direct 1:1 in Timeblock.

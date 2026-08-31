@@ -9,6 +9,9 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from app.core.config import Settings
 
 
+GROUP_V3_SCHEMA_REVISION = "20260831_0016"
+
+
 class Base(DeclarativeBase):
     pass
 
@@ -58,6 +61,16 @@ class Database:
     def ping(self) -> None:
         with self.engine.connect() as connection:
             connection.execute(text("SELECT 1"))
+
+    def migration_revisions(self) -> tuple[str, ...]:
+        """Return the applied Alembic heads without exposing database details."""
+
+        with self.engine.connect() as connection:
+            rows = connection.execute(text("SELECT version_num FROM alembic_version"))
+            return tuple(sorted(str(row[0]) for row in rows if row[0]))
+
+    def group_v3_schema_ready(self) -> bool:
+        return self.migration_revisions() == (GROUP_V3_SCHEMA_REVISION,)
 
     def dispose(self) -> None:
         self.engine.dispose()

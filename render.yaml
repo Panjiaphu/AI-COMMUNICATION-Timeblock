@@ -6,6 +6,7 @@ services:
     runtime: python
     plan: starter
     buildCommand: bash scripts/build_render.sh
+    preDeployCommand: bash scripts/predeploy_render.sh
     startCommand: bash scripts/start_render.sh
     healthCheckPath: /readyz/
     envVars:
@@ -56,7 +57,7 @@ services:
       - key: MESSAGING_ADVANCED_ATTACHMENTS_ENABLED
         value: "true"
       - key: GROUP_TRANSLATION_ENABLED
-        value: "false"
+        value: "true"
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_REALTIME_TRANSLATION_MODEL
@@ -74,7 +75,7 @@ services:
       - key: GROUP_TRANSLATION_POLICY_VERSION
         value: group-translation-v3-2026-08-31
       - key: GROUP_V3_ENABLED
-        value: "false"
+        value: "true"
       - key: GROUP_HANDOFF_AUDIENCE
         value: ai-communication-group-v3
       - key: GROUP_HANDOFF_MAX_BYTES
@@ -90,7 +91,7 @@ services:
       - key: GROUP_ATTACHMENT_MAX_BYTES
         value: "5242880"
       - key: GROUP_MEDIA_ENABLED
-        value: "false"
+        value: "true"
       - key: GROUP_LIVEKIT_URL
         sync: false
       - key: GROUP_LIVEKIT_API_KEY
@@ -106,7 +107,7 @@ services:
       - key: GROUP_RADIO_FLOOR_LEASE_SECONDS
         value: "15"
       - key: GROUP_RADIO_V3_ENABLED
-        value: "false"
+        value: "true"
       - key: GROUP_RADIO_REDIS_URL
         sync: false
       - key: GROUP_RADIO_REDIS_NAMESPACE
