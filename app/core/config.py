@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     group_v3_enabled: bool = False
     group_handoff_audience: str = 'ai-communication-group-v3'
     group_handoff_max_bytes: int = Field(default=8192, ge=1024, le=65536)
+    database_url: str = 'sqlite:///./.data/ai-communication.db'
+    database_pool_size: int = Field(default=5, ge=1, le=20)
+    database_max_overflow: int = Field(default=5, ge=0, le=40)
+    group_message_encryption_key: str | None = None
+    group_attachment_max_bytes: int = Field(default=5 * 1024 * 1024, ge=1024, le=25 * 1024 * 1024)
     group_radio_floor_lease_seconds: int = Field(default=15, ge=5, le=120)
     group_radio_max_burst_seconds: int = Field(default=30, ge=5, le=300)
     group_radio_max_rooms: int = Field(default=20, ge=1, le=1000)
@@ -144,6 +149,11 @@ class Settings(BaseSettings):
             raise ValueError('ALLOWED_TIMEBLOCK_HANDOFF_ORIGINS must be configured in production')
         if not self.group_handoff_audience.strip():
             raise ValueError('GROUP_HANDOFF_AUDIENCE must be non-empty')
+        if self.is_production and self.group_v3_enabled:
+            if self.database_url.strip().lower().startswith('sqlite'):
+                raise ValueError('DATABASE_URL must use PostgreSQL when GROUP_V3_ENABLED is true in production')
+            if not self.group_message_encryption_key:
+                raise ValueError('GROUP_MESSAGE_ENCRYPTION_KEY is required when GROUP_V3_ENABLED is true in production')
         return self
 
 

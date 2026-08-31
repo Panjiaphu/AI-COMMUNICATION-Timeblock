@@ -69,6 +69,16 @@ services:
         value: ai-communication-group-v3
       - key: GROUP_HANDOFF_MAX_BYTES
         value: "8192"
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_POOL_SIZE
+        value: "5"
+      - key: DATABASE_MAX_OVERFLOW
+        value: "5"
+      - key: GROUP_MESSAGE_ENCRYPTION_KEY
+        sync: false
+      - key: GROUP_ATTACHMENT_MAX_BYTES
+        value: "5242880"
       - key: GROUP_RADIO_FLOOR_LEASE_SECONDS
         value: "15"
       - key: GROUP_RADIO_MAX_BURST_SECONDS

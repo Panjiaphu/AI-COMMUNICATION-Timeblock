@@ -1,0 +1,187 @@
+from __future__ import annotations
+
+from datetime import datetime
+
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    LargeBinary,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db.session import Base
+
+
+class GroupSpace(Base):
+    __tablename__ = "group_spaces"
+    __table_args__ = (
+        CheckConstraint("lifecycle_status IN ('active','archived','deleted')", name="ck_group_spaces_lifecycle"),
+        Index("ix_group_spaces_status_updated", "lifecycle_status", "updated_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    description: Mapped[str] = mapped_column(String(500), nullable=False, default="", server_default="")
+    created_by_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_by_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_by_user_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    lifecycle_status: Mapped[str] = mapped_column(String(16), nullable=False, default="active", server_default="active")
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    message_sequence: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class GroupMembership(Base):
+    __tablename__ = "group_memberships"
+    __table_args__ = (
+        UniqueConstraint("space_id", "principal_type", "principal_id", "principal_user_id", name="uq_group_membership_principal"),
+        CheckConstraint("role IN ('owner','admin','member')", name="ck_group_membership_role"),
+        CheckConstraint("status IN ('active','left','removed')", name="ck_group_membership_status"),
+        Index("ix_group_memberships_principal_status", "principal_type", "principal_id", "principal_user_id", "status"),
+        Index("ix_group_memberships_space_status", "space_id", "status", "role"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    space_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_spaces.id", ondelete="CASCADE"), nullable=False)
+    principal_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    principal_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    principal_user_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    role: Mapped[str] = mapped_column(String(16), nullable=False, default="member", server_default="member")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active", server_default="active")
+    joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    left_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class GroupMessage(Base):
+    __tablename__ = "group_messages"
+    __table_args__ = (
+        UniqueConstraint("space_id", "sequence", name="uq_group_message_sequence"),
+        UniqueConstraint("space_id", "sender_type", "sender_id", "sender_user_id", "client_message_id", name="uq_group_message_client_id"),
+        CheckConstraint("content_type IN ('text','system','attachment')", name="ck_group_messages_content_type"),
+        CheckConstraint("status IN ('active','deleted')", name="ck_group_messages_status"),
+        Index("ix_group_messages_space_sequence", "space_id", "sequence"),
+        Index("ix_group_messages_reply_to", "reply_to_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    space_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_spaces.id", ondelete="CASCADE"), nullable=False)
+    sequence: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    sender_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    sender_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    sender_user_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    sender_display_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    client_message_id: Mapped[str | None] = mapped_column(String(128))
+    content_type: Mapped[str] = mapped_column(String(16), nullable=False, default="text", server_default="text")
+    content_ciphertext: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    content_nonce: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    encryption_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    reply_to_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("group_messages.id", ondelete="SET NULL"))
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active", server_default="active")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class GroupMessageReaction(Base):
+    __tablename__ = "group_message_reactions"
+    __table_args__ = (
+        UniqueConstraint("message_id", "principal_type", "principal_id", "principal_user_id", "reaction", name="uq_group_reaction_actor"),
+        Index("ix_group_reactions_message", "message_id", "reaction"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    message_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_messages.id", ondelete="CASCADE"), nullable=False)
+    principal_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    principal_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    principal_user_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    reaction: Mapped[str] = mapped_column(String(32), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class GroupMessagePin(Base):
+    __tablename__ = "group_message_pins"
+    __table_args__ = (
+        UniqueConstraint("space_id", "message_id", name="uq_group_pin_message"),
+        Index("ix_group_pins_space_created", "space_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    space_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_spaces.id", ondelete="CASCADE"), nullable=False)
+    message_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_messages.id", ondelete="CASCADE"), nullable=False)
+    pinned_by_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    pinned_by_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    pinned_by_user_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class GroupAttachment(Base):
+    __tablename__ = "group_attachments"
+    __table_args__ = (
+        CheckConstraint("status IN ('pending','attached','deleted')", name="ck_group_attachments_status"),
+        Index("ix_group_attachments_space_status", "space_id", "status", "created_at"),
+        Index("ix_group_attachments_message", "message_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    space_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_spaces.id", ondelete="CASCADE"), nullable=False)
+    message_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("group_messages.id", ondelete="SET NULL"))
+    uploader_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    uploader_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    uploader_user_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    original_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    mime_type: Mapped[str] = mapped_column(String(160), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    payload_ciphertext: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    payload_nonce: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    encryption_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", server_default="pending")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class GroupAuditEvent(Base):
+    __tablename__ = "group_audit_events"
+    __table_args__ = (
+        Index("ix_group_audit_space_created", "space_id", "created_at", "id"),
+        Index("ix_group_audit_actor", "actor_type", "actor_id", "actor_user_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    space_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_spaces.id", ondelete="CASCADE"), nullable=False)
+    actor_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    actor_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    actor_user_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    resource_type: Mapped[str] = mapped_column(String(40), nullable=False, default="", server_default="")
+    resource_id: Mapped[str] = mapped_column(String(128), nullable=False, default="", server_default="")
+    outcome: Mapped[str] = mapped_column(String(24), nullable=False, default="success", server_default="success")
+    metadata_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}", server_default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class GroupIdempotencyRecord(Base):
+    __tablename__ = "group_idempotency_records"
+    __table_args__ = (
+        UniqueConstraint("endpoint", "actor_key", "idempotency_key", name="uq_group_idempotency_actor"),
+        Index("ix_group_idempotency_created", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    endpoint: Mapped[str] = mapped_column(String(120), nullable=False)
+    actor_key: Mapped[str] = mapped_column(String(320), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    status_code: Mapped[int] = mapped_column(Integer, nullable=False)
+    response_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
