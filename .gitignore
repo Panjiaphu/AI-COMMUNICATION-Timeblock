@@ -4,6 +4,7 @@ __pycache__/
 *.sqlite3
 guilua.db
 .env
+.data/
 staticfiles/
 media/
 artifacts/

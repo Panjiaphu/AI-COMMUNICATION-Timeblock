@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Mapping
+from typing import Mapping
 from urllib.parse import urlparse
 
 from app.core.config import Settings
@@ -19,8 +19,7 @@ class GroupHandoffV3:
     source_origin: str
     target_origin: str
     principal: dict[str, str]
-    entitlement: dict[str, Any]
-    scope: tuple[str, ...]
+    launch_authorized: bool
     issued_at: str
     expires_at: str
     session_expires_at: str
@@ -57,14 +56,24 @@ def parse_group_handoff_v3(
     payload: Mapping[str, object],
     settings: Settings,
 ) -> GroupHandoffV3:
+    """Validate only Timeblock identity and transport claims.
+
+    Group scopes, memberships, entitlement, quota and durable data are
+    intentionally not accepted from Timeblock. They are AI-owned.
+    """
+
     if str(payload.get("contract_version") or "") != "3":
         raise GroupHandoffV3Error("invalid_contract_version")
-    if str(payload.get("authority") or "") != "timeblock":
+    if str(payload.get("authority") or "") not in {"timeblock", "timeblock-identity"}:
         raise GroupHandoffV3Error("invalid_authority")
+    if str(payload.get("group_authority") or "ai-communication") != "ai-communication":
+        raise GroupHandoffV3Error("invalid_group_authority")
     if str(payload.get("issuer") or "") != "timeblock":
         raise GroupHandoffV3Error("invalid_issuer")
     if str(payload.get("audience") or "") != settings.group_handoff_audience:
         raise GroupHandoffV3Error("invalid_audience")
+    if payload.get("launch_authorized", True) is not True:
+        raise GroupHandoffV3Error("group_launch_denied")
 
     handoff_id = _text(payload.get("handoff_id"), "handoff_id", maximum=128)
     surface = _text(payload.get("surface"), "surface", maximum=16).lower()
@@ -103,64 +112,13 @@ def parse_group_handoff_v3(
     if principal["locale"] not in {"vi", "en", "zh-TW"}:
         raise GroupHandoffV3Error("invalid_locale")
 
-    entitlement_value = payload.get("entitlement")
-    if not isinstance(entitlement_value, Mapping):
-        raise GroupHandoffV3Error("invalid_entitlement")
-    if entitlement_value.get("group_communication") is not True:
-        raise GroupHandoffV3Error("group_entitlement_required")
-    if str(entitlement_value.get("billing_authority") or "") != "timeblock":
-        raise GroupHandoffV3Error("invalid_billing_authority")
-    quota_value = entitlement_value.get("group_translation_quota")
-    if not isinstance(quota_value, Mapping):
-        quota_value = {}
-    quota = {
-        "authority": str(quota_value.get("authority") or "timeblock")[:32],
-        "period": str(quota_value.get("period") or "monthly")[:16],
-        "period_start": str(quota_value.get("period_start") or "unavailable")[:40],
-        "period_end": str(quota_value.get("period_end") or "unavailable")[:40],
-    }
-    for key in (
-        "audio_limit_target_seconds",
-        "audio_remaining_target_seconds",
-        "video_limit_target_seconds",
-        "video_remaining_target_seconds",
-    ):
-        try:
-            parsed = int(quota_value.get(key) or 0)
-        except (TypeError, ValueError) as exc:
-            raise GroupHandoffV3Error("invalid_translation_quota") from exc
-        if parsed < 0 or parsed > 100_000_000:
-            raise GroupHandoffV3Error("invalid_translation_quota")
-        quota[key] = parsed
-    if quota["authority"] != "timeblock" or quota["period"] != "monthly":
-        raise GroupHandoffV3Error("invalid_translation_quota")
-    entitlement = {
-        "group_communication": True,
-        "billing_authority": "timeblock",
-        "billing_subject": _text(
-            entitlement_value.get("billing_subject"),
-            "billing_subject",
-            maximum=160,
-        ),
-        "plan_code": str(entitlement_value.get("plan_code") or "")[:64],
-        "group_translation_quota": quota,
-    }
-
-    scope_value = payload.get("scope")
-    if not isinstance(scope_value, list) or not scope_value:
-        raise GroupHandoffV3Error("invalid_scope")
-    scope = tuple(dict.fromkeys(_text(item, "scope", maximum=80) for item in scope_value))
-    if any(not item.startswith("group.") for item in scope):
-        raise GroupHandoffV3Error("invalid_scope")
-
     return GroupHandoffV3(
         handoff_id=handoff_id,
         surface=surface,
         source_origin=source_origin,
         target_origin=target_origin,
         principal=principal,
-        entitlement=entitlement,
-        scope=scope,
+        launch_authorized=True,
         issued_at=_text(payload.get("issued_at"), "issued_at", maximum=64),
         expires_at=_future(payload.get("expires_at"), "expires_at"),
         session_expires_at=_future(

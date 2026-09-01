@@ -81,14 +81,18 @@ async def session_status(request: Request) -> JSONResponse:
         {
             "authenticated": True,
             "authority": (
-                "ai-communication"
-                if session.session_kind == "group"
-                else "timeblock"
+                "ai-communication" if session.group_authorized else "timeblock"
             ),
-            "session_kind": session.session_kind,
+            "identity_authority": "timeblock",
+            "group_authority": (
+                "ai-communication" if session.group_authorized else None
+            ),
             "principal": session.principal,
             "scope": list(session.scope),
-            "surface": session.surface,
+            "direct_available": bool(session.timeblock_token),
+            "group_authorized": session.group_authorized,
+            "group_scope": list(session.group_scope) if session.group_authorized else [],
+            "surface": session.group_surface if session.group_authorized else "",
             "expires_at": session.expires_at,
         },
         headers={"Cache-Control": "no-store, private, max-age=0"},
@@ -167,8 +171,8 @@ async def session_callback(request: Request, code: str = "", state: str = "") ->
 async def session_refresh(request: Request) -> JSONResponse:
     _require_browser_origin(request)
     session = _session(request)
-    if session.session_kind != "direct" or not session.timeblock_token:
-        raise HTTPException(status_code=409, detail="group_session_rehandoff_required")
+    if not session.timeblock_token:
+        raise HTTPException(status_code=409, detail="direct_authorization_required")
     try:
         result = await request.app.state.timeblock_client.refresh_guilua_session(session.timeblock_token)
     except TimeblockIntegrationError as exc:
@@ -193,7 +197,7 @@ async def session_logout(request: Request) -> Response:
     _require_browser_origin(request)
     session = _store(request).get(request.cookies.get(_settings(request).guilua_session_cookie))
     if session:
-        if session.session_kind == "direct" and session.timeblock_token:
+        if session.timeblock_token:
             try:
                 await request.app.state.timeblock_client.revoke_guilua_session(session.timeblock_token)
             except TimeblockIntegrationError:

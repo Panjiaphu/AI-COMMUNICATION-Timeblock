@@ -72,6 +72,10 @@ services:
         value: "300"
       - key: GROUP_TRANSLATION_MAX_SEGMENT_SECONDS
         value: "300"
+      - key: GROUP_TRANSLATION_MONTHLY_AUDIO_TARGET_SECONDS
+        value: "3600"
+      - key: GROUP_TRANSLATION_MONTHLY_VIDEO_TARGET_SECONDS
+        value: "1800"
       - key: GROUP_TRANSLATION_POLICY_VERSION
         value: group-translation-v3-2026-08-31
       - key: GROUP_V3_ENABLED

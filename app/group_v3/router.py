@@ -5,7 +5,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse
 
-from app.group_v3.auth import require_group_actor, require_write_origin
+from app.group_v3.auth import require_app_session, require_group_actor, require_write_origin
 from app.group_v3.schemas import (
     MembershipCreate,
     MembershipUpdate,
@@ -45,24 +45,28 @@ def _bounded_id(value: str, name: str) -> str:
 
 @router.get("/session")
 async def group_session(request: Request) -> JSONResponse:
-    """Return non-secret browser context for the active native Group session."""
+    """Return non-secret context for the authenticated application session."""
 
-    actor = require_group_actor(request)
+    session = require_app_session(request)
+    principal = session.principal
+    group_authorized = session.group_authorized
     return _json(
         {
             "contract_version": "3",
             "authority": "ai-communication",
-            "surface": actor.surface,
-            "handoff_id": actor.handoff_id,
+            "direct_available": bool(session.timeblock_token),
+            "group_authorized": group_authorized,
+            "surface": session.group_surface if group_authorized else "chat",
+            "handoff_id": session.group_handoff_id if group_authorized else "",
             "principal": {
-                "type": actor.principal_type,
-                "id": actor.principal_id,
-                "user_id": actor.principal_user_id,
-                "display_name": actor.display_name,
-                "locale": actor.locale,
+                "type": str(principal.get("type") or ""),
+                "id": str(principal.get("id") or ""),
+                "user_id": str(principal.get("user_id") or ""),
+                "display_name": str(principal.get("display_name") or "")[:120],
+                "locale": str(principal.get("locale") or "vi"),
             },
-            "scope": sorted(actor.scope),
-            "entitlement": actor.entitlement,
+            "scope": sorted(session.group_scope) if group_authorized else [],
+            "entitlement": session.entitlement if group_authorized else {},
         }
     )
 

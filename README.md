@@ -2,7 +2,9 @@
 
 Guilua is the standalone Timeblock AI Assistant PWA. Its root surface provides the AI workspace, Timeblock-authoritative messaging entry points, notifications, translation hand-off, and deep links while retaining the existing realtime communication runtime at `/communication`.
 
-Timeblock remains the Control Plane and durable System of Record for identity, workspace membership, permission, entitlement, quota, glossary master, transcript, usage ledger, billing, audit, and retention.
+Timeblock remains the platform identity source and the authority for the
+protected Direct 1:1 compatibility contracts. Group Communication is owned
+end to end by this repository.
 
 ## Current phase
 
@@ -18,11 +20,10 @@ production-live claim.
 The same-origin BFF registers 120 explicit method/path route specifications for
 the canonical Assistant, messaging/contact/events, Call V1, Live Translate,
 internal-message and notification/settings APIs. It has no catch-all proxy.
-Timeblock owns identity, profile, entitlement, quota, AI history, directory,
-connections, presence, conversations, messages, media, calls, notifications
-and audit. Guilua owns only the browser shell and a bounded process-local BFF
-session that stores an opaque browser cookie plus the server-side Timeblock
-session credential.
+For Direct 1:1 compatibility, Timeblock owns identity, profile and the existing
+Client Contract V2 data. For Group, AI-COMMUNICATION owns the UI, membership,
+authorization, durable records and provider runtime. The BFF stores only an
+opaque browser cookie plus the server-side Timeblock identity credential.
 
 `CAPABILITY_PARITY=BLOCKED_BY_TIMEBLOCK_CONTRACT_V2`: production capability
 parity still requires the Timeblock Client Contract V2 principal/session
@@ -30,7 +31,17 @@ middleware and endpoints to be merged and deployed on the Timeblock control
 plane, followed by paired configuration and end-to-end QA. No Render/live state
 is asserted by this repository snapshot.
 
-The root `/` route is the Assistant PWA. `/communication` remains a compatibility route for the existing WebRTC/interpreter runtime. `/ai`, `/translate`, `/notifications`, `/conversations/<id>`, and `/calls/<id>` are supported deep-link entry points.
+The root `/` route is the authenticated Timeblock AI Communication PWA. It
+must expose Direct and Group navigation without requiring users to know a
+`/communication?surface=...` URL. `/communication` remains an internal and
+compatibility route; `/ai`, `/translate`, `/notifications`,
+`/conversations/<id>`, and `/calls/<id>` remain supported deep links.
+
+For Group Communication V3, AI-COMMUNICATION is the sole product and durable
+data owner for membership, authorization, messages, history, media results,
+Radio history, translation records, usage, audit and retention. AI PostgreSQL
+is canonical; Valkey and LiveKit hold only their bounded ephemeral runtime
+state. Timeblock supplies one launcher and a one-time identity handoff only.
 
 The Timeblock Communication Contract V1 remains the compatibility contract for
 the existing `/communication` WebRTC runtime. The current Assistant release
@@ -61,16 +72,19 @@ available to authenticate the forwarded client session.
 
 ## Render architecture
 
-The current foundation intentionally uses:
+The Direct foundation uses:
 
 - one existing Render Web Service;
 - one instance and one Gunicorn/Uvicorn worker;
 - one public port for HTTP and WebSocket;
 - in-memory room, connection, sequence, and reconnect state;
 - WebRTC peer-to-peer media for initial 1:1 calls;
-- external async AI providers only in later phases when configured.
+- external async AI providers only when configured.
 
-It does not add Redis, Postgres, a background worker, cron service, private service, second web service, persistent disk, horizontal scaling, SFU, TURN, local Whisper, local LLM, GPU runtime, or media transcoding.
+Group V3 reuses the existing Render PostgreSQL, Key Value/Valkey, LiveKit and
+server-side OpenAI resources. It does not add a new paid service. PostgreSQL is
+the canonical Group store; Valkey is ephemeral Radio floor coordination and
+LiveKit is ephemeral media state.
 
 ## Local run
 
@@ -96,7 +110,7 @@ Open:
 - `/communication` — responsive call/interpreter shell.
 - `/ws/communication/{session_id}` — token-free communication WebSocket; authentication is the first frame.
 - `/healthz/` — process liveness only.
-- `/readyz/` — release readiness; requires the live Timeblock Client Contract V2 manifest.
+- `/readyz/` — dependency/configuration readiness only; it is not product PASS.
 
 For explicit local/test fallback, the browser QA may supply only `session` and `participant` query values. Guilua creates the static `development-session` credential internally. Production configuration rejects this fallback and never reads a session credential from the page URL.
 
@@ -154,11 +168,9 @@ See `docs/timeblock-control-plane-contract.md` for the exact Contract V1 boundar
 pwsh -File scripts/local_full_qa.ps1
 ```
 
-The local release gate verifies the 214-source / 420-destination source lock,
-all runtime JavaScript files, the default suite, rendered Chromium/WebKit
-browser QA, fake-media two-context WebRTC, reconnect/hangup cleanup, URL-secret
-assertions, and browser artifact privacy/identity checks. GitHub Actions
-workflows are manual-only.
+Historical local QA evidence is not reusable for Group V3 closure. P0-P5 are
+implementation-only; P6 is one final QA run bound to the exact staged trees.
+Any source change after P6 begins invalidates that evidence.
 
 Hosted browser QA is not a claim of physical iOS/Android validation.
 
@@ -172,8 +184,9 @@ Legacy BO, rates, member, wallet, point, treasury, affiliate, referral, and sett
 - One worker does not support horizontal scaling.
 - P2P calls can fail on strict NAT without TURN.
 - Physical-device and strict-NAT validation remain separate gates.
-- Provider-backed STT/translation/TTS and durable orchestration remain
-  Timeblock-owned production dependencies and require paired live acceptance.
+- Provider-backed STT/translation/TTS execution, consent, FINAL results, Group
+  usage, audit and retention are AI-COMMUNICATION-owned and still require
+  paired live acceptance.
 - The local canonical BFF compatibility layer is implemented, but production
   capability parity remains blocked until Timeblock Client Contract V2 is
   merged, configured and deployed; see `docs/phase-status.md`.

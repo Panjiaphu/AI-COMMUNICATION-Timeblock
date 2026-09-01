@@ -63,9 +63,7 @@ async def _assistant_page(
     session = request.app.state.bff_session_store.get(
         request.cookies.get(settings.guilua_session_cookie)
     )
-    if session:
-        if session.session_kind == 'group':
-            return RedirectResponse('/communication', status_code=303)
+    if session and session.timeblock_token:
         usage = None
         try:
             usage_result = await request.app.state.timeblock_client.client_get(
@@ -108,12 +106,14 @@ async def _assistant_page(
 @router.get('/', response_class=HTMLResponse)
 async def home(request: Request) -> HTMLResponse:
     requested_surface = str(request.query_params.get('surface') or '').strip().lower()
-    if requested_surface in SAFE_GROUP_SURFACES:
-        locale = resolve_timeblock_locale(request, request.app.state.settings.default_locale)
-        # Authentication stays in the one-time postMessage handoff. Only this
-        # allowlisted presentation hint and normalized locale enter the URL.
-        query = urlencode({'surface': requested_surface, 'lang': locale})
-        return RedirectResponse(f'/communication?{query}', status_code=307)
+    settings = request.app.state.settings
+    session = request.app.state.bff_session_store.get(
+        request.cookies.get(settings.guilua_session_cookie)
+    )
+    if (session and session.group_authorized) or requested_surface in SAFE_GROUP_SURFACES:
+        return await communication(request)
+    if session:
+        return await _assistant_page(request)
     return await _assistant_page(request)
 
 
@@ -166,7 +166,7 @@ async def local_logout(request: Request) -> RedirectResponse:
         request.cookies.get(settings.guilua_session_cookie)
     )
     if session:
-        if session.session_kind == 'direct' and session.timeblock_token:
+        if session.timeblock_token:
             try:
                 await request.app.state.timeblock_client.revoke_guilua_session(session.timeblock_token)
             except TimeblockIntegrationError:
@@ -179,7 +179,28 @@ async def local_logout(request: Request) -> RedirectResponse:
 
 @router.get('/calls/{call_id}', response_class=HTMLResponse)
 async def call_deep_link(request: Request, call_id: str) -> HTMLResponse:
-    return await communication(request)
+    # Direct 1:1 call deep links stay on the protected legacy runtime. Group
+    # surfaces enter through the single Group Communication launcher instead.
+    settings = request.app.state.settings
+    locale = resolve_timeblock_locale(request, settings.default_locale)
+    return templates.TemplateResponse(
+        request=request,
+        name='communication.html',
+        context={
+            'runtime_config': {
+                'handoff_event': 'timeblock.communication.handoff.v1',
+                'allowed_handoff_origins': sorted(settings.timeblock_handoff_origins),
+                'development_query_handoff': settings.development_query_handoff_enabled,
+                'timeblock_entry_url': settings.primary_timeblock_handoff_origin,
+                'locale': locale,
+                'initial_call_id': str(call_id),
+                'copy': communication_copy(locale),
+            },
+            'locale': locale,
+            'copy': communication_copy(locale),
+            'settings': settings,
+        },
+    )
 
 
 @router.get('/communication', response_class=HTMLResponse)
@@ -187,7 +208,14 @@ async def communication(request: Request) -> HTMLResponse:
     settings = request.app.state.settings
     locale = resolve_timeblock_locale(request, settings.default_locale)
     requested_surface = str(request.query_params.get('surface') or '').strip().lower()
-    initial_surface = requested_surface if requested_surface in SAFE_GROUP_SURFACES else ''
+    session = request.app.state.bff_session_store.get(
+        request.cookies.get(settings.guilua_session_cookie)
+    )
+    initial_surface = (
+        session.group_surface
+        if session and session.group_authorized and session.group_surface in SAFE_GROUP_SURFACES
+        else requested_surface if requested_surface in SAFE_GROUP_SURFACES else ''
+    )
     requested_state = str(request.query_params.get('state') or '').strip().upper()
     initial_qa_state = (
         requested_state
@@ -204,10 +232,14 @@ async def communication(request: Request) -> HTMLResponse:
         'timeblock_entry_url': settings.primary_timeblock_handoff_origin,
         'locale': locale,
         'initial_surface': initial_surface,
+        'direct_available': bool(session and session.timeblock_token),
+        'group_authorized': bool(session and session.group_authorized),
         'initial_qa_state': initial_qa_state,
         'copy': copy,
     }
-    template_name = "group_communication_v3.html" if initial_surface else "communication.html"
+    template_name = 'group_communication_v3.html' if (
+        session and session.group_authorized
+    ) or requested_surface in SAFE_GROUP_SURFACES else 'communication.html'
     return templates.TemplateResponse(
         request=request,
         name=template_name,

@@ -188,10 +188,12 @@ function translator(locale) {
 
 
 Object.assign(copy.vi, {
+  directMessages: 'Direct', handoffRequiredTitle: 'Cần quyền Giao tiếp nhóm',
+  handoffRequiredNote: 'Mở launcher Giao tiếp nhóm tại Timeblock để nhận quyền theo phòng. Direct vẫn dùng cùng phiên đăng nhập này.',
   signedIn: 'Đã xác thực từ Timeblock', waitingHandoff: 'Đang chờ secure handoff từ Timeblock…',
   handoffFailed: 'Secure handoff không hợp lệ hoặc đã hết hạn.', openTimeblock: 'Quay lại Timeblock',
   loading: 'Đang tải dữ liệu Group…', retry: 'Thử lại', noSpaces: 'Chưa có không gian Group native',
-  noSpacesNote: 'Tạo không gian đầu tiên trong AI-COMMUNICATION. Dữ liệu Group mới không ghi vào Timeblock.',
+  noSpacesNote: 'Tạo không gian đầu tiên. Timeblock lưu bền membership, tin nhắn, lịch sử, audit và retention.',
   createSpace: 'Tạo không gian', spaceName: 'Tên không gian', create: 'Tạo',
   emptyThread: 'Chưa có tin nhắn. Hãy bắt đầu luồng trao đổi.', encrypted: 'Mã hóa AES-256-GCM phía máy chủ',
   attachmentReady: 'Tệp đã sẵn sàng để gửi', uploadFailed: 'Không thể tải tệp lên',
@@ -214,10 +216,12 @@ Object.assign(copy.vi, {
   creatorNeedsInvitee: 'Thêm thành viên bằng API quản trị Group trước khi bắt đầu phiên.',
 });
 Object.assign(copy.en, {
+  directMessages: 'Direct', handoffRequiredTitle: 'Group authorization required',
+  handoffRequiredNote: 'Open the Group Communication launcher in Timeblock to receive room-scoped access. Direct keeps using this app session.',
   signedIn: 'Authenticated by Timeblock', waitingHandoff: 'Waiting for a secure handoff from Timeblock…',
   handoffFailed: 'The secure handoff is invalid or expired.', openTimeblock: 'Return to Timeblock',
   loading: 'Loading Group data…', retry: 'Retry', noSpaces: 'No native Group spaces yet',
-  noSpacesNote: 'Create the first space in AI-COMMUNICATION. New Group data is not written to Timeblock.',
+  noSpacesNote: 'Create the first space. Timeblock durably stores membership, messages, history, audit and retention.',
   createSpace: 'Create space', spaceName: 'Space name', create: 'Create',
   emptyThread: 'No messages yet. Start the conversation.', encrypted: 'Server-side AES-256-GCM encryption',
   attachmentReady: 'Attachment is ready to send', uploadFailed: 'Attachment upload failed',
@@ -240,10 +244,12 @@ Object.assign(copy.en, {
   creatorNeedsInvitee: 'Add members through the Group administration API before starting a session.',
 });
 Object.assign(copy['zh-TW'], {
+  directMessages: 'Direct', handoffRequiredTitle: '需要群組通訊授權',
+  handoffRequiredNote: '請從 Timeblock 開啟群組通訊啟動器，以取得房間範圍授權。Direct 繼續使用同一個應用程式工作階段。',
   signedIn: '已由 Timeblock 驗證', waitingHandoff: '正在等待 Timeblock 的安全交接…',
   handoffFailed: '安全交接無效或已過期。', openTimeblock: '返回 Timeblock',
   loading: '正在載入群組資料…', retry: '重試', noSpaces: '尚無原生群組空間',
-  noSpacesNote: '在 AI-COMMUNICATION 建立第一個空間。新的群組資料不會寫回 Timeblock。',
+  noSpacesNote: '建立第一個空間。Timeblock 會持久保存成員、訊息、歷史、稽核與保留政策。',
   createSpace: '建立空間', spaceName: '空間名稱', create: '建立',
   emptyThread: '尚無訊息，請開始對話。', encrypted: '伺服器端 AES-256-GCM 加密',
   attachmentReady: '附件已可傳送', uploadFailed: '附件上傳失敗',

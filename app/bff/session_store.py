@@ -16,10 +16,19 @@ class BffSession:
     principal: dict[str, Any]
     scope: tuple[str, ...]
     expires_at: float
-    session_kind: str = "direct"
-    handoff_id: str = ""
-    surface: str = ""
+    group_scope: tuple[str, ...] = ()
+    group_expires_at: float = 0.0
+    group_handoff_id: str = ""
+    group_surface: str = ""
     entitlement: dict[str, Any] | None = None
+
+    @property
+    def group_authorized(self) -> bool:
+        return (
+            self.group_expires_at > time.time()
+            and bool(self.group_handoff_id)
+            and bool((self.entitlement or {}).get("group_communication"))
+        )
 
 
 @dataclass(slots=True)
@@ -180,7 +189,6 @@ class SessionStore:
                 principal=dict(principal),
                 scope=tuple(scope),
                 expires_at=self._session_expiry(expires_at),
-                session_kind="direct",
             )
             self._sessions[session_id] = session
             self._enforce_bounds()
@@ -196,23 +204,80 @@ class SessionStore:
         surface: str,
         entitlement: dict[str, Any],
     ) -> BffSession:
+        """Compatibility helper for a Group-only app session.
+
+        Group is an authorization grant on the same app-session model; it is
+        not a second browser session kind.
+        """
         with self._lock:
             self._purge()
             session_id = secrets.token_urlsafe(32)
+            group_expiry = self._session_expiry(expires_at)
             session = BffSession(
                 session_id=session_id,
                 timeblock_token="",
                 principal=dict(principal),
-                scope=tuple(scope),
-                expires_at=self._session_expiry(expires_at),
-                session_kind="group",
-                handoff_id=str(handoff_id),
-                surface=str(surface),
+                scope=(),
+                expires_at=group_expiry,
+                group_scope=tuple(scope),
+                group_expires_at=group_expiry,
+                group_handoff_id=str(handoff_id),
+                group_surface=str(surface),
                 entitlement=dict(entitlement),
             )
             self._sessions[session_id] = session
             self._enforce_bounds()
             return session
+
+    @staticmethod
+    def _same_principal(left: dict[str, Any], right: dict[str, Any]) -> bool:
+        for field in ("type", "id"):
+            if not left.get(field) or str(left.get(field)) != str(right.get(field) or ""):
+                return False
+        left_user = str(left.get("user_id") or "")
+        right_user = str(right.get("user_id") or "")
+        return not left_user or not right_user or secrets.compare_digest(left_user, right_user)
+
+    def grant_group_authorization(
+        self,
+        session_id: str | None,
+        *,
+        principal: dict[str, Any],
+        scope: list[str],
+        expires_at: str,
+        handoff_id: str,
+        surface: str,
+        entitlement: dict[str, Any],
+    ) -> BffSession:
+        """Attach a Group grant to one authenticated app session."""
+
+        with self._lock:
+            self._purge()
+            current = self._sessions.get(str(session_id or ""))
+            if not current or not self._same_principal(current.principal, principal):
+                return self.create_group_session(
+                    principal=principal,
+                    scope=scope,
+                    expires_at=expires_at,
+                    handoff_id=handoff_id,
+                    surface=surface,
+                    entitlement=entitlement,
+                )
+            group_expiry = self._session_expiry(expires_at)
+            updated = BffSession(
+                session_id=current.session_id,
+                timeblock_token=current.timeblock_token,
+                principal=dict(principal),
+                scope=tuple(current.scope),
+                expires_at=max(current.expires_at, group_expiry),
+                group_scope=tuple(scope),
+                group_expires_at=group_expiry,
+                group_handoff_id=str(handoff_id),
+                group_surface=str(surface),
+                entitlement=dict(entitlement),
+            )
+            self._sessions[updated.session_id] = updated
+            return updated
 
     def get(self, session_id: str | None) -> BffSession | None:
         with self._lock:
@@ -232,10 +297,11 @@ class SessionStore:
                 timeblock_token=timeblock_token,
                 principal=dict(principal),
                 scope=tuple(scope),
-                expires_at=self._session_expiry(expires_at),
-                session_kind=current.session_kind,
-                handoff_id=current.handoff_id,
-                surface=current.surface,
+                expires_at=max(self._session_expiry(expires_at), current.group_expires_at),
+                group_scope=tuple(current.group_scope),
+                group_expires_at=current.group_expires_at,
+                group_handoff_id=current.group_handoff_id,
+                group_surface=current.group_surface,
                 entitlement=dict(current.entitlement or {}),
             )
             self._sessions[session_id] = updated

@@ -1,14 +1,21 @@
 # Group Radio V3 — Render Key Value contract
 
-This phase adds only the application contract. It does not provision or mutate a live Render resource.
+Owner: `Panjiaphu/AI-COMMUNICATION-Timeblock`
 
-- Runtime: Render Key Value / Valkey 8, Redis protocol compatible.
-- Connection: internal `connectionString` supplied as `GROUP_RADIO_REDIS_URL`.
-- External access: disabled (`ipAllowList: []`) when the owner provisions the instance.
-- Memory policy: `noeviction`; an active floor lease must never disappear due to cache eviction.
-- Region: the same Render private-network region as AI-COMMUNICATION.
-- Key namespace: `ai-communication:group-radio:v3`.
-- Durability: PostgreSQL owns session/burst/history; Valkey owns only short-lived distributed floor leases.
-- Secrets: the connection string remains a Render secret and must not appear in URLs, HTML, logs or browser storage.
+Valkey stores only ephemeral Radio floor leases, heartbeats, reconnect/device
+loss state and bounded idempotency coordination. AI PostgreSQL remains canonical
+for Radio rooms, participants, bursts, results, history, audit and retention.
 
-Activation remains gated by `GROUP_RADIO_V3_ENABLED=false` and owner-controlled Render configuration.
+Required keys:
+
+- `GROUP_RADIO_V3_ENABLED=true`
+- `GROUP_RADIO_REDIS_URL=<existing private Valkey URL>`
+- `GROUP_RADIO_REDIS_NAMESPACE=ai-communication:group-radio:v3`
+- `GROUP_RADIO_FLOOR_LEASE_SECONDS=15`
+- `GROUP_RADIO_HEARTBEAT_SECONDS=5`
+- `GROUP_RADIO_DEVICE_LOST_SECONDS=10`
+- `GROUP_RADIO_MAX_BURST_SECONDS=30`
+- `GROUP_RADIO_MAX_ROOMS=20`
+
+Do not expose the Valkey URL to browsers or Timeblock. Do not add a second
+Valkey instance. Existing secret values are retained.

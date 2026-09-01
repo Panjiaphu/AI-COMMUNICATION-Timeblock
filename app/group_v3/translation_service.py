@@ -42,16 +42,6 @@ def _iso(value: datetime | None) -> str | None:
     return value.astimezone(timezone.utc).isoformat(timespec="seconds")
 
 
-def _parse_time(value: object) -> datetime | None:
-    try:
-        parsed = datetime.fromisoformat(str(value or "").replace("Z", "+00:00"))
-    except (TypeError, ValueError):
-        return None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
-
-
 class GroupTranslationService:
     def __init__(self, database: Database, settings: Settings, crypto: GroupCrypto):
         self.database = database
@@ -160,30 +150,20 @@ class GroupTranslationService:
                 self._audit(db, actor, space_id, "translation.consent_updated", "translation_consent", consent.id, {"status": status, "policy_version": policy_version})
                 return {"status": consent.status, "policy_version": consent.policy_version, "decided_at": _iso(consent.decided_at)}
 
-    @staticmethod
-    def _quota_claim(actor: GroupActor, media_kind: str) -> tuple[dict, int, int]:
-        entitlement = actor.entitlement or {}
-        quota = entitlement.get("group_translation_quota")
-        if not isinstance(quota, dict) or quota.get("authority") != "timeblock" or quota.get("period") != "monthly":
-            raise GroupServiceError("group_translation_quota_unavailable", 403)
-        prefix = "video" if media_kind == "video" else "audio"
-        try:
-            limit_seconds = int(quota.get(f"{prefix}_limit_target_seconds") or 0)
-            remaining_seconds = int(quota.get(f"{prefix}_remaining_target_seconds") or 0)
-        except (TypeError, ValueError) as exc:
-            raise GroupServiceError("group_translation_quota_invalid", 403) from exc
-        return quota, max(0, limit_seconds), max(0, min(remaining_seconds, limit_seconds))
-
     def _sync_ledger(self, db, actor: GroupActor, media_kind: str) -> GroupTranslationQuotaLedger:
-        quota, limit_seconds, remaining_seconds = self._quota_claim(actor, media_kind)
-        period_start = _parse_time(quota.get("period_start"))
-        period_end = _parse_time(quota.get("period_end"))
-        if not period_start or not period_end or period_start >= period_end or period_end <= _now():
-            raise GroupServiceError("group_translation_quota_period_invalid", 403)
-        billing_subject = str(actor.entitlement.get("billing_subject") or "")
-        if not billing_subject or len(billing_subject) > 160:
-            raise GroupServiceError("group_translation_billing_subject_invalid", 403)
+        now = _now()
+        period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if period_start.month == 12:
+            period_end = period_start.replace(year=period_start.year + 1, month=1)
+        else:
+            period_end = period_start.replace(month=period_start.month + 1)
         ledger_kind = "video" if media_kind == "video" else "audio"
+        limit_seconds = (
+            self.settings.group_translation_monthly_video_target_seconds
+            if ledger_kind == "video"
+            else self.settings.group_translation_monthly_audio_target_seconds
+        )
+        billing_subject = actor.key[:160]
         ledger = db.scalar(
             select(GroupTranslationQuotaLedger)
             .where(
@@ -193,7 +173,6 @@ class GroupTranslationService:
             )
             .with_for_update()
         )
-        authority_consumed = max(0, limit_seconds - remaining_seconds)
         if not ledger:
             ledger = GroupTranslationQuotaLedger(
                 id=str(uuid4()),
@@ -202,15 +181,19 @@ class GroupTranslationService:
                 period_start=period_start,
                 period_end=period_end,
                 limit_target_seconds=limit_seconds,
-                authority_consumed_target_seconds=authority_consumed,
-                authority="timeblock",
+                authority_consumed_target_seconds=0,
+                authority="ai-communication",
             )
             db.add(ledger)
             db.flush()
         else:
+            if ledger.authority != "ai-communication":
+                raise GroupServiceError(
+                    "group_translation_legacy_ledger_audit_required", 409
+                )
             ledger.period_end = period_end
             ledger.limit_target_seconds = limit_seconds
-            ledger.authority_consumed_target_seconds = max(ledger.authority_consumed_target_seconds, authority_consumed)
+            ledger.authority_consumed_target_seconds = 0
             ledger.updated_at = _now()
         return ledger
 

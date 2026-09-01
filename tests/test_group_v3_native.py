@@ -26,6 +26,11 @@ SCOPES = [
     "group.translation.use",
     "group.radio.use",
 ]
+AI_ENTITLEMENT = {
+    "group_communication": True,
+    "authorization_authority": "ai-communication",
+    "billing_subject": "member:42:42",
+}
 
 
 def _settings(tmp_path, **overrides):
@@ -53,7 +58,9 @@ def _future(seconds=3600):
 def _handoff_payload(surface="chat"):
     return {
         "contract_version": "3",
-        "authority": "timeblock",
+        "authority": "timeblock-identity",
+        "group_authority": "ai-communication",
+        "launch_authorized": True,
         "handoff_id": "handoff-v3-000000000000000000000001",
         "surface": surface,
         "source_origin": TIMEBLOCK_ORIGIN,
@@ -67,23 +74,6 @@ def _handoff_payload(surface="chat"):
             "display_name": "Nguyen Minh",
             "locale": "vi",
         },
-        "entitlement": {
-            "group_communication": True,
-            "billing_authority": "timeblock",
-            "billing_subject": "member:42",
-            "plan_code": "member",
-            "group_translation_quota": {
-                "authority": "timeblock",
-                "period": "monthly",
-                "period_start": "2026-08-01",
-                "period_end": "2026-09-01",
-                "audio_limit_target_seconds": 3600,
-                "audio_remaining_target_seconds": 1800,
-                "video_limit_target_seconds": 1800,
-                "video_remaining_target_seconds": 900,
-            },
-        },
-        "scope": SCOPES,
         "issued_at": datetime.now(timezone.utc).isoformat(),
         "expires_at": _future(90),
         "session_expires_at": _future(),
@@ -142,6 +132,8 @@ def test_handoff_consume_is_exact_origin_httponly_and_secret_free(tmp_path):
         session = client.get("/api/group/session")
         assert session.status_code == 200
         assert session.json()["surface"] == "chat"
+        assert session.json()["entitlement"]["authorization_authority"] == "ai-communication"
+        assert "group.messages.write" in session.json()["scope"]
 
 
 def test_native_space_and_message_are_idempotent_and_encrypted_at_rest(tmp_path):
@@ -152,7 +144,7 @@ def test_native_space_and_message_are_idempotent_and_encrypted_at_rest(tmp_path)
         expires_at=_future(),
         handoff_id="handoff-v3-native-chat",
         surface="chat",
-        entitlement=_handoff_payload()["entitlement"],
+        entitlement=AI_ENTITLEMENT,
     )
     headers = {"Origin": PUBLIC_ORIGIN, "Idempotency-Key": "create-space-0001"}
     with TestClient(app) as client:
@@ -210,7 +202,7 @@ def test_native_radio_floor_media_grant_stop_and_leave_are_end_to_end(tmp_path):
         expires_at=_future(),
         handoff_id="handoff-v3-native-radio",
         surface="radio",
-        entitlement=_handoff_payload("radio")["entitlement"],
+        entitlement=AI_ENTITLEMENT,
     )
     headers = {"Origin": PUBLIC_ORIGIN}
 

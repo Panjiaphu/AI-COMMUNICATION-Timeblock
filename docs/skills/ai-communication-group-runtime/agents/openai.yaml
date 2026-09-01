@@ -1,0 +1,11 @@
+interface:
+  display_name: "AI Communication Group Runtime"
+  short_description: "Own and release all Group Communication capabilities"
+  default_prompt: >-
+    Implement Group Chat, Call, Video, Radio and the first-party Chat/Radio
+    translation plugins in AI-COMMUNICATION-Timeblock. Keep all Group UI,
+    durable data, authorization and runtime here; accept only identity handoff
+    from Timeblock; preserve Direct 1:1 and existing secret values.
+
+policy:
+  allow_implicit_invocation: true

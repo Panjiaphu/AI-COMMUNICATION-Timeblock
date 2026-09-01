@@ -26,6 +26,16 @@ class GroupActor:
         return f"{self.principal_type}:{self.principal_id}:{self.principal_user_id}"
 
 
+def require_app_session(request: Request) -> BffSession:
+    settings = request.app.state.settings
+    session = request.app.state.bff_session_store.get(
+        request.cookies.get(settings.guilua_session_cookie)
+    )
+    if not session:
+        raise HTTPException(status_code=401, detail="app_session_required")
+    return session
+
+
 def require_group_actor(
     request: Request,
     *required_scopes: str,
@@ -33,15 +43,13 @@ def require_group_actor(
     settings = request.app.state.settings
     if not settings.group_v3_enabled:
         raise HTTPException(status_code=503, detail="group_v3_disabled")
-    session: BffSession | None = request.app.state.bff_session_store.get(
-        request.cookies.get(settings.guilua_session_cookie)
-    )
-    if not session or session.session_kind != "group":
+    session = require_app_session(request)
+    if not session.group_authorized:
         raise HTTPException(status_code=401, detail="group_session_required")
     entitlement = session.entitlement or {}
     if entitlement.get("group_communication") is not True:
         raise HTTPException(status_code=403, detail="group_entitlement_required")
-    granted = frozenset(session.scope)
+    granted = frozenset(session.group_scope)
     if not set(required_scopes).issubset(granted):
         raise HTTPException(status_code=403, detail="group_scope_denied")
     principal = session.principal
@@ -64,8 +72,8 @@ def require_group_actor(
         display_name=display_name[:120],
         locale=locale if locale in {"vi", "en", "zh-TW"} else "vi",
         scope=granted,
-        handoff_id=session.handoff_id,
-        surface=session.surface,
+        handoff_id=session.group_handoff_id,
+        surface=session.group_surface,
         entitlement=dict(entitlement),
     )
 

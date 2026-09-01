@@ -75,6 +75,17 @@ class LiveKitGroupMediaProvider:
         scheme = "wss" if parsed.scheme == "https" else parsed.scheme
         return f"{scheme}://{parsed.netloc}{parsed.path.rstrip('/')}"
 
+    def synthetic_validate(self) -> dict[str, object]:
+        """Validate the configured LiveKit contract without minting a token."""
+        url = self._validated_client_url()
+        return {
+            "provider": "livekit-cloud",
+            "status": "configured",
+            "url_origin": url,
+            "region": self.region,
+            "token_ttl_seconds": self.ttl_seconds,
+        }
+
     def issue_grant(
         self,
         *,

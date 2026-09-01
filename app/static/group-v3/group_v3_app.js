@@ -39,6 +39,8 @@
     previousSurface: "chat",
     mobile: window.matchMedia("(max-width: 640px)").matches,
     context: null,
+    directAvailable: Boolean(runtimeConfig.direct_available),
+    groupAuthorized: Boolean(runtimeConfig.group_authorized),
     spaces: [],
     space: null,
     members: [],
@@ -226,10 +228,12 @@
   async function loadSessionContext() {
     var payload = await api("/api/group/session");
     state.context = payload;
+    state.directAvailable = Boolean(payload.direct_available);
+    state.groupAuthorized = Boolean(payload.group_authorized);
     state.surface = SURFACES.indexOf(payload.surface) >= 0 ? payload.surface : state.surface;
     if (LANGUAGES.indexOf(payload.principal && payload.principal.locale) >= 0) state.locale = payload.principal.locale;
     document.documentElement.lang = state.locale;
-    state.status = "READY";
+    state.status = state.groupAuthorized ? "READY" : "HANDOFF_REQUIRED";
   }
 
   async function loadSpaces(preferredId) {
@@ -321,17 +325,25 @@
       ["chat", "message-circle", "groupChat"],
       ["call", "phone-call", "groupCall"],
       ["video", "video", "groupVideo"],
-      ["radio", "radio-tower", "groupRadio"]
+      ["radio", "radio-tower", "groupRadio"],
+      ["plugin", "languages", "translationPlugin"]
     ];
-    var active = state.surface === "plugin" ? state.previousSurface : state.surface;
     var buttons = items.map(function (item) {
-      return '<button type="button" data-action="surface" data-surface="' + item[0] + '" class="' + (item[0] === active ? "is-active" : "") + '">' +
+      return '<button type="button" data-action="surface" data-surface="' + item[0] + '" ' + (!state.groupAuthorized ? "disabled" : "") + ' class="' + (item[0] === state.surface ? "is-active" : "") + '">' +
         icon(item[1], 21) + "<span>" + esc(t(item[2])) + "</span></button>";
     }).join("");
+    var direct = '<a href="/assistant" class="direct-navigation">' + icon("message-circle", 21) + "<span>" + esc(t("directMessages")) + "</span></a>";
     return {
-      desktop: '<aside class="global-nav" aria-label="' + esc(t("roomNavigation")) + '"><div class="app-logo is-compact"><span class="app-logo-mark"><img src="/static/group-v3/timeblock-chat.svg" alt=""></span></div><nav>' + buttons + '</nav><div class="identity-chip"><span>' + esc(initials(state.context && state.context.principal.display_name)) + "</span><i></i></div></aside>",
-      mobile: '<nav class="mobile-bottom-nav" aria-label="' + esc(t("roomNavigation")) + '">' + buttons + "</nav>"
+      desktop: '<aside class="global-nav" aria-label="' + esc(t("roomNavigation")) + '"><div class="app-logo is-compact"><span class="app-logo-mark"><img src="/static/group-v3/timeblock-chat.svg" alt=""></span></div><nav>' + direct + buttons + '</nav><div class="identity-chip"><span>' + esc(initials(state.context && state.context.principal.display_name)) + "</span><i></i></div></aside>",
+      mobile: '<nav class="mobile-bottom-nav" aria-label="' + esc(t("roomNavigation")) + '">' + direct + buttons + "</nav>"
     };
+  }
+
+  function handoffRequired() {
+    return '<section class="runtime-empty surface-content"><span>' + icon("users", 32) + "</span><h2>" +
+      esc(t("handoffRequiredTitle")) + "</h2><p>" + esc(t("handoffRequiredNote")) +
+      '</p><a class="action-button action-primary" href="' + esc(runtimeConfig.timeblock_entry_url || "/") + '">' +
+      icon("users", 17) + "<span>" + esc(t("openTimeblock")) + "</span></a></section>";
   }
 
   function mobileLanguageBar() {
@@ -610,6 +622,7 @@
   }
 
   function surface() {
+    if (!state.groupAuthorized) return handoffRequired();
     if (!state.space) {
       return '<section class="runtime-empty surface-content"><span>' + icon("users", 28) + "</span><h2>" + esc(t("noSpaces")) +
         "</h2><p>" + esc(t("noSpacesNote")) + '</p><form class="space-create-form" data-form="create-space"><input name="title" maxlength="120" required placeholder="' +
@@ -622,7 +635,7 @@
   }
 
   function render() {
-    if (state.status !== "READY") {
+    if (state.status !== "READY" && state.status !== "HANDOFF_REQUIRED") {
       var failed = state.status === "FAILED";
       root.innerHTML = '<section class="group-v3-bootstrap ' + (failed ? "is-error" : "") +
         '"><img src="/static/group-v3/timeblock-chat.svg" width="56" height="56" alt=""><strong>AI-COMMUNICATION</strong><span>' +
@@ -638,7 +651,7 @@
       '<header class="mobile-app-header"><div class="app-logo"><span class="app-logo-mark"><img src="/static/group-v3/timeblock-chat.svg" alt=""></span><span><strong>AI-COMMUNICATION</strong><small>' +
       esc(t("nativeGroupApp")) + '</small></span></div><span class="mobile-state-dot"></span></header>' + renderRooms() +
       '<section class="native-main ' + (banner ? "has-banner" : "") + '"><div class="session-strip"><span><i></i>' +
-      esc(t("signedIn")) + "</span><span>" + esc(t("groupSession")) + "</span></div>" + banner + header() + surface() +
+      esc(t("signedIn")) + "</span><span>" + esc(state.groupAuthorized ? t("groupSession") : t("handoffRequiredTitle")) + "</span></div>" + banner + (state.groupAuthorized ? header() : "") + surface() +
       "</section>" + mobileLanguageBar() + nav.mobile + "</div>";
     root.dataset.runtimeState = "READY";
     syncMediaElements();
@@ -653,6 +666,10 @@
     state.error = "";
     try {
       if (!state.context) await loadSessionContext();
+      if (!state.groupAuthorized) {
+        render();
+        return;
+      }
       await loadSpaces(state.space && state.space.id || "");
       render();
       if (state.profile && state.profile.auto_read_enabled) processTtsJobs();

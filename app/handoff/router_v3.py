@@ -13,6 +13,27 @@ from app.integrations.timeblock.client import TimeblockIntegrationError
 
 router = APIRouter()
 
+AI_GROUP_SCOPES = (
+    "group.spaces.read",
+    "group.spaces.write",
+    "group.messages.read",
+    "group.messages.write",
+    "group.media.use",
+    "group.translation.use",
+    "group.radio.use",
+)
+
+
+def _ai_group_entitlement(principal: dict[str, str]) -> dict[str, object]:
+    return {
+        "group_communication": True,
+        "authorization_authority": "ai-communication",
+        "billing_subject": (
+            f"{principal.get('type', '')}:{principal.get('id', '')}:"
+            f"{principal.get('user_id', '')}"
+        )[:200],
+    }
+
 
 def _public_origin(request: Request) -> str:
     parsed = urlparse(request.app.state.settings.public_base_url)
@@ -102,13 +123,15 @@ async def consume_group_handoff_v3(request: Request) -> JSONResponse:
     if handoff.surface != surface:
         raise HTTPException(status_code=403, detail="surface_mismatch")
 
-    session = request.app.state.bff_session_store.create_group_session(
+    entitlement = _ai_group_entitlement(handoff.principal)
+    session = request.app.state.bff_session_store.grant_group_authorization(
+        request.cookies.get(settings.guilua_session_cookie),
         principal=handoff.principal,
-        scope=list(handoff.scope),
+        scope=list(AI_GROUP_SCOPES),
         expires_at=handoff.session_expires_at,
         handoff_id=handoff.handoff_id,
         surface=handoff.surface,
-        entitlement=handoff.entitlement,
+        entitlement=entitlement,
     )
     max_age = max(60, int(session.expires_at - time.time()))
     response = JSONResponse(
@@ -118,8 +141,8 @@ async def consume_group_handoff_v3(request: Request) -> JSONResponse:
             "handoff_id": handoff.handoff_id,
             "surface": handoff.surface,
             "principal": handoff.principal,
-            "entitlement": handoff.entitlement,
-            "scope": list(handoff.scope),
+            "entitlement": entitlement,
+            "scope": list(AI_GROUP_SCOPES),
             "session_expires_at": handoff.session_expires_at,
         },
         headers={

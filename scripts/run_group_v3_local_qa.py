@@ -92,19 +92,8 @@ app.state.group_radio_floor._client = LocalQaRedis()
 
 entitlement = {
     "group_communication": True,
-    "billing_authority": "timeblock",
-    "billing_subject": "member:42",
-    "plan_code": "member",
-    "group_translation_quota": {
-        "authority": "timeblock",
-        "period": "monthly",
-        "period_start": "2026-09-01",
-        "period_end": "2026-10-01",
-        "audio_limit_target_seconds": 3600,
-        "audio_remaining_target_seconds": 1800,
-        "video_limit_target_seconds": 1800,
-        "video_remaining_target_seconds": 900,
-    },
+    "authorization_authority": "ai-communication",
+    "billing_subject": "member:42:42",
 }
 actor = GroupActor(
     principal_type="member",

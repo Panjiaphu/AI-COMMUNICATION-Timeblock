@@ -76,21 +76,20 @@ def test_http_and_legacy_absence():
             assert client.get(path, follow_redirects=False).status_code == 404
 
 
-def test_root_only_redirects_safe_group_surfaces_without_forwarding_secrets():
+def test_root_renders_safe_group_surfaces_without_forwarding_secrets():
     with client_for() as client:
         for surface in ('call', 'video', 'radio', 'plugin'):
             response = client.get(
                 f'/?surface={surface}&lang=en&token=do-not-forward&api_key=do-not-forward',
                 follow_redirects=False,
             )
-            assert response.status_code == 307
-            assert response.headers['location'] == f'/communication?surface={surface}&lang=en'
-            assert 'token' not in response.headers['location']
-            assert 'api_key' not in response.headers['location']
+            assert response.status_code == 200
+            assert f'"initial_surface": "{surface}"' in response.text
+            assert 'do-not-forward' not in response.text
 
         invalid = client.get('/?surface=group_radio&token=do-not-forward', follow_redirects=False)
         assert invalid.status_code == 200
-        assert 'location' not in invalid.headers
+        assert 'do-not-forward' not in invalid.text
 
 
 def test_communication_exposes_only_allowlisted_initial_surface():

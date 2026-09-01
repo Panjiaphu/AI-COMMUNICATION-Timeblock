@@ -33,6 +33,20 @@ class OpenAIGroupTranslationProvider:
     def enabled(self) -> bool:
         return bool(self.settings.group_translation_enabled and self.settings.openai_api_key)
 
+    def synthetic_validate(self) -> dict[str, object]:
+        """Validate provider configuration without issuing a client secret."""
+        if not self.settings.group_translation_enabled:
+            raise GroupTranslationProviderError("group_translation_disabled")
+        if not str(self.settings.openai_api_key or "").strip():
+            raise GroupTranslationProviderError("group_translation_provider_not_configured")
+        return {
+            "provider": "openai-realtime-translate",
+            "status": "configured",
+            "model": self.settings.openai_realtime_translation_model,
+            "transcription_model": self.settings.openai_realtime_transcription_model,
+            "client_secret_ttl_seconds": self.settings.group_translation_client_secret_ttl_seconds,
+        }
+
     @staticmethod
     def _safety_identifier(principal_id: str) -> str:
         return hashlib.sha256(str(principal_id).encode("utf-8")).hexdigest()

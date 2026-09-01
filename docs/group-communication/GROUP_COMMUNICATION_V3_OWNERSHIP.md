@@ -1,57 +1,60 @@
 # Group Communication V3 ownership
 
-Status: `ARCHITECTURE_LOCKED`
+Status: `CANONICAL_ARCHITECTURE_LOCKED`
 
-Design approval: `PASS DESIGN V3`
+Design status: `PASS_DESIGN_V3_24_OF_24_OWNER_APPROVED`
 
-Approved design commit: `d98a5b4e93a3fa8e89d7573ecd3ed1c12914ee96`
+Last owner correction: `2026-09-01 Asia/Taipei`
 
-Architecture-lock commit: `0d47316427b8fa67d77d9c0ec9110ca898fb9d2a`
+## Sole Group owner
 
-AI-COMMUNICATION Phase 1 base: `3d04d4afad1eb0f233fdf5265029b9fdbae07bb9`
+`Panjiaphu/AI-COMMUNICATION-Timeblock` exclusively owns and operates:
 
-## Native Group authority
+- Group spaces, memberships, roles and room-scoped authorization;
+- Group Chat UI, messages, reactions, pins, attachments and history;
+- Group Call and Group Video UI, LiveKit grants and media lifecycle;
+- Group Radio/PTT UI, durable session/history and Valkey floor lifecycle;
+- first-party Chat Translation Plugin and Radio Translation Plugin;
+- Group consent, usage, audit, retention and provider execution;
+- the canonical Group PostgreSQL data model and migrations.
 
-AI-COMMUNICATION is the sole owner of V3 Group spaces, memberships,
-permissions, messages, reactions, pins, attachments, history, audit,
-Call/Video sessions, LiveKit grants, translation, Radio/PTT and distributed
-floor state.
+Plugin means only first-party Chat/Radio translation in this release. It is not
+a marketplace and not an arbitrary plugin SDK.
 
-Timeblock remains the authority only for identity, authentication, account
-status, platform entitlement and billing. Those claims enter through a
-short-lived, one-time identity handoff and do not make Timeblock the Group data
-owner.
+## Timeblock boundary
 
-## Prohibited compatibility behavior
+`Panjiaphu/fumap-bot-life` owns platform login/identity, one localized
+`Giao tiếp nhóm` icon/launcher and a short-lived one-time identity handoff.
+It does not own any Group capability, Group UI/UX, Group durable data, room
+permission, provider execution, history, audit, retention or usage.
 
-- Do not proxy Group create/read/mutate operations to Timeblock.
-- Do not require a Timeblock `messaging_call_rooms` row for Group Call/Video.
-- Do not request Group LiveKit grants from Timeblock.
-- Do not store Group handoff codes in URLs, HTML, logs, localStorage or
-  sessionStorage.
-- Do not reuse Direct 1:1 routes or media ownership as Group runtime code.
-- Do not maintain the Group UI by mirroring Timeblock source-lock files.
+The AI service may consume the authenticated identity handoff, but all
+Group-specific authorization and records are enforced here. Timeblock legacy
+Group tables are frozen/read-only and never override AI PostgreSQL.
 
-Phase 9 source-lock boundary: the retired `group_communication_v2.css` mirror
-is removed. The lock may mirror only Timeblock's four-button launcher shell;
-the native Group application, state, media, translation and Radio assets live
-under `app/static/group-v3/` and are never generated from Timeblock.
+## UI and handoff
 
-## Required native boundaries
+Timeblock opens the generic `/communication` webapp. The AI root exposes
+Direct plus Group Chat, Group Call, Group Video, Group Radio and Translation.
+Users never need a `?surface=` URL.
 
-- Persistent Group data uses the AI-COMMUNICATION database and reversible
-  Alembic migrations.
-- Browser Group sessions use an HttpOnly cookie established only after a
-  server-to-server handoff redemption.
-- Call/Video uses AI-issued participant-scoped LiveKit grants.
-- Translation persists FINAL text only; recipient Auto Read remains
-  asynchronous and cannot delay FINAL display.
-- Radio floor is a distributed, single-owner lease with heartbeat and explicit
-  release before downstream work.
-- Every write validates active membership and records a Group audit event.
+Handoff codes are short-lived, one-time and exact origin/audience bound. They
+never appear in URLs, HTML, logs, `localStorage` or `sessionStorage`.
 
-## Release gates
+Locked Lucide references are `users`, `message-circle`, `phone-call`,
+`video`, `radio-tower`, `languages` and `puzzle`.
 
-Phase 1–9 permit only local checkpoint commits. Phase 10 owns all tests, builds,
-browser QA, migration upgrade/rollback and protected-boundary verification.
-Push, PR, merge and deployment remain governed by the owner Prompt 2 gates.
+## Infrastructure
+
+AI PostgreSQL is canonical Group storage. Valkey is ephemeral Radio floor
+coordination. LiveKit owns media transport state. OpenAI executes the
+first-party translation plugins. Existing keys are retained and never printed
+or rotated by this release.
+
+`/readyz` reports dependency/config readiness only. Provider synthetics,
+exact-tree QA and two-account production acceptance remain separate gates.
+
+## Protected Direct 1:1
+
+Direct Chat/Call/Video/Translation stays in its existing protected path. Group
+work must not rewrite it unless a direct regression is proven.

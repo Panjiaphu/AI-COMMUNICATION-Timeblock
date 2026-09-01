@@ -9,7 +9,7 @@ The Blueprint service name must remain exactly `AI-COMMUNICATION-Timeblock` so
 it cannot be mistaken for a request to create a second `guilua` service.
 
 The AI service is deliberately fail-closed. Group V3 also requires the
-PostgreSQL schema at Alembic revision `20260831_0016`, a reachable Valkey floor
+PostgreSQL schema at Alembic revision `20260901_0017`, a reachable Valkey floor
 store, and complete LiveKit/OpenAI provider configuration. Follow
 `docs/group-communication/GROUP_V3_RENDER_ACTIVATION.md`; `/readyz/` returns 503
 when any required dependency is missing.
@@ -78,6 +78,8 @@ GROUP_RADIO_REDIS_URL=<private Redis/Valkey connection URL>
 GROUP_RADIO_FLOOR_LEASE_SECONDS=15
 GROUP_RADIO_HEARTBEAT_SECONDS=5
 GROUP_TRANSLATION_ENABLED=true
+GROUP_TRANSLATION_MONTHLY_AUDIO_TARGET_SECONDS=3600
+GROUP_TRANSLATION_MONTHLY_VIDEO_TARGET_SECONDS=1800
 OPENAI_API_KEY=<existing server-only OpenAI key>
 ALLOWED_TIMEBLOCK_HANDOFF_ORIGINS=https://timeblock-commercial-pro.onrender.com,https://fumapgo.com
 ALLOWED_WEBSOCKET_ORIGINS=https://guilua.onrender.com
@@ -116,7 +118,7 @@ part of this runtime. Group V3 PostgreSQL and Alembic configuration is required.
    failures.
 7. Verify `/healthz/` returns process liveness and `/readyz/` returns 200 with
    `authority=ai-communication`, `contract_version=3`, schema revision
-   `20260831_0016`, all four Group capabilities enabled, and the same SHA as
+   `20260901_0017`, all four Group capabilities enabled, and the same SHA as
    Render's deployed commit. Then run
    authenticated desktop/mobile Assistant, messaging, notification,
    translation and call smoke checks against the exact deploy.

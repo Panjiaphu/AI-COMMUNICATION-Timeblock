@@ -6,12 +6,17 @@
 > `/api/guilua/v2/capabilities` manifest; see `phase-status.md`. All SHA and
 > dependency statements below describe the 2026-08-07 V1 snapshot, not current
 > production state.
+>
+> Group V3 exclusion: this contract is Direct/legacy only. It must not assign
+> Group membership, messages, results, usage, audit or retention to Timeblock.
+> Native Group V3 is fully owned by AI-COMMUNICATION-Timeblock.
 
 Status: `CONTRACT_V1_IMPLEMENTED_AND_CONSUMED`
 
 Verified against Timeblock source repository `Panjiaphu/fumap-bot-life` at main SHA `28476fe50d7e02486be190b7e895ce7832382102` on 2026-08-07.
 
-Guilua is an ephemeral Communication Runtime. Timeblock remains the source of truth for identity, workspace membership, participant authorization, entitlement/quota, glossary master data, durable results, usage, billing, audit, and retention.
+For this historical Direct/legacy contract, Timeblock remains the source of
+identity and its existing Direct data. This sentence does not apply to Group V3.
 
 ## Approved Contract V1 endpoints
 

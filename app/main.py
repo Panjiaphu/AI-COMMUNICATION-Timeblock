@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import secrets
 from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request
@@ -70,6 +71,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.database = Database(runtime_settings)
     group_crypto = GroupCrypto(runtime_settings)
     livekit_provider = LiveKitGroupMediaProvider(runtime_settings)
+    application.state.group_media_provider = livekit_provider
     application.state.group_service = GroupService(application.state.database, group_crypto)
     application.state.group_media_session_service = GroupMediaSessionService(
         application.state.database,
@@ -133,6 +135,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def healthz() -> dict[str, str]:
         return {'status': 'ok', 'service': 'guilua-communication-runtime'}
 
+    @application.post('/internal/synthetics/group-v3/providers')
+    async def group_v3_provider_synthetic(request: Request):
+        """Provider-only readiness probe; never represents product acceptance."""
+        supplied = str(request.headers.get('Authorization') or '')
+        expected = str(runtime_settings.timeblock_api_key or '')
+        if not expected or not supplied.startswith('Bearer ') or not secrets.compare_digest(supplied[7:], expected):
+            return JSONResponse({'status': 'unauthorized'}, status_code=401)
+        result: dict[str, object] = {
+            'status': 'synthetic_validation',
+            'product_acceptance': 'not_evaluated',
+            'providers': {},
+        }
+        try:
+            result['providers']['livekit'] = application.state.group_media_provider.synthetic_validate()
+        except Exception as exc:
+            result['providers']['livekit'] = {'status': 'unavailable', 'detail': str(exc)}
+        try:
+            result['providers']['openai_translation'] = application.state.openai_group_translation_provider.synthetic_validate()
+        except Exception as exc:
+            result['providers']['openai_translation'] = {'status': 'unavailable', 'detail': str(exc)}
+        statuses = [item.get('status') for item in result['providers'].values() if isinstance(item, dict)]
+        result['status'] = 'ready' if statuses and all(value == 'configured' for value in statuses) else 'not_ready'
+        return JSONResponse(result, status_code=200 if result['status'] == 'ready' else 503)
+
     @application.get('/readyz/')
     async def readyz():
         schema_revision = None
@@ -184,6 +210,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 'status': 'ready',
                 'service': 'guilua-communication-runtime',
                 'authority': 'development',
+                'readiness_scope': 'dependencies_and_configuration',
+                'product_acceptance': 'not_evaluated',
                 'deployment_version': runtime_settings.deployment_version,
             }
             if runtime_settings.group_v3_enabled:
@@ -217,6 +245,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 'status': 'ready',
                 'service': 'guilua-communication-runtime',
                 'authority': 'ai-communication',
+                'readiness_scope': 'dependencies_and_configuration',
+                'product_acceptance': 'not_evaluated',
                 'contract_version': '3',
                 'identity_authority': manifest['authority'],
                 'identity_contract_version': manifest['contract_version'],
@@ -233,6 +263,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             'status': 'ready',
             'service': 'guilua-communication-runtime',
             'authority': manifest['authority'],
+            'readiness_scope': 'dependencies_and_configuration',
+            'product_acceptance': 'not_evaluated',
             'contract_version': manifest['contract_version'],
             'deployment_version': runtime_settings.deployment_version,
         }

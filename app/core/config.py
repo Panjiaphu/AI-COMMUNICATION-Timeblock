@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     group_translation_client_secret_ttl_seconds: int = Field(default=60, ge=10, le=300)
     group_translation_reservation_ttl_seconds: int = Field(default=300, ge=60, le=900)
     group_translation_max_segment_seconds: int = Field(default=300, ge=1, le=900)
+    group_translation_monthly_audio_target_seconds: int = Field(
+        default=3600, ge=60, le=10_000_000
+    )
+    group_translation_monthly_video_target_seconds: int = Field(
+        default=1800, ge=60, le=10_000_000
+    )
     group_translation_policy_version: str = 'group-translation-v3-2026-08-31'
     group_v3_enabled: bool = False
     group_handoff_audience: str = 'ai-communication-group-v3'

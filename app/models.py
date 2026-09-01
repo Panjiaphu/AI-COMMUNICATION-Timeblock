@@ -291,7 +291,12 @@ class GroupTranslationQuotaLedger(Base):
     authority_consumed_target_seconds: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
     consumed_target_seconds: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
     reserved_target_seconds: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
-    authority: Mapped[str] = mapped_column(String(32), nullable=False, default="timeblock", server_default="timeblock")
+    authority: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="ai-communication",
+        server_default="ai-communication",
+    )
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
