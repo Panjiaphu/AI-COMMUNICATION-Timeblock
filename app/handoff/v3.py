@@ -68,7 +68,7 @@ def parse_group_handoff_v3(
 
     handoff_id = _text(payload.get("handoff_id"), "handoff_id", maximum=128)
     surface = _text(payload.get("surface"), "surface", maximum=16).lower()
-    if surface not in {"chat", "call", "video", "radio"}:
+    if surface not in {"chat", "call", "video", "radio", "plugin"}:
         raise GroupHandoffV3Error("invalid_surface")
     source_origin = _text(
         payload.get("source_origin"), "source_origin", maximum=2048

@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from app.core.config import Settings
 from app.db import Base
+from app.handoff.v3 import parse_group_handoff_v3
 from app.main import create_app
 from app.models import GroupMessage
 from tests.test_group_radio_floor_v3 import FakeAsyncRedis
@@ -87,6 +88,11 @@ def _handoff_payload(surface="chat"):
         "expires_at": _future(90),
         "session_expires_at": _future(),
     }
+
+
+def test_group_handoff_parser_accepts_translation_plugin_surface(tmp_path):
+    handoff = parse_group_handoff_v3(_handoff_payload("plugin"), _settings(tmp_path))
+    assert handoff.surface == "plugin"
 
 
 class RedeemStub:

@@ -153,7 +153,7 @@ app.state.group_radio_service.create_session(
 )
 @app.get("/__qa__/group-v3", include_in_schema=False)
 async def enter_local_group_qa(
-    surface: str = Query(default="chat", pattern="^(chat|call|video|radio)$"),
+    surface: str = Query(default="chat", pattern="^(chat|call|video|radio|plugin)$"),
     lang: str = Query(default="vi", pattern="^(vi|en|zh-TW)$"),
     identity: str = Query(default="owner", pattern="^(owner|invitee)$"),
 ):

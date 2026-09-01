@@ -82,7 +82,7 @@ async def consume_group_handoff_v3(request: Request) -> JSONResponse:
         not 48 <= len(handoff_code) <= 256
         or any(character.isspace() for character in handoff_code)
         or source_origin not in settings.timeblock_handoff_origins
-        or surface not in {"chat", "call", "video", "radio"}
+        or surface not in {"chat", "call", "video", "radio", "plugin"}
     ):
         raise HTTPException(status_code=400, detail="invalid_group_handoff")
 

@@ -23,7 +23,7 @@ from app.integrations.timeblock.client import TimeblockIntegrationError
 logger = logging.getLogger('guilua.communication')
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[1] / 'templates')
-SAFE_GROUP_SURFACES = frozenset({'chat', 'call', 'video', 'radio'})
+SAFE_GROUP_SURFACES = frozenset({'chat', 'call', 'video', 'radio', 'plugin'})
 SAFE_GROUP_QA_STATES = frozenset({'READY', 'FLOOR_BUSY', 'TALKING', 'FINALIZING_BURST', 'DEVICE_LOST'})
 
 

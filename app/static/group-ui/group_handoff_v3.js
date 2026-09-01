@@ -12,7 +12,7 @@
   const eventName = runtimeConfig.group_handoff_event || "timeblock.group.handoff.v3";
   const expectedVersion = String(runtimeConfig.group_handoff_contract_version || "3");
   const allowedOrigins = new Set(runtimeConfig.allowed_handoff_origins || []);
-  const surfaces = new Set(["chat", "call", "video", "radio"]);
+  const surfaces = new Set(["chat", "call", "video", "radio", "plugin"]);
   const state = { status: "WAITING", handoff: null };
 
   const setStatus = (status) => {
