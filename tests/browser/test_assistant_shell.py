@@ -192,6 +192,81 @@ def test_canonical_assistant_and_settings_are_contained_on_mobile_and_desktop(
         context.close()
 
 
+def test_assistant_navigation_popovers_and_mobile_nav_stay_in_their_layout_bounds(
+    chromium_browser,
+    base_url: str,
+):
+    assistant_html = _without_runtime_scripts(
+        _authenticated_vendor_html("/assistant?lang=vi&mode=messages")
+    )
+    settings_html = _without_runtime_scripts(_authenticated_vendor_html("/app-settings?lang=vi"))
+    context = chromium_browser.new_context(
+        viewport={"width": 1920, "height": 900},
+        base_url=base_url,
+        java_script_enabled=False,
+    )
+    page = context.new_page()
+    try:
+        _set_source_locked_content(page, assistant_html, base_url)
+        page.locator(".tbv2-primary-nav details").nth(1).evaluate(
+            "element => { element.open = true; }"
+        )
+        desktop_geometry = page.locator(".tbv2-mega-menu").evaluate(
+            """element => {
+              const header = document.querySelector('.tbv2-header').getBoundingClientRect();
+              const menu = element.getBoundingClientRect();
+              const styles = getComputedStyle(element);
+              return {
+                headerHeight: header.height,
+                menuPosition: styles.position,
+                menuTop: menu.top,
+                menuLeft: menu.left,
+                menuRight: menu.right,
+                viewport: window.innerWidth,
+                documentWidth: document.documentElement.scrollWidth,
+              };
+            }"""
+        )
+        assert desktop_geometry["menuPosition"] == "fixed"
+        assert desktop_geometry["menuTop"] >= desktop_geometry["headerHeight"]
+        assert desktop_geometry["menuLeft"] >= -1
+        assert desktop_geometry["menuRight"] <= desktop_geometry["viewport"] + 1
+        assert desktop_geometry["documentWidth"] <= desktop_geometry["viewport"] + 1
+
+        page.set_viewport_size({"width": 390, "height": 844})
+        _set_source_locked_content(page, settings_html, base_url)
+        page.locator(".tbv2-mobile-services").evaluate(
+            "element => { element.open = true; }"
+        )
+        mobile_geometry = page.locator(".tbv2-mobile-sheet").evaluate(
+            """element => {
+              const sheet = element.getBoundingClientRect();
+              const bottomNav = document.querySelector('.tbv2-bottom-nav').getBoundingClientRect();
+              const styles = getComputedStyle(element);
+              const bottomStyles = getComputedStyle(document.querySelector('.tbv2-bottom-nav'));
+              return {
+                sheetPosition: styles.position,
+                sheetLeft: sheet.left,
+                sheetRight: sheet.right,
+                bottomNavPosition: bottomStyles.position,
+                bottomNavLeft: bottomNav.left,
+                bottomNavRight: bottomNav.right,
+                viewport: window.innerWidth,
+                documentWidth: document.documentElement.scrollWidth,
+              };
+            }"""
+        )
+        assert mobile_geometry["sheetPosition"] == "fixed"
+        assert mobile_geometry["sheetLeft"] >= -1
+        assert mobile_geometry["sheetRight"] <= mobile_geometry["viewport"] + 1
+        assert mobile_geometry["bottomNavPosition"] == "fixed"
+        assert mobile_geometry["bottomNavLeft"] >= -1
+        assert mobile_geometry["bottomNavRight"] <= mobile_geometry["viewport"] + 1
+        assert mobile_geometry["documentWidth"] <= mobile_geometry["viewport"] + 1
+    finally:
+        context.close()
+
+
 @pytest.mark.parametrize(
     ("viewport", "minimum_input_width"),
     [

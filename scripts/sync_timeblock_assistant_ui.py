@@ -66,6 +66,7 @@ TEMPLATE_FILES = (
 ASSISTANT_INITIAL_CSS = (
     "static/css/main.css",
     "static/css/responsive.css",
+    "static/css/timeblock_v2.css",
     "static/css/security.css",
     "static/css/i18n_shared_shell.css",
     "static/css/assistant.css",

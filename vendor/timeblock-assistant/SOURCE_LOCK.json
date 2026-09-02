@@ -13,6 +13,7 @@
     "templates/assistant/settings.html",
     "static/css/main.css",
     "static/css/responsive.css",
+    "static/css/timeblock_v2.css",
     "static/css/security.css",
     "static/css/i18n_shared_shell.css",
     "static/css/assistant.css",
@@ -231,6 +232,7 @@
     "templates/assistant/settings.html": "b5518ee3640e8cc712d51c87e7f0780e5ae96627f257bea714ddfd254bc088d0",
     "static/css/main.css": "a52199f6be5d267c2cf811104002da87166e98c5158c5f93a99e954aae79d34b",
     "static/css/responsive.css": "c4c3f1ea1f20caf8ad340301a056ddeea560cd1b02a68e492603bcb5f6daed34",
+    "static/css/timeblock_v2.css": "f6f28384cf5d65453fdbf5353633e82de0bedc00519433d8d16f2245722732ce",
     "static/css/security.css": "8c2351b46acf58231391b4e60d749956433208578d17cfe5a7252b97297c57ad",
     "static/css/i18n_shared_shell.css": "f26885de18208499561fc6bc21f6aecd70a202fd54b2ed99a631aad914f7d4b3",
     "static/css/assistant.css": "081801f191f770c613e2b242f33d2abb24bfd4c0a5c85d3e6333aa35b4d7d889",
@@ -470,6 +472,10 @@
     "static/css/responsive.css": [
       "vendor/timeblock-assistant/static/css/responsive.css",
       "app/static/css/responsive.css"
+    ],
+    "static/css/timeblock_v2.css": [
+      "vendor/timeblock-assistant/static/css/timeblock_v2.css",
+      "app/static/css/timeblock_v2.css"
     ],
     "static/css/security.css": [
       "vendor/timeblock-assistant/static/css/security.css",
@@ -1309,6 +1315,8 @@
     "app/static/css/main.css": "EXACT_VENDOR",
     "vendor/timeblock-assistant/static/css/responsive.css": "EXACT_VENDOR",
     "app/static/css/responsive.css": "EXACT_VENDOR",
+    "vendor/timeblock-assistant/static/css/timeblock_v2.css": "EXACT_VENDOR",
+    "app/static/css/timeblock_v2.css": "EXACT_VENDOR",
     "vendor/timeblock-assistant/static/css/security.css": "EXACT_VENDOR",
     "app/static/css/security.css": "EXACT_VENDOR",
     "vendor/timeblock-assistant/static/css/i18n_shared_shell.css": "EXACT_VENDOR",
@@ -1805,6 +1813,20 @@
       "source_sha256": "c4c3f1ea1f20caf8ad340301a056ddeea560cd1b02a68e492603bcb5f6daed34",
       "destination_path": "app/static/css/responsive.css",
       "destination_sha256": "c4c3f1ea1f20caf8ad340301a056ddeea560cd1b02a68e492603bcb5f6daed34",
+      "adaptation_class": "EXACT_VENDOR"
+    },
+    {
+      "source_path": "static/css/timeblock_v2.css",
+      "source_sha256": "f6f28384cf5d65453fdbf5353633e82de0bedc00519433d8d16f2245722732ce",
+      "destination_path": "vendor/timeblock-assistant/static/css/timeblock_v2.css",
+      "destination_sha256": "f6f28384cf5d65453fdbf5353633e82de0bedc00519433d8d16f2245722732ce",
+      "adaptation_class": "EXACT_VENDOR"
+    },
+    {
+      "source_path": "static/css/timeblock_v2.css",
+      "source_sha256": "f6f28384cf5d65453fdbf5353633e82de0bedc00519433d8d16f2245722732ce",
+      "destination_path": "app/static/css/timeblock_v2.css",
+      "destination_sha256": "f6f28384cf5d65453fdbf5353633e82de0bedc00519433d8d16f2245722732ce",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -4740,6 +4762,7 @@
     "assistant_initial_css": [
       "static/css/main.css",
       "static/css/responsive.css",
+      "static/css/timeblock_v2.css",
       "static/css/security.css",
       "static/css/i18n_shared_shell.css",
       "static/css/assistant.css",
