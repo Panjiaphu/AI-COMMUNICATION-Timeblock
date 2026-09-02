@@ -37,10 +37,10 @@
   const validEnvelope = (message) => {
     if (!message || typeof message !== "object" || message.type !== eventName) return false;
     if (String(message.contract_version || "") !== expectedVersion) return false;
+    if (message.transport !== "postmessage-memory") return false;
     const code = text(message.handoff_code, 256);
-    const surface = text(message.surface, 16).toLowerCase();
     const expiry = Date.parse(text(message.expires_at, 64));
-    return code.length >= 48 && !/\s/.test(code) && surfaces.has(surface)
+    return code.length >= 48 && !/\s/.test(code)
       && Number.isFinite(expiry) && expiry > Date.now();
   };
 
@@ -52,7 +52,9 @@
     state.handoff = Object.freeze({
       handoff_id: text(payload.handoff_id, 128),
       generation: text(payload.handoff_id, 128),
-      surface: text(payload.surface, 16),
+      surface: surfaces.has(text(payload.surface, 16).toLowerCase())
+        ? text(payload.surface, 16).toLowerCase()
+        : "chat",
       principal: payload.principal && typeof payload.principal === "object" ? { ...payload.principal } : {},
       entitlement: payload.entitlement && typeof payload.entitlement === "object" ? { ...payload.entitlement } : {},
       scope: Array.isArray(payload.scope) ? [...payload.scope] : [],
@@ -82,7 +84,6 @@
         body: JSON.stringify({
           handoff_code: handoffCode,
           source_origin: sourceOrigin,
-          surface: text(message.surface, 16).toLowerCase(),
         }),
       });
       handoffCode = "";
@@ -103,13 +104,11 @@
 
   const announceReady = () => {
     if (!window.opener || window.opener.closed) return;
-    const surface = text(runtimeConfig.initial_surface, 16).toLowerCase();
-    if (!surfaces.has(surface)) return;
     allowedOrigins.forEach((origin) => {
       window.opener.postMessage({
         type: `${eventName}.ready`,
         contract_version: expectedVersion,
-        surface,
+        transport: "postmessage-memory",
       }, origin);
     });
   };

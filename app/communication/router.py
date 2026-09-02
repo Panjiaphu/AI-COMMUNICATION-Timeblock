@@ -41,6 +41,14 @@ SAFE_GROUP_QA_STATES = frozenset({
 })
 
 
+def _group_handoff_runtime_config(settings) -> dict[str, object]:
+    return {
+        'group_handoff_event': 'timeblock.group.handoff.v3',
+        'group_handoff_contract_version': '3',
+        'allowed_handoff_origins': sorted(settings.timeblock_handoff_origins),
+    }
+
+
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -113,6 +121,7 @@ async def _assistant_page(
             'session': session,
             'initial_mode': legacy_mode if legacy_mode in {'ai', 'communication', 'translation', 'notifications'} else 'ai',
             'initial_conversation_id': conversation_id or request.query_params.get('conversation_id', ''),
+            'group_handoff_config': _group_handoff_runtime_config(settings),
         },
     )
 

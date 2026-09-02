@@ -76,9 +76,10 @@ def parse_group_handoff_v3(
         raise GroupHandoffV3Error("group_launch_denied")
 
     handoff_id = _text(payload.get("handoff_id"), "handoff_id", maximum=128)
-    surface = _text(payload.get("surface"), "surface", maximum=16).lower()
-    if surface not in {"chat", "call", "video", "radio", "plugin"}:
-        raise GroupHandoffV3Error("invalid_surface")
+    # Timeblock is an identity/control-plane issuer and deliberately does not
+    # select a Group capability.  The AI-owned application chooses the
+    # initial Group surface after the generic handoff is redeemed.
+    surface = "chat"
     source_origin = _text(
         payload.get("source_origin"), "source_origin", maximum=2048
     ).rstrip("/")

@@ -98,12 +98,10 @@ async def consume_group_handoff_v3(request: Request) -> JSONResponse:
 
     handoff_code = str(payload.get("handoff_code") or "")
     source_origin = str(payload.get("source_origin") or "").strip().rstrip("/")
-    surface = str(payload.get("surface") or "").strip().lower()
     if (
         not 48 <= len(handoff_code) <= 256
         or any(character.isspace() for character in handoff_code)
         or source_origin not in settings.timeblock_handoff_origins
-        or surface not in {"chat", "call", "video", "radio", "plugin"}
     ):
         raise HTTPException(status_code=400, detail="invalid_group_handoff")
 
@@ -120,9 +118,6 @@ async def consume_group_handoff_v3(request: Request) -> JSONResponse:
         raise HTTPException(status_code=502, detail="group_handoff_redeem_failed") from exc
     except GroupHandoffV3Error as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
-    if handoff.surface != surface:
-        raise HTTPException(status_code=403, detail="surface_mismatch")
-
     entitlement = _ai_group_entitlement(handoff.principal)
     session = request.app.state.bff_session_store.grant_group_authorization(
         request.cookies.get(settings.guilua_session_cookie),

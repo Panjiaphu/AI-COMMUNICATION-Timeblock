@@ -82,9 +82,16 @@ def _handoff_payload(surface="chat"):
     }
 
 
-def test_group_handoff_parser_accepts_translation_plugin_surface(tmp_path):
+def test_group_handoff_parser_uses_ai_owned_default_surface(tmp_path):
     handoff = parse_group_handoff_v3(_handoff_payload("plugin"), _settings(tmp_path))
-    assert handoff.surface == "plugin"
+    assert handoff.surface == "chat"
+
+
+def test_group_handoff_parser_accepts_generic_payload_without_surface(tmp_path):
+    payload = _handoff_payload("radio")
+    payload.pop("surface")
+    handoff = parse_group_handoff_v3(payload, _settings(tmp_path))
+    assert handoff.surface == "chat"
 
 
 @pytest.mark.parametrize(
@@ -147,14 +154,14 @@ def test_handoff_consume_is_exact_origin_httponly_and_secret_free(tmp_path):
     with TestClient(app) as client:
         denied = client.post(
             "/api/group-handoff/v3/consume",
-            json={"handoff_code": "h" * 64, "source_origin": TIMEBLOCK_ORIGIN, "surface": "chat"},
+            json={"handoff_code": "h" * 64, "source_origin": TIMEBLOCK_ORIGIN},
             headers={"Origin": "https://evil.example"},
         )
         assert denied.status_code == 403
 
         response = client.post(
             "/api/group-handoff/v3/consume",
-            json={"handoff_code": "h" * 64, "source_origin": TIMEBLOCK_ORIGIN, "surface": "chat"},
+            json={"handoff_code": "h" * 64, "source_origin": TIMEBLOCK_ORIGIN},
             headers={"Origin": PUBLIC_ORIGIN},
         )
         assert response.status_code == 200
@@ -178,7 +185,6 @@ def test_handoff_receiver_rejects_replay_and_malformed_json(tmp_path):
     body = {
         "handoff_code": "h" * 64,
         "source_origin": TIMEBLOCK_ORIGIN,
-        "surface": "chat",
     }
     with TestClient(app) as client:
         first = client.post(
@@ -202,6 +208,23 @@ def test_handoff_receiver_rejects_replay_and_malformed_json(tmp_path):
     assert replay.json()["detail"] == "group_handoff_redeem_failed"
     assert malformed.status_code == 400
     assert malformed.json()["detail"] == "invalid_json"
+
+
+def test_handoff_consume_ignores_legacy_capability_selector(tmp_path):
+    app = _native_app(tmp_path)
+    app.state.timeblock_client = RedeemStub()
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/group-handoff/v3/consume",
+            json={
+                "handoff_code": "h" * 64,
+                "source_origin": TIMEBLOCK_ORIGIN,
+                "surface": "radio",
+            },
+            headers={"Origin": PUBLIC_ORIGIN},
+        )
+    assert response.status_code == 200
+    assert response.json()["surface"] == "chat"
 
 
 def test_native_space_and_message_are_idempotent_and_encrypted_at_rest(tmp_path):
@@ -385,6 +408,25 @@ def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     assert "const vi =" in i18n_js
     assert "const en =" in i18n_js
     assert "const zhTW =" in i18n_js
+
+
+def test_generic_handoff_receiver_has_no_capability_selector_or_browser_secret_storage():
+    root_receiver = (ROOT / "app/static/js/group_handoff_root_receiver.js").read_text(
+        encoding="utf-8"
+    )
+    native_receiver = (ROOT / "app/static/group-ui/group_handoff_v3.js").read_text(
+        encoding="utf-8"
+    )
+    assert "transport: \"postmessage-memory\"" in root_receiver
+    assert 'body: JSON.stringify({ handoff_code: handoffCode, source_origin: sourceOrigin })' in root_receiver
+    assert 'if (message.transport !== "postmessage-memory") return false;' in root_receiver
+    assert 'if (message.transport !== "postmessage-memory") return false;' in native_receiver
+    assert "window.location.replace(\"/group\")" in root_receiver
+    assert "surface: text(message.surface" not in root_receiver
+    assert "surface: text(message.surface" not in native_receiver
+    assert "runtimeConfig.initial_surface" not in native_receiver
+    assert "localStorage" not in root_receiver + native_receiver
+    assert "sessionStorage" not in root_receiver + native_receiver
 
 
 def test_normal_group_path_can_select_surface_after_handoff(tmp_path):
