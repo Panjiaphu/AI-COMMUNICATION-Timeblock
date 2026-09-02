@@ -44,6 +44,7 @@ jobs:
       SECRET_KEY: group-runtime-owner-ci-secret
       GROUP_V3_ENABLED: "true"
       GROUP_MESSAGE_ENCRYPTION_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      PYTHONPATH: .
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
