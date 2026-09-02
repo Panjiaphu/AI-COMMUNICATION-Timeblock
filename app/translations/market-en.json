@@ -313,6 +313,8 @@
   "market.backtest.status.strong": "Strong sample",
   "market.backtest.status.valid": "Usable sample",
   "market.backtest.status.weak": "Weak sample",
+  "market.backtest.status.pending": "Awaiting historical data",
+  "market.backtest.window.90d": "90 days",
   "market.backtest.note.rsi": "Checks whether RSI is in trendable or reversal territory.",
   "market.backtest.note.macd": "Checks whether MACD momentum confirms the active side.",
   "market.backtest.note.ema": "Checks the trend stack across EMA 20, 50 and 100.",

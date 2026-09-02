@@ -313,6 +313,8 @@
   "market.backtest.status.strong": "Mẫu mạnh",
   "market.backtest.status.valid": "Mẫu dùng được",
   "market.backtest.status.weak": "Mẫu yếu",
+  "market.backtest.status.pending": "Đang chờ dữ liệu lịch sử",
+  "market.backtest.window.90d": "90 ngày",
   "market.backtest.note.rsi": "Kiểm tra RSI đang trong vùng theo xu hướng hoặc vùng đảo chiều.",
   "market.backtest.note.macd": "Kiểm tra momentum MACD có xác nhận hướng hiện tại không.",
   "market.backtest.note.ema": "Kiểm tra stack xu hướng qua EMA 20, 50 và 100.",

@@ -140,7 +140,8 @@ def test_ai_owned_group_entry_does_not_call_retired_timeblock_group_proxy():
         encoding='utf-8'
     )
 
-    assert 'new URL(`/group/${surface}`' in adapter
+    assert 'new URL(targetPath, window.location.origin)' in adapter
+    assert 'allowedSurfaces.has(surface) ? `/group/${surface}` : "/group"' in adapter
     assert '/api/communication/group/handoffs' not in adapter
     assert 'searchParams.set("surface"' not in adapter
     assert '[data-communication-tab="groups"],' not in styles

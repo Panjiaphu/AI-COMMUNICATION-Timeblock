@@ -17,7 +17,7 @@ from pathlib import Path
 
 
 SOURCE_REPO = "Panjiaphu/fumap-bot-life"
-SYNC_VERSION = 3
+SYNC_VERSION = 4
 LOCALES = ("vi", "en", "zh-TW")
 TRANSLATION_BUNDLES = (
     "ui",
@@ -70,6 +70,7 @@ ASSISTANT_INITIAL_CSS = (
     "static/css/security.css",
     "static/css/i18n_shared_shell.css",
     "static/css/assistant.css",
+    "static/css/assistant_mobile_conversation_v1.css",
     "static/css/assistant_image_generation.css",
     "static/css/live_translate.css",
     "static/css/live_translate_history.css",
@@ -148,6 +149,7 @@ ASSISTANT_INITIAL_JS = (
     "static/js/live_translate_hotfix_bootstrap.js",
     "static/js/live_translate_history.js",
     "static/js/assistant.js",
+    "static/js/assistant_mobile_conversation_v1.js",
     "static/js/group_launcher_v3.js",
     "static/js/assistant_image_generation.js",
     "static/js/messaging_core_v2.js",
