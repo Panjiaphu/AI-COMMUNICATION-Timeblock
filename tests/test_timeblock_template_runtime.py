@@ -126,6 +126,7 @@ def test_authenticated_assistant_renders_canonical_vendor_dom_and_locale(runtime
     assert 'data-mode-tab="ai"' in response.text
     assert 'data-mode-panel="messages"' in response.text
     assert 'href="/static/css/assistant.css?' in response.text
+    assert 'href="/static/css/timeblock_v2.css?' in response.text
     assert (
         'href="/static/css/assistant_runtime_adapter.css?v=20260831-nav-icons-3" '
         "data-guilua-assistant-runtime-adapter"
