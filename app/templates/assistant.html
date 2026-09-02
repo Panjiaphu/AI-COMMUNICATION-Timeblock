@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f6f8fb">
     <title>Timeblock AI Assistant</title>
     <link rel="manifest" href="/static/manifest.webmanifest">
-    <link rel="stylesheet" href="/static/assistant_shell.css?v=1">
+    <link rel="stylesheet" href="/static/assistant_shell.css?v=2">
   </head>
   <body class="assistant-shell-page">
     <header class="assistant-topbar">
@@ -38,6 +38,7 @@
           <p class="assistant-sidebar-label">{{ copy.get('workspace', 'Workspace') }}</p>
           <button class="assistant-mode-button active" type="button" data-mode="ai"><span>✦</span>{{ copy.get('ai', 'AI Assistant') }}</button>
           <button class="assistant-mode-button" type="button" data-mode="communication"><span>◎</span>{{ copy.get('communication', 'Communication') }}</button>
+          <a class="assistant-mode-button" href="/group?lang={{ locale }}"><span>◉</span>{{ copy.get('group_title', 'Group Communication') }}</a>
           <button class="assistant-mode-button" type="button" data-mode="translation"><span>文</span>{{ copy.get('translation', 'Translation') }}</button>
           <button class="assistant-mode-button" type="button" data-mode="notifications"><span>◌</span>{{ copy.get('notifications', 'Notifications') }}</button>
           <div class="assistant-sidebar-foot">

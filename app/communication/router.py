@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 from uuid import uuid4
 
-from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
@@ -24,7 +24,21 @@ logger = logging.getLogger('guilua.communication')
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[1] / 'templates')
 SAFE_GROUP_SURFACES = frozenset({'chat', 'call', 'video', 'radio', 'plugin'})
-SAFE_GROUP_QA_STATES = frozenset({'READY', 'FLOOR_BUSY', 'TALKING', 'FINALIZING_BURST', 'DEVICE_LOST'})
+SAFE_GROUP_NAV_SURFACES = SAFE_GROUP_SURFACES | frozenset({
+    'chat-translation',
+    'radio-translation',
+})
+SAFE_GROUP_QA_STATES = frozenset({
+    'READY',
+    'FLOOR_BUSY',
+    'TALKING',
+    'STOPPING',
+    'FINALIZING',
+    'FINALIZING_BURST',
+    'DISCONNECTED',
+    'DEVICE_LOST',
+    'ENDED',
+})
 
 
 def now_iso() -> str:
@@ -205,16 +219,49 @@ async def call_deep_link(request: Request, call_id: str) -> HTMLResponse:
 
 @router.get('/communication', response_class=HTMLResponse)
 async def communication(request: Request) -> HTMLResponse:
+    return await _communication_page(request)
+
+
+@router.get('/group', response_class=HTMLResponse)
+async def group_workspace(request: Request) -> HTMLResponse:
+    """Expose the AI-owned Group workspace through normal app navigation."""
+
+    return await _communication_page(request, force_group=True, forced_surface='chat')
+
+
+@router.get('/group/{surface}', response_class=HTMLResponse)
+async def group_surface_workspace(request: Request, surface: str) -> HTMLResponse:
+    normalized_surface = str(surface or '').strip().lower()
+    if normalized_surface not in SAFE_GROUP_NAV_SURFACES:
+        raise HTTPException(status_code=404, detail='group_surface_not_found')
+    return await _communication_page(
+        request,
+        force_group=True,
+        forced_surface=normalized_surface,
+    )
+
+
+async def _communication_page(
+    request: Request,
+    *,
+    force_group: bool = False,
+    forced_surface: str = '',
+) -> HTMLResponse:
     settings = request.app.state.settings
     locale = resolve_timeblock_locale(request, settings.default_locale)
-    requested_surface = str(request.query_params.get('surface') or '').strip().lower()
+    requested_surface = forced_surface or str(
+        request.query_params.get('surface') or ''
+    ).strip().lower()
     session = request.app.state.bff_session_store.get(
         request.cookies.get(settings.guilua_session_cookie)
     )
     initial_surface = (
-        session.group_surface
+        forced_surface
+        if forced_surface in SAFE_GROUP_NAV_SURFACES
+        else session.group_surface
         if session and session.group_authorized and session.group_surface in SAFE_GROUP_SURFACES
-        else requested_surface if requested_surface in SAFE_GROUP_SURFACES else ''
+        else requested_surface if requested_surface in SAFE_GROUP_NAV_SURFACES
+        else 'chat' if force_group else ''
     )
     requested_state = str(request.query_params.get('state') or '').strip().upper()
     initial_qa_state = (
@@ -234,12 +281,13 @@ async def communication(request: Request) -> HTMLResponse:
         'initial_surface': initial_surface,
         'direct_available': bool(session and session.timeblock_token),
         'group_authorized': bool(session and session.group_authorized),
+        'group_translation_policy_version': settings.group_translation_policy_version,
         'initial_qa_state': initial_qa_state,
         'copy': copy,
     }
-    template_name = 'group_communication_v3.html' if (
+    template_name = 'group_communication_v3.html' if force_group or (
         session and session.group_authorized
-    ) or requested_surface in SAFE_GROUP_SURFACES else 'communication.html'
+    ) or requested_surface in SAFE_GROUP_NAV_SURFACES else 'communication.html'
     return templates.TemplateResponse(
         request=request,
         name=template_name,

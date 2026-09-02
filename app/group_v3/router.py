@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
+import json
 from urllib.parse import quote
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.group_v3.auth import require_app_session, require_group_actor, require_write_origin
 from app.group_v3.schemas import (
@@ -22,6 +24,14 @@ router = APIRouter(prefix="/api/group", tags=["group-v3"])
 
 def _service(request: Request):
     return request.app.state.group_service
+
+
+def _event_broker(request: Request):
+    return request.app.state.group_event_broker
+
+
+async def _publish(request: Request, space_id: str, event_type: str, resource_id: object = "") -> None:
+    await _event_broker(request).publish(space_id, event_type, resource_id=resource_id)
 
 
 def _json(payload: object, *, status_code: int = 200) -> JSONResponse:
@@ -86,6 +96,7 @@ async def create_space(
     require_write_origin(request)
     actor = require_group_actor(request, "group.spaces.write")
     result = _service(request).create_space(actor, body.model_dump(), idempotency_key)
+    await _publish(request, result["space"]["id"], "space.created", result["space"]["id"])
     return _json(result, status_code=200 if result.get("idempotent") else 201)
 
 
@@ -102,7 +113,42 @@ async def update_space(request: Request, space_id: str, body: SpaceUpdate) -> JS
     values = body.model_dump(exclude_unset=True)
     if len(values) <= 1:
         raise HTTPException(status_code=400, detail="space_update_required")
-    return _json({"space": _service(request).update_space(actor, _bounded_id(space_id, "space_id"), values)})
+    normalized_space_id = _bounded_id(space_id, "space_id")
+    space = _service(request).update_space(actor, normalized_space_id, values)
+    await _publish(request, normalized_space_id, "space.updated", normalized_space_id)
+    return _json({"space": space})
+
+
+@router.get("/spaces/{space_id}/events")
+async def stream_space_events(request: Request, space_id: str) -> StreamingResponse:
+    actor = require_group_actor(request, "group.messages.read")
+    normalized_space_id = _bounded_id(space_id, "space_id")
+    _service(request).get_space(actor, normalized_space_id)
+
+    async def event_stream():
+        async with _event_broker(request).subscribe(normalized_space_id) as queue:
+            yield ": group-v3-ready\n\n"
+            while True:
+                if await request.is_disconnected():
+                    return
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=20)
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+                    continue
+                payload = json.dumps(event.as_dict(), ensure_ascii=True, separators=(",", ":"))
+                yield f"id: {event.event_id}\nevent: group-change\ndata: {payload}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-store, private, max-age=0",
+            "Pragma": "no-cache",
+            "X-Accel-Buffering": "no",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.get("/spaces/{space_id}/memberships")
@@ -115,7 +161,9 @@ async def list_members(request: Request, space_id: str) -> JSONResponse:
 async def add_member(request: Request, space_id: str, body: MembershipCreate) -> JSONResponse:
     require_write_origin(request)
     actor = require_group_actor(request, "group.spaces.write")
-    membership = _service(request).add_member(actor, _bounded_id(space_id, "space_id"), body.model_dump())
+    normalized_space_id = _bounded_id(space_id, "space_id")
+    membership = _service(request).add_member(actor, normalized_space_id, body.model_dump())
+    await _publish(request, normalized_space_id, "membership.created", membership["id"])
     return _json({"membership": membership}, status_code=201)
 
 
@@ -131,12 +179,14 @@ async def update_member(
     values = body.model_dump(exclude_unset=True)
     if not values:
         raise HTTPException(status_code=400, detail="membership_update_required")
+    normalized_space_id = _bounded_id(space_id, "space_id")
     membership = _service(request).update_member(
         actor,
-        _bounded_id(space_id, "space_id"),
+        normalized_space_id,
         _bounded_id(membership_id, "membership_id"),
         values,
     )
+    await _publish(request, normalized_space_id, "membership.updated", membership["id"])
     return _json({"membership": membership})
 
 
@@ -166,12 +216,14 @@ async def create_message(
 ) -> JSONResponse:
     require_write_origin(request)
     actor = require_group_actor(request, "group.messages.write")
+    normalized_space_id = _bounded_id(space_id, "space_id")
     result = _service(request).create_message(
         actor,
-        _bounded_id(space_id, "space_id"),
+        normalized_space_id,
         body.model_dump(),
         idempotency_key,
     )
+    await _publish(request, normalized_space_id, "message.created", result["message"]["id"])
     return _json(result, status_code=200 if result.get("idempotent") else 201)
 
 
@@ -184,12 +236,14 @@ async def update_message(
 ) -> JSONResponse:
     require_write_origin(request)
     actor = require_group_actor(request, "group.messages.write")
+    normalized_space_id = _bounded_id(space_id, "space_id")
     message = _service(request).update_message(
         actor,
-        _bounded_id(space_id, "space_id"),
+        normalized_space_id,
         _bounded_id(message_id, "message_id"),
         body.content,
     )
+    await _publish(request, normalized_space_id, "message.updated", message["id"])
     return _json({"message": message})
 
 
@@ -197,13 +251,11 @@ async def update_message(
 async def delete_message(request: Request, space_id: str, message_id: str) -> JSONResponse:
     require_write_origin(request)
     actor = require_group_actor(request, "group.messages.write")
-    return _json(
-        _service(request).delete_message(
-            actor,
-            _bounded_id(space_id, "space_id"),
-            _bounded_id(message_id, "message_id"),
-        )
-    )
+    normalized_space_id = _bounded_id(space_id, "space_id")
+    normalized_message_id = _bounded_id(message_id, "message_id")
+    result = _service(request).delete_message(actor, normalized_space_id, normalized_message_id)
+    await _publish(request, normalized_space_id, "message.deleted", normalized_message_id)
+    return _json(result)
 
 
 @router.post("/spaces/{space_id}/messages/{message_id}/reactions")
@@ -215,15 +267,13 @@ async def add_reaction(
 ) -> JSONResponse:
     require_write_origin(request)
     actor = require_group_actor(request, "group.messages.write")
-    return _json(
-        _service(request).set_reaction(
-            actor,
-            _bounded_id(space_id, "space_id"),
-            _bounded_id(message_id, "message_id"),
-            body.reaction,
-            True,
-        )
+    normalized_space_id = _bounded_id(space_id, "space_id")
+    normalized_message_id = _bounded_id(message_id, "message_id")
+    result = _service(request).set_reaction(
+        actor, normalized_space_id, normalized_message_id, body.reaction, True
     )
+    await _publish(request, normalized_space_id, "message.reaction", normalized_message_id)
+    return _json(result)
 
 
 @router.delete("/spaces/{space_id}/messages/{message_id}/reactions/{reaction}")
@@ -238,43 +288,35 @@ async def remove_reaction(
     normalized = str(reaction or "").strip()
     if not 1 <= len(normalized) <= 16 or any(character.isspace() for character in normalized):
         raise HTTPException(status_code=400, detail="invalid_reaction")
-    return _json(
-        _service(request).set_reaction(
-            actor,
-            _bounded_id(space_id, "space_id"),
-            _bounded_id(message_id, "message_id"),
-            normalized,
-            False,
-        )
+    normalized_space_id = _bounded_id(space_id, "space_id")
+    normalized_message_id = _bounded_id(message_id, "message_id")
+    result = _service(request).set_reaction(
+        actor, normalized_space_id, normalized_message_id, normalized, False
     )
+    await _publish(request, normalized_space_id, "message.reaction", normalized_message_id)
+    return _json(result)
 
 
 @router.post("/spaces/{space_id}/messages/{message_id}/pin")
 async def pin_message(request: Request, space_id: str, message_id: str) -> JSONResponse:
     require_write_origin(request)
     actor = require_group_actor(request, "group.messages.write")
-    return _json(
-        _service(request).set_pin(
-            actor,
-            _bounded_id(space_id, "space_id"),
-            _bounded_id(message_id, "message_id"),
-            True,
-        )
-    )
+    normalized_space_id = _bounded_id(space_id, "space_id")
+    normalized_message_id = _bounded_id(message_id, "message_id")
+    result = _service(request).set_pin(actor, normalized_space_id, normalized_message_id, True)
+    await _publish(request, normalized_space_id, "message.pin", normalized_message_id)
+    return _json(result)
 
 
 @router.delete("/spaces/{space_id}/messages/{message_id}/pin")
 async def unpin_message(request: Request, space_id: str, message_id: str) -> JSONResponse:
     require_write_origin(request)
     actor = require_group_actor(request, "group.messages.write")
-    return _json(
-        _service(request).set_pin(
-            actor,
-            _bounded_id(space_id, "space_id"),
-            _bounded_id(message_id, "message_id"),
-            False,
-        )
-    )
+    normalized_space_id = _bounded_id(space_id, "space_id")
+    normalized_message_id = _bounded_id(message_id, "message_id")
+    result = _service(request).set_pin(actor, normalized_space_id, normalized_message_id, False)
+    await _publish(request, normalized_space_id, "message.pin", normalized_message_id)
+    return _json(result)
 
 
 @router.get("/spaces/{space_id}/pins")

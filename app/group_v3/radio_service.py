@@ -15,11 +15,13 @@ from app.group_v3.media import GroupMediaProviderError, LiveKitGroupMediaProvide
 from app.group_v3.service import GroupServiceError
 from app.models import (
     GroupAuditEvent,
+    GroupLanguageProfile,
     GroupMembership,
     GroupRadioBurst,
     GroupRadioParticipant,
     GroupRadioProcessingJob,
     GroupRadioSession,
+    GroupTranslationConsent,
 )
 
 
@@ -242,9 +244,41 @@ class GroupRadioService:
                 active = db.scalar(select(GroupRadioBurst).where(GroupRadioBurst.radio_session_id == session.id, GroupRadioBurst.state == "talking").with_for_update())
                 if active:
                     raise GroupServiceError("group_radio_burst_conflict", 409)
-                burst = GroupRadioBurst(id=str(uuid4()), radio_session_id=session.id, space_id=space_id, speaker_participant_id=participant.id, speaker_membership_id=participant.membership_id, floor_token_hash=_token_hash(floor_token), state="talking", source_language=source_language, target_languages_json=json.dumps(target_languages, separators=(",", ":")), started_at=_now())
+                planned_targets: list[str] = []
+                if self.settings.group_translation_enabled:
+                    joined_membership_ids = list(
+                        db.scalars(
+                            select(GroupRadioParticipant.membership_id).where(
+                                GroupRadioParticipant.radio_session_id == session.id,
+                                GroupRadioParticipant.status == "joined",
+                            )
+                        ).all()
+                    )
+                    consented = set(
+                        db.scalars(
+                            select(GroupTranslationConsent.membership_id).where(
+                                GroupTranslationConsent.space_id == space_id,
+                                GroupTranslationConsent.membership_id.in_(joined_membership_ids),
+                                GroupTranslationConsent.status == "granted",
+                                GroupTranslationConsent.policy_version
+                                == self.settings.group_translation_policy_version,
+                            )
+                        ).all()
+                    )
+                    if len(consented) == len(set(joined_membership_ids)):
+                        preferred = db.scalars(
+                            select(GroupLanguageProfile.preferred_output_language).where(
+                                GroupLanguageProfile.space_id == space_id,
+                                GroupLanguageProfile.membership_id.in_(joined_membership_ids),
+                                GroupLanguageProfile.auto_translate_enabled == 1,
+                            )
+                        ).all()
+                        planned_targets = sorted(
+                            {item for item in preferred if item != source_language}
+                        )[: self.settings.group_translation_max_targets]
+                burst = GroupRadioBurst(id=str(uuid4()), radio_session_id=session.id, space_id=space_id, speaker_participant_id=participant.id, speaker_membership_id=participant.membership_id, floor_token_hash=_token_hash(floor_token), state="talking", source_language=source_language, target_languages_json=json.dumps(planned_targets, separators=(",", ":")), started_at=_now())
                 db.add(burst)
-                self._audit(db, actor, space_id, "radio.floor_acquired", "radio_burst", burst.id, {"target_language_count": len(target_languages)})
+                self._audit(db, actor, space_id, "radio.floor_acquired", "radio_burst", burst.id, {"target_language_count": len(planned_targets), "targets_from_recipient_profiles": True})
                 db.flush()
                 return self._burst_payload(burst)
 

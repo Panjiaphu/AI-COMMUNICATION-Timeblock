@@ -3,12 +3,14 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.core.config import Settings
 from app.db import Base
-from app.handoff.v3 import parse_group_handoff_v3
+from app.handoff.v3 import GroupHandoffV3Error, parse_group_handoff_v3
+from app.integrations.timeblock.client import TimeblockIntegrationError
 from app.main import create_app
 from app.models import GroupMessage
 from tests.test_group_radio_floor_v3 import FakeAsyncRedis
@@ -85,6 +87,29 @@ def test_group_handoff_parser_accepts_translation_plugin_surface(tmp_path):
     assert handoff.surface == "plugin"
 
 
+@pytest.mark.parametrize(
+    ("field", "value", "error"),
+    [
+        ("contract_version", "2", "invalid_contract_version"),
+        ("audience", "wrong-audience", "invalid_audience"),
+        ("source_origin", "https://wrong.example", "invalid_source_origin"),
+        ("principal", {}, "invalid_principal_type"),
+        (
+            "expires_at",
+            (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat(),
+            "expired_expires_at",
+        ),
+    ],
+)
+def test_group_handoff_v3_fails_closed_on_malformed_identity_contract(
+    tmp_path, field, value, error
+):
+    payload = _handoff_payload("chat")
+    payload[field] = value
+    with pytest.raises(GroupHandoffV3Error, match=error):
+        parse_group_handoff_v3(payload, _settings(tmp_path))
+
+
 class RedeemStub:
     async def redeem_group_handoff_v3(self, handoff_code, **kwargs):
         assert handoff_code == "h" * 64
@@ -97,6 +122,17 @@ class RedeemStub:
 
     async def aclose(self):
         return None
+
+
+class ReplayRejectingRedeemStub(RedeemStub):
+    def __init__(self):
+        self.used = False
+
+    async def redeem_group_handoff_v3(self, handoff_code, **kwargs):
+        if self.used:
+            raise TimeblockIntegrationError("group_handoff_replayed")
+        self.used = True
+        return await super().redeem_group_handoff_v3(handoff_code, **kwargs)
 
 
 def _native_app(tmp_path, **overrides):
@@ -134,6 +170,38 @@ def test_handoff_consume_is_exact_origin_httponly_and_secret_free(tmp_path):
         assert session.json()["surface"] == "chat"
         assert session.json()["entitlement"]["authorization_authority"] == "ai-communication"
         assert "group.messages.write" in session.json()["scope"]
+
+
+def test_handoff_receiver_rejects_replay_and_malformed_json(tmp_path):
+    app = _native_app(tmp_path)
+    app.state.timeblock_client = ReplayRejectingRedeemStub()
+    body = {
+        "handoff_code": "h" * 64,
+        "source_origin": TIMEBLOCK_ORIGIN,
+        "surface": "chat",
+    }
+    with TestClient(app) as client:
+        first = client.post(
+            "/api/group-handoff/v3/consume",
+            json=body,
+            headers={"Origin": PUBLIC_ORIGIN},
+        )
+        replay = client.post(
+            "/api/group-handoff/v3/consume",
+            json=body,
+            headers={"Origin": PUBLIC_ORIGIN},
+        )
+        malformed = client.post(
+            "/api/group-handoff/v3/consume",
+            content=b"{",
+            headers={"Origin": PUBLIC_ORIGIN, "Content-Type": "application/json"},
+        )
+
+    assert first.status_code == 200
+    assert replay.status_code == 502
+    assert replay.json()["detail"] == "group_handoff_redeem_failed"
+    assert malformed.status_code == 400
+    assert malformed.json()["detail"] == "invalid_json"
 
 
 def test_native_space_and_message_are_idempotent_and_encrypted_at_rest(tmp_path):
@@ -284,6 +352,7 @@ def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     route_paths = set(app.openapi()["paths"])
     assert "/api/group-handoff/v3/consume" in route_paths
     assert "/api/group/spaces" in route_paths
+    assert "/api/group/spaces/{space_id}/messages/{message_id}/translation" in route_paths
     assert "/api/group-translation/session" not in route_paths
 
     template = (ROOT / "app/templates/group_communication_v3.html").read_text(encoding="utf-8")
@@ -309,6 +378,42 @@ def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     assert "selectAudioOutput" in translation_js
     assert "private_audio_playback\": \"suppressed" in radio_router
     assert radio_router.index("group_radio_floor.release") < radio_router.index("stop_burst_after_floor_release")
+    assert 'data-surface="chat-translation"' in app_js
+    assert 'data-surface="radio-translation"' in app_js
+    assert 'chatTranslation:' in i18n_js
+    assert 'radioTranslation:' in i18n_js
     assert "const vi =" in i18n_js
     assert "const en =" in i18n_js
     assert "const zhTW =" in i18n_js
+
+
+def test_normal_group_path_can_select_surface_after_handoff(tmp_path):
+    app = _native_app(tmp_path)
+    session = app.state.bff_session_store.create_group_session(
+        principal=_handoff_payload("chat")["principal"],
+        scope=SCOPES,
+        expires_at=_future(),
+        handoff_id="normal-group-navigation",
+        surface="chat",
+        entitlement=AI_ENTITLEMENT,
+    )
+    with TestClient(app) as client:
+        client.cookies.set(app.state.settings.guilua_session_cookie, session.session_id)
+        response = client.get("/group/radio?lang=en")
+
+    assert response.status_code == 200
+    assert 'id="group-native-app"' in response.text
+    assert '"initial_surface": "radio"' in response.text
+    assert '"group_authorized": true' in response.text
+
+
+def test_group_chat_translation_migration_is_single_head_and_reversible_source():
+    migration = (
+        ROOT / "alembic/versions/20260902_0018_group_v3_chat_translation.py"
+    ).read_text(encoding="utf-8")
+    assert 'revision = "20260902_0018"' in migration
+    assert 'down_revision = "20260901_0017"' in migration
+    assert 'op.create_table(\n        "group_chat_translations"' in migration
+    assert 'op.add_column(\n        "group_messages"' in migration
+    assert 'op.drop_table("group_chat_translations")' in migration
+    assert 'op.drop_column("group_messages", "source_language")' in migration

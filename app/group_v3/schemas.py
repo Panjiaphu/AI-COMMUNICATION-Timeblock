@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -71,6 +73,7 @@ class MessageCreate(StrictModel):
     content: str = Field(min_length=1, max_length=8000)
     content_type: str = "text"
     client_message_id: str = Field(min_length=8, max_length=128)
+    source_language: Literal["vi", "en", "zh-TW"] | None = None
     reply_to_id: str | None = Field(default=None, max_length=36)
     attachment_ids: list[str] = Field(default_factory=list, max_length=10)
 

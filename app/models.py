@@ -68,6 +68,7 @@ class GroupMessage(Base):
     __table_args__ = (
         UniqueConstraint("space_id", "sequence", name="uq_group_message_sequence"),
         UniqueConstraint("space_id", "sender_type", "sender_id", "sender_user_id", "client_message_id", name="uq_group_message_client_id"),
+        CheckConstraint("source_language IN ('vi','en','zh-TW')", name="ck_group_messages_source_language"),
         CheckConstraint("content_type IN ('text','system','attachment')", name="ck_group_messages_content_type"),
         CheckConstraint("status IN ('active','deleted')", name="ck_group_messages_status"),
         Index("ix_group_messages_space_sequence", "space_id", "sequence"),
@@ -82,6 +83,7 @@ class GroupMessage(Base):
     sender_user_id: Mapped[str] = mapped_column(String(128), nullable=False)
     sender_display_name: Mapped[str] = mapped_column(String(120), nullable=False)
     client_message_id: Mapped[str | None] = mapped_column(String(128))
+    source_language: Mapped[str] = mapped_column(String(8), nullable=False, default="vi", server_default="vi")
     content_type: Mapped[str] = mapped_column(String(16), nullable=False, default="text", server_default="text")
     content_ciphertext: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     content_nonce: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
@@ -91,6 +93,68 @@ class GroupMessage(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class GroupChatTranslation(Base):
+    __tablename__ = "group_chat_translations"
+    __table_args__ = (
+        UniqueConstraint(
+            "recipient_membership_id",
+            "idempotency_key",
+            name="uq_group_chat_translation_idempotency",
+        ),
+        UniqueConstraint(
+            "message_id",
+            "recipient_membership_id",
+            "target_language",
+            "message_fingerprint",
+            name="uq_group_chat_translation_message_version",
+        ),
+        CheckConstraint(
+            "status IN ('pending','final','failed')",
+            name="ck_group_chat_translations_status",
+        ),
+        CheckConstraint(
+            "source_language IN ('vi','en','zh-TW')",
+            name="ck_group_chat_translations_source_language",
+        ),
+        CheckConstraint(
+            "target_language IN ('vi','en','zh-TW')",
+            name="ck_group_chat_translations_target_language",
+        ),
+        Index(
+            "ix_group_chat_translations_recipient_final",
+            "space_id",
+            "recipient_membership_id",
+            "status",
+            "final_at",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    space_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("group_spaces.id", ondelete="CASCADE"), nullable=False
+    )
+    message_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("group_messages.id", ondelete="CASCADE"), nullable=False
+    )
+    recipient_membership_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("group_memberships.id", ondelete="CASCADE"), nullable=False
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    message_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_language: Mapped[str] = mapped_column(String(8), nullable=False)
+    target_language: Mapped[str] = mapped_column(String(8), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", server_default="pending")
+    translated_ciphertext: Mapped[bytes | None] = mapped_column(LargeBinary)
+    translated_nonce: Mapped[bytes | None] = mapped_column(LargeBinary)
+    encryption_version: Mapped[str] = mapped_column(String(32), nullable=False, default="", server_default="")
+    provider_model: Mapped[str] = mapped_column(String(80), nullable=False, default="", server_default="")
+    provider_request_id: Mapped[str] = mapped_column(String(128), nullable=False, default="", server_default="")
+    failure_code: Mapped[str] = mapped_column(String(80), nullable=False, default="", server_default="")
+    final_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
 
 class GroupMessageReaction(Base):

@@ -39,7 +39,7 @@ a { color: inherit; text-decoration: none; }
 .assistant-workspace { max-width: 1500px; min-height: calc(100vh - 72px); margin: 0 auto; padding: 28px 4vw 56px; display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 28px; }
 .assistant-sidebar { display: flex; flex-direction: column; gap: 7px; padding: 8px 0; }
 .assistant-sidebar-label { margin: 0 0 8px; color: var(--assistant-muted); text-transform: uppercase; letter-spacing: .12em; font-size: .7rem; font-weight: 800; }
-.assistant-mode-button { border: 0; background: transparent; cursor: pointer; color: var(--assistant-muted); padding: 13px 14px; border-radius: 11px; text-align: left; display: flex; align-items: center; gap: 12px; font-weight: 700; }
+.assistant-mode-button { border: 0; background: transparent; cursor: pointer; color: var(--assistant-muted); padding: 13px 14px; border-radius: 11px; text-align: left; text-decoration: none; display: flex; align-items: center; gap: 12px; font-weight: 700; }
 .assistant-mode-button span { width: 24px; text-align: center; color: var(--assistant-accent); font-weight: 900; }
 .assistant-mode-button.active, .assistant-mode-button:hover { color: var(--assistant-ink); background: #fff; box-shadow: 0 5px 18px rgba(24,44,78,.05); }
 .assistant-sidebar-foot { margin-top: auto; padding: 14px; color: var(--assistant-muted); font-size: .78rem; display: flex; align-items: center; gap: 8px; }

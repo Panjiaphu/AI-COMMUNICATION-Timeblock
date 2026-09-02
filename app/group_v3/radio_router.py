@@ -35,7 +35,9 @@ async def list_radio_sessions(request: Request, space_id: str, status: str | Non
 async def create_radio_session(request: Request, space_id: str, body: RadioSessionCreate) -> JSONResponse:
     require_write_origin(request)
     actor = require_group_actor(request, "group.radio.use")
-    session = request.app.state.group_radio_service.create_session(actor, _id(space_id, "space_id"), body.model_dump())
+    normalized_space = _id(space_id, "space_id")
+    session = request.app.state.group_radio_service.create_session(actor, normalized_space, body.model_dump())
+    await request.app.state.group_event_broker.publish(normalized_space, "radio.session_created", resource_id=session["id"])
     return _json({"session": session}, status_code=201)
 
 
@@ -51,7 +53,9 @@ async def get_radio_session(request: Request, space_id: str, session_id: str) ->
 async def join_radio_session(request: Request, space_id: str, session_id: str) -> JSONResponse:
     require_write_origin(request)
     actor = require_group_actor(request, "group.radio.use")
-    session = request.app.state.group_radio_service.join(actor, _id(space_id, "space_id"), _id(session_id, "session_id"))
+    normalized_space = _id(space_id, "space_id")
+    session = request.app.state.group_radio_service.join(actor, normalized_space, _id(session_id, "session_id"))
+    await request.app.state.group_event_broker.publish(normalized_space, "radio.participant_joined", resource_id=session["id"])
     return _json({"session": session})
 
 
@@ -59,11 +63,13 @@ async def join_radio_session(request: Request, space_id: str, session_id: str) -
 async def reject_radio_session(request: Request, space_id: str, session_id: str) -> JSONResponse:
     require_write_origin(request)
     actor = require_group_actor(request, "group.radio.use")
+    normalized_space = _id(space_id, "space_id")
     session = request.app.state.group_radio_service.reject(
         actor,
-        _id(space_id, "space_id"),
+        normalized_space,
         _id(session_id, "session_id"),
     )
+    await request.app.state.group_event_broker.publish(normalized_space, "radio.participant_rejected", resource_id=session["id"])
     return _json({"session": session, "rejected": True})
 
 
@@ -78,6 +84,7 @@ async def leave_radio_session(request: Request, space_id: str, session_id: str) 
     if floor and floor.get("participant_id") == participant["id"]:
         raise HTTPException(status_code=409, detail="group_radio_stop_burst_before_leave")
     session = request.app.state.group_radio_service.leave(actor, normalized_space, normalized_session)
+    await request.app.state.group_event_broker.publish(normalized_space, "radio.participant_left", resource_id=normalized_session)
     return _json({"session": session, "ended_for_all": False})
 
 
@@ -88,7 +95,9 @@ async def end_radio_session_for_all(request: Request, space_id: str, session_id:
     normalized_session = _id(session_id, "session_id")
     if await request.app.state.group_radio_floor.snapshot(normalized_session):
         raise HTTPException(status_code=409, detail="group_radio_stop_burst_before_end")
-    session = request.app.state.group_radio_service.end_for_all(actor, _id(space_id, "space_id"), normalized_session)
+    normalized_space = _id(space_id, "space_id")
+    session = request.app.state.group_radio_service.end_for_all(actor, normalized_space, normalized_session)
+    await request.app.state.group_event_broker.publish(normalized_space, "radio.session_ended", resource_id=normalized_session)
     return _json({"session": session, "ended_for_all": True})
 
 
@@ -108,6 +117,7 @@ async def acquire_radio_floor(request: Request, space_id: str, session_id: str, 
         except GroupServiceError:
             pass
         raise
+    await request.app.state.group_event_broker.publish(normalized_space, "radio.floor_acquired", resource_id=burst["id"])
     return _json({"floor_token": floor["token"], "lease_expires_at_ms": floor["lease_expires_at_ms"], "deadline_ms": floor["deadline_ms"], "burst": burst}, status_code=201)
 
 
@@ -126,6 +136,7 @@ async def heartbeat_radio_floor(request: Request, space_id: str, session_id: str
         if exc.code != "group_radio_max_burst_reached":
             raise
         burst = request.app.state.group_radio_service.stop_burst_after_floor_release(actor, normalized_space, normalized_session, body.floor_token, reason="max_burst")
+        await request.app.state.group_event_broker.publish(normalized_space, "radio.floor_released", resource_id=burst["id"])
         return _json({"burst": burst, "floor_released": True, "max_burst_reached": True})
     return _json({"burst": burst, **lease})
 
@@ -144,6 +155,7 @@ async def stop_radio_burst(request: Request, space_id: str, session_id: str, bod
             if exc.code != "group_radio_floor_not_owned":
                 raise
     burst = request.app.state.group_radio_service.stop_burst_after_floor_release(actor, normalized_space, normalized_session, body.floor_token)
+    await request.app.state.group_event_broker.publish(normalized_space, "radio.floor_released", resource_id=burst["id"])
     return _json({"burst": burst, "floor_released_before_downstream": True, "downstream_state": "FINALIZING_BURST" if burst["state"] == "finalizing" else "FINAL"})
 
 
@@ -161,6 +173,7 @@ async def radio_device_lost(request: Request, space_id: str, session_id: str, bo
             if exc.code != "group_radio_floor_not_owned":
                 raise
     burst = request.app.state.group_radio_service.device_lost_after_floor_release(actor, normalized_space, normalized_session, body.floor_token)
+    await request.app.state.group_event_broker.publish(normalized_space, "radio.device_lost", resource_id=burst["id"])
     return _json({"burst": burst, "floor_released_before_downstream": True, "private_audio_playback": "suppressed", "auto_read": "suppressed"})
 
 

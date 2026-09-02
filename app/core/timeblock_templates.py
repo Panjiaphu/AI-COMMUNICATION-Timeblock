@@ -57,8 +57,10 @@ _TIMEBLOCK_ENDPOINTS = {
 _ASSISTANT_BUCKETS = ("text", "image", "audio", "video", "speech")
 _ASSISTANT_RUNTIME_ADAPTER = (
     '<link rel="stylesheet" '
-    'href="/static/css/assistant_runtime_adapter.css?v=20260831-nav-icons-3" '
-    'data-guilua-assistant-runtime-adapter>'
+    'href="/static/css/assistant_runtime_adapter.css?v=20260902-group-native-1" '
+    'data-guilua-assistant-runtime-adapter>\n    '
+    '<script src="/static/js/assistant_group_native_entry.js?v=20260902-group-native-1" '
+    'data-guilua-group-native-entry defer></script>'
 )
 
 
@@ -214,7 +216,7 @@ def _template_config(settings: Settings) -> TemplateConfig:
     public_base_url = str(settings.public_base_url or "").strip().rstrip("/")
     return TemplateConfig(
         ADSENSE_CLIENT="",
-        COMMUNICATION_GROUP_UI_URL=f"{public_base_url}/communication",
+        COMMUNICATION_GROUP_UI_URL=f"{public_base_url}/group",
         MESSAGING_ADVANCED_ATTACHMENTS_ENABLED=settings.messaging_advanced_attachments_enabled,
         MESSAGING_REALTIME_ENABLED=settings.messaging_realtime_enabled,
         MESSAGING_MAILBOX_LOCK_ENABLED=settings.messaging_mailbox_lock_enabled,

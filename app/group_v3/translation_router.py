@@ -67,6 +67,47 @@ async def update_translation_consent(request: Request, space_id: str, body: Tran
     return _json({"consent": consent})
 
 
+@router.post("/spaces/{space_id}/messages/{message_id}/translation")
+async def translate_chat_message(
+    request: Request,
+    space_id: str,
+    message_id: str,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> JSONResponse:
+    require_write_origin(request)
+    actor = require_group_actor(request, "group.translation.use")
+    normalized_space_id = _id(space_id, "space_id")
+    result = await request.app.state.group_chat_translation_service.translate(
+        actor,
+        normalized_space_id,
+        _id(message_id, "message_id"),
+        str(idempotency_key or ""),
+    )
+    translation = result.get("translation")
+    if translation and translation.get("state") == "FINAL":
+        await request.app.state.group_event_broker.publish(
+            normalized_space_id,
+            "chat_translation.final",
+            resource_id=translation["id"],
+        )
+    return _json(result, status_code=202 if result.get("pending") else 200)
+
+
+@router.get("/spaces/{space_id}/translation/chat-history")
+async def chat_translation_history(
+    request: Request,
+    space_id: str,
+    limit: int = Query(default=100, ge=1, le=100),
+) -> JSONResponse:
+    actor = require_group_actor(request, "group.translation.use")
+    translations = request.app.state.group_chat_translation_service.history(
+        actor,
+        _id(space_id, "space_id"),
+        limit,
+    )
+    return _json({"translations": translations})
+
+
 @router.get("/spaces/{space_id}/translation/quota")
 async def get_translation_quota(
     request: Request,

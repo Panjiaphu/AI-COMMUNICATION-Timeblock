@@ -286,28 +286,34 @@
   async function translateRadioRecording(burstId, recording) {
     var blob = new Blob(recording.chunks, { type: recording.mime || "audio/webm" });
     if (!blob.size) return;
-    var AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) return;
-    var context = new AudioContextClass();
-    var buffer = await context.decodeAudioData(await blob.arrayBuffer());
-    var source = context.createBufferSource();
-    var destination = context.createMediaStreamDestination();
-    source.buffer = buffer;
-    source.connect(destination);
     var snapshot = runtime.snapshot();
-    snapshot.runtime_kind = "radio";
-    snapshot.runtime_id = burstId;
-    await startSidecar({
-      track: destination.stream.getAudioTracks()[0],
-      snapshot: snapshot,
-      speakerMembershipId: snapshot.membership_id,
-      segmentId: burstId,
-      startPlayback: function () { source.start(); },
-      cleanupPlayback: function () {
-        try { source.stop(); } catch (_error) {}
-        context.close();
-      }
-    });
+    var targets = snapshot.radio_target_languages || [];
+    await Promise.all(targets.map(async function (targetLanguage) {
+      var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      var context = new AudioContextClass();
+      var buffer = await context.decodeAudioData(await blob.arrayBuffer());
+      var source = context.createBufferSource();
+      var destination = context.createMediaStreamDestination();
+      source.buffer = buffer;
+      source.connect(destination);
+      var targetSnapshot = Object.assign({}, snapshot, {
+        runtime_kind: "radio",
+        runtime_id: burstId,
+        target_language: targetLanguage
+      });
+      await startSidecar({
+        track: destination.stream.getAudioTracks()[0],
+        snapshot: targetSnapshot,
+        speakerMembershipId: snapshot.membership_id,
+        segmentId: burstId,
+        startPlayback: function () { source.start(); },
+        cleanupPlayback: function () {
+          try { source.stop(); } catch (_error) {}
+          context.close();
+        }
+      });
+    }));
   }
 
   window.addEventListener("group-v3:radio-stopped", function (event) {
@@ -320,6 +326,16 @@
       translateRadioRecording(burstId, recording).catch(function () {});
     };
     if (recording.recorder.state !== "inactive") recording.recorder.stop();
+  });
+
+  window.addEventListener("group-v3:radio-device-lost", function (event) {
+    var burstId = text(event.detail && event.detail.burst_id, 128);
+    var recording = radioRecordings.get(burstId);
+    if (!recording) return;
+    radioRecordings.delete(burstId);
+    recording.recorder.ondataavailable = null;
+    if (recording.recorder.state !== "inactive") recording.recorder.stop();
+    recording.clone.stop();
   });
 
   window.addEventListener("group-v3:media-disconnected", function () {

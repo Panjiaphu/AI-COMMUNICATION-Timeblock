@@ -4,7 +4,7 @@
 const vi = {
   appName: 'AI-COMMUNICATION', nativeGroupApp: 'Ứng dụng Group native', sessionFrom: 'Phiên đăng nhập từ Timeblock',
   designCandidate: 'DESIGN V3 · ỨNG VIÊN DUYỆT', localPrototype: 'Prototype cục bộ · không kết nối media', language: 'Ngôn ngữ',
-  groupChat: 'Chat nhóm', groupCall: 'Call nhóm', groupVideo: 'Video nhóm', groupRadio: 'Radio nhóm',
+  groupChat: 'Chat nhóm', chatTranslation: 'Dịch Chat', groupCall: 'Call nhóm', groupVideo: 'Video nhóm', groupRadio: 'Radio/PTT', radioTranslation: 'Dịch Radio',
   rooms: 'Không gian nhóm', workspace: 'Điều phối vận hành', groupName: 'Kho vận miền Nam', members: '8 thành viên', online: '5 đang online',
   searchRoom: 'Tìm không gian nhóm', channelMain: 'Kênh điều phối chính', channelOps: 'Vận hành giao nhận', channelPartner: 'Đối tác Đài Loan',
   pinned: 'Tin nhắn đã ghim', pinnedText: 'Mọi cập nhật giao hàng cần ghi rõ mã chuyến và cửa nhận.',
@@ -12,7 +12,7 @@ const vi = {
   messageOne: 'Xe số 3 đã tới cửa số 2. Tôi đang bàn giao chứng từ.', messageOneTranslated: '3 號車已抵達 2 號門，我正在交接文件。',
   messageTwo: 'Đã nhận. Tôi điều phối kho và báo lại trong 5 phút.', messageTwoTranslated: '收到。我會協調倉庫，並在 5 分鐘內回覆。',
   messageThree: 'Cửa số 2 đã sẵn sàng. Tôi đã cập nhật bảng giao ca.', messageThreeTranslated: '2 號門已準備完成，我已更新交班表。',
-  original: 'Nguyên bản', translated: 'Bản dịch', final: 'FINAL', partial: 'PARTIAL',
+  original: 'Nguyên bản', translated: 'Bản dịch', final: 'FINAL', partial: 'PARTIAL', chatTranslationLinked: 'Bản dịch được liên kết với tin nhắn gốc',
   participants: 'Thành viên', roles: 'Vai trò và hiện diện', owner: 'Chủ phòng', moderator: 'Điều phối viên', member: 'Thành viên', guest: 'Khách',
   connected: 'Đã kết nối', ready: 'Sẵn sàng', speaking: 'Đang nói', invited: 'Đã mời',
   incomingAudio: 'Cuộc gọi âm thanh nhóm đến', invitedBy: 'Phúc mời bạn vào phòng Kho vận miền Nam',
@@ -47,13 +47,13 @@ const vi = {
   routeSelected: 'Đã chọn tuyến âm thanh cục bộ', deviceNotice: 'Đã chọn tai nghe (mô phỏng)',
   headset: 'Tai nghe Bluetooth', outputDevice: 'Thiết bị phát', networkGood: 'Mạng ổn định',
   noBackend: 'Control chỉ đổi state cục bộ; không gọi API, LiveKit, OpenAI, mic, camera, STT hoặc TTS.',
-  refresh: 'Làm mới', close: 'Đóng', on: 'Bật', off: 'Tắt', status: 'Trạng thái',
+  refresh: 'Làm mới', close: 'Đóng', on: 'Bật', off: 'Tắt', status: 'Trạng thái', stoppingBurst: 'Đang dừng lượt nói', releasingFloor: 'Đang trả quyền nói trước khi xử lý bản dịch.', radioDisconnected: 'Radio đã ngắt kết nối', radioReconnectNote: 'Kết nối lại chế độ nghe trước khi xin quyền nói.',
 };
 
 const en = {
   appName: 'AI-COMMUNICATION', nativeGroupApp: 'Native Group application', sessionFrom: 'Signed-in session from Timeblock',
   designCandidate: 'DESIGN V3 · REVIEW CANDIDATE', localPrototype: 'Local prototype · media disconnected', language: 'Language',
-  groupChat: 'Group Chat', groupCall: 'Group Call', groupVideo: 'Group Video', groupRadio: 'Group Radio',
+  groupChat: 'Group Chat', chatTranslation: 'Chat Translation', groupCall: 'Group Call', groupVideo: 'Group Video', groupRadio: 'Radio/PTT', radioTranslation: 'Radio Translation',
   rooms: 'Group spaces', workspace: 'Operations coordination', groupName: 'Southern Logistics', members: '8 members', online: '5 online',
   searchRoom: 'Search group spaces', channelMain: 'Main dispatch channel', channelOps: 'Delivery operations', channelPartner: 'Taiwan partners',
   pinned: 'Pinned message', pinnedText: 'Every delivery update must include the trip code and receiving gate.',
@@ -61,7 +61,7 @@ const en = {
   messageOne: 'Truck 3 has reached gate 2. I am handing over the documents.', messageOneTranslated: '3 號車已抵達 2 號門，我正在交接文件。',
   messageTwo: 'Received. I will coordinate the warehouse and update you in 5 minutes.', messageTwoTranslated: '收到。我會協調倉庫，並在 5 分鐘內回覆。',
   messageThree: 'Gate 2 is ready. I updated the shift handover board.', messageThreeTranslated: '2 號門已準備完成，我已更新交班表。',
-  original: 'Original', translated: 'Translation', final: 'FINAL', partial: 'PARTIAL',
+  original: 'Original', translated: 'Translation', final: 'FINAL', partial: 'PARTIAL', chatTranslationLinked: 'Translation linked to the original message',
   participants: 'Participants', roles: 'Roles and presence', owner: 'Room owner', moderator: 'Moderator', member: 'Member', guest: 'Guest',
   connected: 'Connected', ready: 'Ready', speaking: 'Speaking', invited: 'Invited',
   incomingAudio: 'Incoming group audio call', invitedBy: 'Phúc invited you to Southern Logistics',
@@ -96,13 +96,13 @@ const en = {
   routeSelected: 'Local audio route selected', deviceNotice: 'Headphones selected (mock)',
   headset: 'Bluetooth headset', outputDevice: 'Audio output', networkGood: 'Network stable',
   noBackend: 'Controls only change local state; no API, LiveKit, OpenAI, microphone, camera, STT or TTS.',
-  refresh: 'Refresh', close: 'Close', on: 'On', off: 'Off', status: 'Status',
+  refresh: 'Refresh', close: 'Close', on: 'On', off: 'Off', status: 'Status', stoppingBurst: 'Stopping burst', releasingFloor: 'Releasing the floor before translation processing.', radioDisconnected: 'Radio disconnected', radioReconnectNote: 'Reconnect in listen mode before requesting the floor.',
 };
 
 const zhTW = {
   appName: 'AI-COMMUNICATION', nativeGroupApp: '原生群組應用程式', sessionFrom: '登入工作階段來自 Timeblock',
   designCandidate: 'DESIGN V3 · 審核候選', localPrototype: '本機原型 · 未連接媒體', language: '語言',
-  groupChat: '群組聊天', groupCall: '群組通話', groupVideo: '群組視訊', groupRadio: '群組 Radio',
+  groupChat: '群組聊天', chatTranslation: '聊天翻譯', groupCall: '群組通話', groupVideo: '群組視訊', groupRadio: 'Radio/PTT', radioTranslation: 'Radio 翻譯',
   rooms: '群組空間', workspace: '營運協調', groupName: '南部物流', members: '8 位成員', online: '5 人在線',
   searchRoom: '搜尋群組空間', channelMain: '主要調度頻道', channelOps: '配送營運', channelPartner: '台灣合作夥伴',
   pinned: '置頂訊息', pinnedText: '每次配送更新都必須包含車次代碼與收貨門。',
@@ -110,7 +110,7 @@ const zhTW = {
   messageOne: '3 號車已抵達 2 號門，我正在交接文件。', messageOneTranslated: 'Xe số 3 đã tới cửa số 2. Tôi đang bàn giao chứng từ.',
   messageTwo: '收到。我會協調倉庫，並在 5 分鐘內回覆。', messageTwoTranslated: 'Đã nhận. Tôi điều phối kho và báo lại trong 5 phút.',
   messageThree: '2 號門已準備完成，我已更新交班表。', messageThreeTranslated: 'Cửa số 2 đã sẵn sàng. Tôi đã cập nhật bảng giao ca.',
-  original: '原文', translated: '翻譯', final: 'FINAL', partial: 'PARTIAL',
+  original: '原文', translated: '翻譯', final: 'FINAL', partial: 'PARTIAL', chatTranslationLinked: '翻譯已連結至原始訊息',
   participants: '成員', roles: '角色與在線狀態', owner: '房主', moderator: '協調員', member: '成員', guest: '訪客',
   connected: '已連線', ready: '就緒', speaking: '正在發言', invited: '已邀請',
   incomingAudio: '群組語音來電', invitedBy: 'Phúc 邀請你加入南部物流',
@@ -145,7 +145,7 @@ const zhTW = {
   routeSelected: '已選擇本機音訊路由', deviceNotice: '已選擇耳機（模擬）',
   headset: 'Bluetooth 耳機', outputDevice: '音訊輸出', networkGood: '網路穩定',
   noBackend: '控制項只會變更本機狀態；不呼叫 API、LiveKit、OpenAI、麥克風、相機、STT 或 TTS。',
-  refresh: '重新整理', close: '關閉', on: '開啟', off: '關閉', status: '狀態',
+  refresh: '重新整理', close: '關閉', on: '開啟', off: '關閉', status: '狀態', stoppingBurst: '正在停止發言', releasingFloor: '先釋放發言權，再處理翻譯。', radioDisconnected: 'Radio 已中斷連線', radioReconnectNote: '請先重新連線至聆聽模式，再請求發言權。',
 };
 
 const screenLabelsVi = [

@@ -142,7 +142,10 @@ app.state.group_radio_service.create_session(
 )
 @app.get("/__qa__/group-v3", include_in_schema=False)
 async def enter_local_group_qa(
-    surface: str = Query(default="chat", pattern="^(chat|call|video|radio|plugin)$"),
+    surface: str = Query(
+        default="chat",
+        pattern="^(chat|chat-translation|call|video|radio|radio-translation|plugin)$",
+    ),
     lang: str = Query(default="vi", pattern="^(vi|en|zh-TW)$"),
     identity: str = Query(default="owner", pattern="^(owner|invitee)$"),
 ):
@@ -165,7 +168,7 @@ async def enter_local_group_qa(
         entitlement=session_entitlement,
     )
     response = RedirectResponse(
-        f"/communication?surface={surface}&lang={lang}", status_code=303
+        f"/group/{surface}?lang={lang}", status_code=303
     )
     response.set_cookie(
         settings.guilua_session_cookie,

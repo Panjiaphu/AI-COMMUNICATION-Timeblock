@@ -92,18 +92,30 @@ class GroupTranslationService:
 
     def get_profile(self, actor: GroupActor, space_id: str) -> dict:
         with self.database.session() as db:
-            membership = self._membership(db, space_id, actor)
-            profile = db.scalar(select(GroupLanguageProfile).where(GroupLanguageProfile.space_id == space_id, GroupLanguageProfile.membership_id == membership.id))
-            if not profile:
-                return {
-                    "spoken_language": "vi",
-                    "preferred_output_language": actor.locale,
-                    "auto_translate_enabled": True,
-                    "auto_read_enabled": False,
-                    "show_original_enabled": True,
-                    "updated_at": None,
-                }
-            return self._profile_payload(profile)
+            with db.begin():
+                membership = self._membership(db, space_id, actor)
+                profile = db.scalar(select(GroupLanguageProfile).where(GroupLanguageProfile.space_id == space_id, GroupLanguageProfile.membership_id == membership.id))
+                if not profile:
+                    profile = GroupLanguageProfile(
+                        id=str(uuid4()),
+                        space_id=space_id,
+                        membership_id=membership.id,
+                        spoken_language=actor.locale,
+                        preferred_output_language=actor.locale,
+                        auto_translate_enabled=1,
+                        auto_read_enabled=0,
+                        show_original_enabled=1,
+                    )
+                    db.add(profile)
+                    self._audit(
+                        db,
+                        actor,
+                        space_id,
+                        "translation.profile_initialized",
+                        "language_profile",
+                        profile.id,
+                    )
+                return self._profile_payload(profile)
 
     def update_profile(self, actor: GroupActor, space_id: str, values: dict) -> dict:
         with self.database.session() as db:
@@ -219,8 +231,7 @@ class GroupTranslationService:
                 ledger = self._sync_ledger(db, actor, media_kind)
                 return self._quota_payload(ledger)
 
-    @staticmethod
-    def _require_media_runtime(db, actor: GroupActor, space_id: str, runtime_kind: str, runtime_id: str):
+    def _require_media_runtime(self, db, actor: GroupActor, space_id: str, runtime_kind: str, runtime_id: str):
         if runtime_kind == "radio":
             burst = db.get(GroupRadioBurst, runtime_id)
             if not burst or burst.space_id != space_id or burst.state not in {"finalizing", "final"}:
@@ -240,7 +251,7 @@ class GroupTranslationService:
             if not participant or participant.membership_id != burst.speaker_membership_id:
                 raise GroupServiceError("group_translation_radio_speaker_required", 403)
             joined_membership_ids = list(db.scalars(select(GroupRadioParticipant.membership_id).where(GroupRadioParticipant.radio_session_id == radio_session.id, GroupRadioParticipant.status == "joined")).all())
-            consented = set(db.scalars(select(GroupTranslationConsent.membership_id).where(GroupTranslationConsent.space_id == space_id, GroupTranslationConsent.membership_id.in_(joined_membership_ids), GroupTranslationConsent.status == "granted")).all())
+            consented = set(db.scalars(select(GroupTranslationConsent.membership_id).where(GroupTranslationConsent.space_id == space_id, GroupTranslationConsent.membership_id.in_(joined_membership_ids), GroupTranslationConsent.status == "granted", GroupTranslationConsent.policy_version == self.settings.group_translation_policy_version)).all())
             if len(consented) != len(set(joined_membership_ids)):
                 raise GroupServiceError("group_translation_all_participant_consent_required", 409)
             return burst, participant
@@ -262,7 +273,7 @@ class GroupTranslationService:
         if not participant:
             raise GroupServiceError("group_translation_participant_required", 403)
         joined_membership_ids = list(db.scalars(select(GroupMediaParticipant.membership_id).where(GroupMediaParticipant.session_id == session.id, GroupMediaParticipant.invite_status == "joined")).all())
-        consented = set(db.scalars(select(GroupTranslationConsent.membership_id).where(GroupTranslationConsent.space_id == space_id, GroupTranslationConsent.membership_id.in_(joined_membership_ids), GroupTranslationConsent.status == "granted")).all())
+        consented = set(db.scalars(select(GroupTranslationConsent.membership_id).where(GroupTranslationConsent.space_id == space_id, GroupTranslationConsent.membership_id.in_(joined_membership_ids), GroupTranslationConsent.status == "granted", GroupTranslationConsent.policy_version == self.settings.group_translation_policy_version)).all())
         if len(consented) != len(set(joined_membership_ids)):
             raise GroupServiceError("group_translation_all_participant_consent_required", 409)
         return session, participant
@@ -277,6 +288,29 @@ class GroupTranslationService:
                 ledger.updated_at = now
             reservation.status = "expired"
             reservation.settled_at = now
+            if reservation.runtime_kind == "radio":
+                burst = db.get(GroupRadioBurst, reservation.runtime_id)
+                if burst and burst.state == "finalizing":
+                    burst.state = "final"
+                    burst.stop_reason = "translation_expired"
+                    burst.finalized_at = now
+                    burst.updated_at = now
+                processing = db.scalar(
+                    select(GroupRadioProcessingJob).where(
+                        GroupRadioProcessingJob.burst_id == reservation.runtime_id
+                    )
+                )
+                if processing and processing.status in {"ready", "processing"}:
+                    processing.status = "failed"
+                    processing.failure_code = "translation_reservation_expired"
+                    processing.updated_at = now
+
+    def reconcile_expired(self) -> None:
+        if not self.settings.group_translation_enabled:
+            return
+        with self.database.session() as db:
+            with db.begin():
+                self._release_expired(db)
 
     def reserve(
         self,
@@ -351,10 +385,14 @@ class GroupTranslationService:
                     ledger.updated_at = _now()
                     if values["runtime_kind"] == "radio":
                         processing = db.scalar(select(GroupRadioProcessingJob).where(GroupRadioProcessingJob.burst_id == runtime.id).with_for_update())
-                        if not processing or processing.status not in {"ready", "processing"}:
+                        if not processing or processing.status not in {"ready", "processing", "failed", "completed"}:
                             raise GroupServiceError("group_radio_processing_not_ready", 409)
                         processing.status = "processing"
+                        processing.failure_code = ""
                         processing.updated_at = _now()
+                        runtime.state = "finalizing"
+                        runtime.finalized_at = None
+                        runtime.updated_at = _now()
                     self._audit(db, actor, space_id, "translation.reserved", "translation_reservation", reservation.id, {"runtime_kind": reservation.runtime_kind, "target_language": reservation.target_language, "target_seconds": seconds})
                     db.flush()
                     return {
@@ -389,6 +427,22 @@ class GroupTranslationService:
                     ledger.updated_at = _now()
                     reservation.status = "released"
                     reservation.settled_at = _now()
+                    if reservation.runtime_kind == "radio":
+                        burst = db.get(GroupRadioBurst, reservation.runtime_id)
+                        if burst and burst.state == "finalizing":
+                            burst.state = "final"
+                            burst.stop_reason = reason[:40]
+                            burst.finalized_at = _now()
+                            burst.updated_at = _now()
+                        processing = db.scalar(
+                            select(GroupRadioProcessingJob).where(
+                                GroupRadioProcessingJob.burst_id == reservation.runtime_id
+                            )
+                        )
+                        if processing and processing.status in {"ready", "processing"}:
+                            processing.status = "failed"
+                            processing.failure_code = reason[:80]
+                            processing.updated_at = _now()
                     self._audit(db, actor, space_id, "translation.released", "translation_reservation", reservation.id, {"reason": reason[:80]})
                 return {"reservation_id": reservation.id, "status": reservation.status, "quota": self._quota_payload(ledger)}
 
@@ -469,6 +523,7 @@ class GroupTranslationService:
                                 GroupLanguageProfile.auto_read_enabled == 1,
                                 GroupTranslationConsent.space_id == space_id,
                                 GroupTranslationConsent.status == "granted",
+                                GroupTranslationConsent.policy_version == self.settings.group_translation_policy_version,
                             )
                         ).all()
                     )

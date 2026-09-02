@@ -28,11 +28,9 @@
   grid-row: 1;
 }
 
-/* Group ownership is native to AI-COMMUNICATION V3 and is entered only from
- * the authenticated Timeblock launcher. The source-locked Direct Assistant
- * shell must not expose its mirrored Timeblock Group launcher. */
-#assistant-panel-messages [data-communication-tab="groups"],
-#assistant-panel-messages [data-communication-panel="groups"],
+/* Group ownership is native to AI-COMMUNICATION V3. The source-locked shell
+ * supplies the visible tab and cards; the Guilua adapter routes them to the
+ * native /group workspace without mixing the Direct 1:1 runtime. */
 #assistant-panel-messages [data-group-context-toolbar],
 #assistant-panel-messages [data-group-detail-panel] {
   display: none !important;

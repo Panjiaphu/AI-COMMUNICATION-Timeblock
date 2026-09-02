@@ -9,7 +9,7 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from app.core.config import Settings
 
 
-GROUP_V3_SCHEMA_REVISION = "20260901_0017"
+GROUP_V3_SCHEMA_REVISION = "20260902_0018"
 
 
 class Base(DeclarativeBase):

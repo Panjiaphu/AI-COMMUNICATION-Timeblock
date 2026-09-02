@@ -12,9 +12,13 @@
     runtimeConfig = {};
   }
 
-  var SURFACES = ["chat", "call", "video", "radio", "plugin"];
+  var SURFACES = ["chat", "call", "video", "radio", "chat-translation", "radio-translation", "plugin"];
   var LANGUAGES = ["vi", "en", "zh-TW"];
-  var POLICY_VERSION = "group-v3-2026-08-31";
+  var POLICY_VERSION = runtimeConfig.group_translation_policy_version || "";
+  function normalizeSurface(value) {
+    if (value === "plugin") return "chat-translation";
+    return SURFACES.indexOf(value) >= 0 ? value : "";
+  }
   var ICONS = {
     "message-circle": '<path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/>',
     users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
@@ -23,6 +27,7 @@
     "radio-tower": '<path d="M4.9 16.1C1 12.2 1 5.8 4.9 1.9"/><path d="M7.8 4.7a6.14 6.14 0 0 0-.8 7.5"/><circle cx="12" cy="9" r="2"/><path d="M16.2 4.8c2 2 2.26 5.11.8 7.47"/><path d="M19.1 1.9a9.96 9.96 0 0 1 0 14.1"/><path d="M9.5 18h5"/><path d="m8 22 4-11 4 11"/>',
     mic: '<path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/>',
     languages: '<path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/>',
+    globe: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
     pin: '<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
     paperclip: '<path d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551"/>',
     send: '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
@@ -35,7 +40,7 @@
   var state = {
     status: "WAITING",
     locale: LANGUAGES.indexOf(runtimeConfig.locale) >= 0 ? runtimeConfig.locale : "vi",
-    surface: SURFACES.indexOf(runtimeConfig.initial_surface) >= 0 ? runtimeConfig.initial_surface : "chat",
+    surface: normalizeSurface(runtimeConfig.initial_surface) || "chat",
     previousSurface: "chat",
     mobile: window.matchMedia("(max-width: 640px)").matches,
     context: null,
@@ -45,6 +50,7 @@
     space: null,
     members: [],
     messages: [],
+    chatTranslations: {},
     pins: [],
     profile: null,
     consent: null,
@@ -54,6 +60,7 @@
     radioFloor: null,
     burst: null,
     floorToken: "",
+    radioStopping: false,
     pendingAttachment: null,
     creatingSpace: false,
     busy: false,
@@ -69,6 +76,11 @@
   var heartbeatTimer = 0;
   var toastTimer = 0;
   var refreshQueued = false;
+  var groupEventSource = null;
+  var groupEventRefreshTimer = 0;
+  var chatTranslationSweep = false;
+  var chatTranslationInflight = new Set();
+  var chatTranslationFailures = new Map();
 
   function t(key) {
     return window.GroupV3I18n.translator(state.locale)(key);
@@ -230,7 +242,9 @@
     state.context = payload;
     state.directAvailable = Boolean(payload.direct_available);
     state.groupAuthorized = Boolean(payload.group_authorized);
-    state.surface = SURFACES.indexOf(payload.surface) >= 0 ? payload.surface : state.surface;
+    if (!normalizeSurface(runtimeConfig.initial_surface) && normalizeSurface(payload.surface)) {
+      state.surface = normalizeSurface(payload.surface);
+    }
     if (LANGUAGES.indexOf(payload.principal && payload.principal.locale) >= 0) state.locale = payload.principal.locale;
     document.documentElement.lang = state.locale;
     state.status = state.groupAuthorized ? "READY" : "HANDOFF_REQUIRED";
@@ -245,9 +259,12 @@
       || null;
     if (state.space) {
       await loadSpace();
+      connectGroupEvents();
     } else {
+      closeGroupEvents();
       state.members = [];
       state.messages = [];
+      state.chatTranslations = {};
       state.pins = [];
       state.mediaSession = null;
       state.radioSession = null;
@@ -263,7 +280,8 @@
       api("/api/group/spaces/" + id + "/pins"),
       optional("/api/group/spaces/" + id + "/translation/profile", { profile: null }),
       optional("/api/group/spaces/" + id + "/translation/consent", { consent: null }),
-      optional("/api/group/spaces/" + id + "/translation/history?limit=50", { events: [] })
+      optional("/api/group/spaces/" + id + "/translation/history?limit=50", { events: [] }),
+      optional("/api/group/spaces/" + id + "/translation/chat-history?limit=100", { translations: [] })
     ]);
     state.members = results[0].memberships || [];
     state.messages = results[1].messages || [];
@@ -277,8 +295,54 @@
     };
     state.consent = results[4].consent || null;
     state.translations = results[5].events || [];
+    state.chatTranslations = {};
+    (results[6].translations || []).forEach(function (item) {
+      state.chatTranslations[item.message_id] = item;
+    });
     if (state.surface === "call" || state.surface === "video") await loadMediaSessions();
     if (state.surface === "radio") await loadRadioSession();
+    window.setTimeout(translateMissingChatMessages, 0);
+  }
+
+  async function translateMissingChatMessages() {
+    if (chatTranslationSweep || !state.space || !state.profile || ["chat", "chat-translation"].indexOf(state.surface) < 0) return;
+    if (!state.profile.auto_translate_enabled || !state.consent || state.consent.status !== "granted") return;
+    var targetLanguage = state.profile.preferred_output_language;
+    var candidates = state.messages.filter(function (message) {
+      var failedAt = chatTranslationFailures.get(message.id) || 0;
+      return message.content_type === "text"
+        && message.source_language
+        && message.source_language !== targetLanguage
+        && !state.chatTranslations[message.id]
+        && !chatTranslationInflight.has(message.id)
+        && Date.now() - failedAt > 30000;
+    }).slice(-12);
+    if (!candidates.length) return;
+    chatTranslationSweep = true;
+    try {
+      for (var index = 0; index < candidates.length; index += 1) {
+        var message = candidates[index];
+        if (!state.space || state.chatTranslations[message.id]) continue;
+        chatTranslationInflight.add(message.id);
+        try {
+          var payload = await api(
+            "/api/group/spaces/" + encodeURIComponent(state.space.id) + "/messages/" +
+              encodeURIComponent(message.id) + "/translation",
+            { method: "POST", headers: { "Idempotency-Key": idempotencyKey() } }
+          );
+          if (payload.translation && payload.translation.state === "FINAL") {
+            state.chatTranslations[message.id] = payload.translation;
+            render();
+          }
+        } catch (_error) {
+          chatTranslationFailures.set(message.id, Date.now());
+        } finally {
+          chatTranslationInflight.delete(message.id);
+        }
+      }
+    } finally {
+      chatTranslationSweep = false;
+    }
   }
 
   async function loadMediaSessions() {
@@ -323,10 +387,11 @@
   function navigation() {
     var items = [
       ["chat", "message-circle", "groupChat"],
+      ["chat-translation", "languages", "chatTranslation"],
       ["call", "phone-call", "groupCall"],
       ["video", "video", "groupVideo"],
       ["radio", "radio-tower", "groupRadio"],
-      ["plugin", "languages", "translationPlugin"]
+      ["radio-translation", "globe", "radioTranslation"]
     ];
     var buttons = items.map(function (item) {
       return '<button type="button" data-action="surface" data-surface="' + item[0] + '" ' + (!state.groupAuthorized ? "disabled" : "") + ' class="' + (item[0] === state.surface ? "is-active" : "") + '">' +
@@ -337,6 +402,41 @@
       desktop: '<aside class="global-nav" aria-label="' + esc(t("roomNavigation")) + '"><div class="app-logo is-compact"><span class="app-logo-mark"><img src="/static/group-v3/timeblock-chat.svg" alt=""></span></div><nav>' + direct + buttons + '</nav><div class="identity-chip"><span>' + esc(initials(state.context && state.context.principal.display_name)) + "</span><i></i></div></aside>",
       mobile: '<nav class="mobile-bottom-nav" aria-label="' + esc(t("roomNavigation")) + '">' + direct + buttons + "</nav>"
     };
+  }
+
+  function closeGroupEvents() {
+    window.clearTimeout(groupEventRefreshTimer);
+    groupEventRefreshTimer = 0;
+    if (groupEventSource) groupEventSource.close();
+    groupEventSource = null;
+  }
+
+  function queueGroupEventRefresh(spaceId) {
+    if (!state.space || state.space.id !== spaceId || groupEventRefreshTimer) return;
+    groupEventRefreshTimer = window.setTimeout(async function () {
+      groupEventRefreshTimer = 0;
+      if (!state.space || state.space.id !== spaceId || state.busy) return;
+      try {
+        await loadSpace();
+        render();
+      } catch (_error) {}
+    }, 120);
+  }
+
+  function connectGroupEvents() {
+    closeGroupEvents();
+    if (!state.groupAuthorized || !state.space || !("EventSource" in window)) return;
+    var spaceId = state.space.id;
+    groupEventSource = new EventSource(
+      "/api/group/spaces/" + encodeURIComponent(spaceId) + "/events",
+      { withCredentials: true }
+    );
+    groupEventSource.addEventListener("group-change", function (event) {
+      try {
+        var payload = JSON.parse(event.data || "{}");
+        if (payload.space_id === spaceId) queueGroupEventRefresh(spaceId);
+      } catch (_error) {}
+    });
   }
 
   function handoffRequired() {
@@ -382,11 +482,18 @@
       return '<a class="attachment-chip" href="' + esc(item.download_url) + '" download>' + icon("paperclip", 14) + "<span>" + esc(item.name) + "</span></a>";
     }).join("");
     var time = message.created_at ? formatTime(message.created_at) : "";
+    var translation = state.chatTranslations[message.id];
+    var translated = translation && translation.state === "FINAL"
+      ? '<div class="translation-block"><div><span>' + esc(t("translated")) + " · " +
+        esc(translation.source_language) + " → " + esc(translation.target_language) + "</span>" +
+        badge(t("final"), "success") + "</div><strong>" + esc(translation.translated_text) +
+        "</strong><small>" + icon("languages", 13) + esc(t("chatTranslationLinked")) + "</small></div>"
+      : "";
     return '<article class="message-row ' + (mine ? "is-mine" : "") + '" data-message-id="' + esc(message.id) + '">' +
       (mine ? "" : avatar(message.sender && message.sender.display_name, "mint", "md", true)) +
       '<div class="message-bubble"><div class="message-meta"><strong>' + esc(mine ? t("currentUser") : message.sender && message.sender.display_name) +
       "</strong><span>" + esc(time) + "</span>" + (message.pinned ? badge(t("pinned"), "mint") : "") + "</div><p>" +
-      esc(message.content_type === "tombstone" ? "—" : message.content) + "</p>" + attachments +
+      esc(message.content_type === "tombstone" ? "—" : message.content) + "</p>" + attachments + translated +
       '<div class="message-actions"><button type="button" data-action="pin-message" data-id="' + esc(message.id) + '" data-pinned="' + Boolean(message.pinned) +
       '" aria-label="' + esc(message.pinned ? t("unpinMessage") : t("pinMessage")) + '">' + icon("pin", 15) + "</button></div></div></article>";
   }
@@ -497,11 +604,15 @@
   }
 
   function radioState() {
+    if (!state.radioSession) return "IDLE";
+    if (state.radioSession.status === "ended") return "ENDED";
+    if (state.radioStopping) return "STOPPING";
     if (state.deviceLost || state.burst && state.burst.state === "device_lost") return "DEVICE_LOST";
     if (state.burst && state.burst.state === "talking" && state.floorToken) return "TALKING";
     if (state.burst && state.burst.state === "finalizing") return "FINALIZING_BURST";
     if (state.burst && state.burst.state === "final") return "TRANSLATION_HISTORY";
     if (state.radioFloor) return "FLOOR_BUSY";
+    if (!state.mediaConnected) return "DISCONNECTED";
     return "READY";
   }
 
@@ -538,6 +649,8 @@
       badge("TALKING", "danger") + "<h1>" + esc(t("talkingNow")) + "</h1>" + wave(false) + '<div class="partial-transcript">' +
       badge(t("partial"), "warning") + "<p>" + esc(t("liveTranscript")) + "</p><small>" + esc(t("partialNotSaved")) +
       "</small></div>" + action("stop-radio", t("stopBurst"), "mic", "danger", 'class="ptt-main-button"') + "</div>";
+    if (current === "STOPPING") return '<div class="radio-primary-stage finalizing-stage">' +
+      badge("STOPPING", "warning") + "<h1>" + esc(t("stoppingBurst")) + "</h1><p>" + esc(t("releasingFloor")) + "</p></div>";
     if (current === "FINALIZING_BURST") return '<div class="radio-primary-stage finalizing-stage">' +
       badge("FINALIZING_BURST", "info") + "<h1>" + esc(t("finalizingBurst")) + "</h1><p>" + esc(t("finalizingNote")) +
       '</p><div class="sequence-list"><div class="sequence-step is-done"><span><i></i></span><strong>' + esc(t("floorReleased")) +
@@ -551,6 +664,11 @@
       esc(t("devicePrivacy")) + '</p><div class="audio-privacy-proof">' + icon("headphones", 20) + "<span><strong>" +
       esc(t("privateAudioSuppressed")) + "</strong><small>" + esc(t("deviceLostAction")) + "</small></span></div>" +
       action("reconnect-radio", t("reconnectDevice"), "refresh-cw", "primary") + "</div>";
+    if (current === "DISCONNECTED") return '<div class="radio-primary-stage device-lost-stage">' +
+      badge("DISCONNECTED", "warning") + "<h1>" + esc(t("radioDisconnected")) + "</h1><p>" +
+      esc(t("radioReconnectNote")) + "</p>" + action("reconnect-radio", t("reconnect"), "refresh-cw", "primary") + "</div>";
+    if (current === "ENDED") return '<div class="radio-primary-stage history-stage">' +
+      badge("ENDED", "muted") + "<h1>" + esc(t("endedForAll")) + "</h1></div>";
     if (current === "TRANSLATION_HISTORY") {
       var item = state.translations.find(function (event) { return event.runtime_kind === "radio"; }) || state.translations[0];
       return '<div class="radio-primary-stage history-stage">' + badge(t("final"), "success") + "<h1>" + esc(t("translationReady")) +
@@ -588,17 +706,38 @@
 
   function renderPlugin() {
     var profile = state.profile || {};
-    var history = state.translations.length ? state.translations.map(function (item) {
+    var chatMode = state.surface !== "radio-translation";
+    var chatItems = Object.keys(state.chatTranslations).map(function (key) {
+      return state.chatTranslations[key];
+    }).filter(function (item) { return item && item.state === "FINAL"; });
+    var chatHistory = chatItems.length ? chatItems.map(function (item) {
+      var message = state.messages.find(function (candidate) { return candidate.id === item.message_id; }) || {};
+      var sender = message.sender && message.sender.display_name || t("groupChat");
+      return "<article><div>" + avatar(sender, "mint", "md", true) + "<span><strong>" + esc(sender) +
+        "</strong><small>" + esc(item.source_language) + " → " + esc(item.target_language) + " · " +
+        esc(formatTime(item.final_at)) + "</small></span>" + badge(t("final"), "success") + "</div><p>" +
+        esc(message.content || "") + "</p><strong>" + esc(item.translated_text) + "</strong><small>" +
+        icon("languages", 13) + esc(t("chatTranslationLinked")) + "</small></article>";
+    }).join("") : '<article class="is-empty">' + esc(t("historyEmpty")) + "</article>";
+    var radioItems = state.translations.filter(function (item) {
+      return item.runtime_kind === "radio";
+    });
+    var radioHistory = radioItems.length ? radioItems.map(function (item) {
       return "<article><div>" + avatar(memberName(item.speaker_membership_id), "mint", "md", true) + "<span><strong>" +
         esc(memberName(item.speaker_membership_id)) + "</strong><small>" + esc(item.source_language) + " → " + esc(item.target_language) +
         " · " + esc(formatTime(item.final_at)) + "</small></span>" + badge(t("final"), "success") + "</div><p>" +
         esc(item.original_text) + "</p><strong>" + esc(item.translated_text) + "</strong><small>" + icon("headphones", 13) +
         esc(t("textBeforeAudio")) + "</small></article>";
     }).join("") : '<article class="is-empty">' + esc(t("historyEmpty")) + "</article>";
-    return '<div class="plugin-workspace surface-content"><div class="plugin-heading"><div><span>' + esc(t("translationPlugin")) +
+    var history = chatMode ? chatHistory : radioHistory;
+    return '<div class="plugin-workspace surface-content"><div class="plugin-heading"><div><span>' +
+      esc(t(chatMode ? "chatTranslation" : "radioTranslation")) +
       "</span><h1>" + esc(t("translationHistory")) + "</h1></div>" + badge("VI · EN · ZH-TW", "mint") +
-      '</div><div class="segmented-control"><button type="button" class="is-active">' + icon("history", 15) + esc(t("history")) +
-      '</button><button type="button">' + icon("languages", 15) + esc(t("settings")) + '</button></div><div class="history-list is-focused">' +
+      '</div><div class="segmented-control"><button type="button" data-action="surface" data-surface="chat-translation" class="' +
+      (chatMode ? "is-active" : "") + '">' + icon("languages", 15) + esc(t("chatTranslation")) +
+      '</button><button type="button" data-action="surface" data-surface="radio-translation" class="' +
+      (!chatMode ? "is-active" : "") + '">' + icon("globe", 15) + esc(t("radioTranslation")) +
+      '</button></div><div class="history-list is-focused">' +
       history + '</div><form class="settings-form" data-form="save-profile"><div class="settings-title">' + icon("languages", 17) +
       "<strong>" + esc(t("translationSettings")) + '</strong></div><label class="language-select"><span>' + esc(t("sourceLanguage")) +
       '</span><select name="spoken_language">' + languageOptions(profile.spoken_language || state.locale) +
@@ -687,12 +826,13 @@
   }
 
   function updateSurface(next) {
+    next = normalizeSurface(next);
     if (SURFACES.indexOf(next) < 0 || next === state.surface) return;
     if (state.floorToken) {
       notify(t("stopBurst"));
       return;
     }
-    if (next === "plugin") state.previousSurface = state.surface;
+    if (next === "chat-translation" || next === "radio-translation") state.previousSurface = state.surface;
     disconnectMedia(false);
     state.surface = next;
     state.mediaSession = null;
@@ -700,6 +840,9 @@
     state.radioFloor = null;
     state.burst = null;
     state.error = "";
+    if (window.location.pathname.indexOf("/group") === 0) {
+      window.history.pushState({ groupSurface: next }, "", "/group/" + encodeURIComponent(next));
+    }
     render();
     if (!state.space) return;
     setBusy(true);
@@ -760,6 +903,7 @@
         content: content || state.pendingAttachment.name,
         content_type: state.pendingAttachment ? "attachment" : "text",
         client_message_id: idempotencyKey(),
+        source_language: state.profile && state.profile.spoken_language || state.locale,
         reply_to_id: null,
         attachment_ids: state.pendingAttachment ? [state.pendingAttachment.id] : []
       };
@@ -837,6 +981,7 @@
       }));
       state.profile = payload.profile;
       notify(t("profileSavedReal"));
+      await loadSpace();
       render();
       if (state.profile.auto_read_enabled) processTtsJobs();
     } catch (error) {
@@ -855,6 +1000,7 @@
       state.consent = payload.consent;
       notify(granted ? t("consentGranted") : t("off"));
       render();
+      if (granted) window.setTimeout(translateMissingChatMessages, 0);
     } catch (error) {
       notify(publicError(error));
     }
@@ -987,6 +1133,7 @@
       await connectRadio("talk");
       startHeartbeat();
     } catch (error) {
+      if (state.floorToken) await radioDeviceLost();
       await loadRadioSession();
       render();
       notify(publicError(error));
@@ -1005,6 +1152,8 @@
           window.clearInterval(heartbeatTimer);
           await disconnectMedia(false);
           render();
+          window.dispatchEvent(new CustomEvent("group-v3:radio-stopped", { detail: { burst_id: state.burst.id } }));
+          await connectRadio("listen").catch(function () {});
         }
       } catch (_error) {
         await radioDeviceLost();
@@ -1017,9 +1166,12 @@
     window.clearInterval(heartbeatTimer);
     if (localStream) localStream.getAudioTracks().forEach(function (track) { track.enabled = false; });
     var token = state.floorToken;
+    state.radioStopping = true;
+    render();
     try {
       var payload = await api(radioBase() + "/floor/stop", json("POST", { floor_token: token }));
       state.floorToken = "";
+      state.radioStopping = false;
       state.radioFloor = null;
       state.burst = payload.burst;
       await disconnectMedia(false);
@@ -1028,6 +1180,8 @@
       await connectRadio("listen");
       notify(t("floorReleasedFirst"));
     } catch (error) {
+      state.radioStopping = false;
+      if (state.floorToken) await radioDeviceLost();
       notify(publicError(error));
     }
   }
@@ -1049,6 +1203,7 @@
       state.burst = { state: "device_lost" };
     }
     state.deviceLost = true;
+    window.dispatchEvent(new CustomEvent("group-v3:radio-device-lost", { detail: { burst_id: state.burst && state.burst.id || "" } }));
     await disconnectMedia(false);
     render();
   }
@@ -1087,7 +1242,7 @@
       return;
     }
     if (name === "refresh") return refreshAll();
-    if (name === "plugin") return updateSurface("plugin");
+    if (name === "plugin") return updateSurface("chat-translation");
     if (name === "pin-message") return pinMessage(button);
     if (name === "toggle-auto-translate") {
       state.profile.auto_translate_enabled = !state.profile.auto_translate_enabled;
@@ -1333,7 +1488,18 @@
       return;
     }
     state.context = null;
-    state.surface = SURFACES.indexOf(handoff.surface) >= 0 ? handoff.surface : state.surface;
+    state.surface = normalizeSurface(handoff.surface) || state.surface;
+    refreshAll();
+  });
+
+  window.addEventListener("popstate", function () {
+    var match = window.location.pathname.match(/^\/group\/([^/]+)$/);
+    var next = "";
+    try {
+      next = normalizeSurface(match ? decodeURIComponent(match[1]) : "chat");
+    } catch (_error) {}
+    if (!next || next === state.surface) return;
+    state.surface = next;
     refreshAll();
   });
 
@@ -1371,6 +1537,7 @@
 
   window.addEventListener("pagehide", function () {
     window.clearInterval(heartbeatTimer);
+    closeGroupEvents();
     if (state.floorToken && state.radioSession && state.space) {
       window.fetch(radioBase() + "/floor/device-lost", {
         method: "POST",
@@ -1408,6 +1575,7 @@
           };
         }),
         burst_id: state.burst && state.burst.id || "",
+        radio_target_languages: state.burst && state.burst.target_languages || [],
         device_lost: state.deviceLost
       };
     },
