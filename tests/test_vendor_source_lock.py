@@ -12,7 +12,7 @@ from scripts.sync_timeblock_assistant_ui import git_blob
 ROOT = Path(__file__).resolve().parents[1]
 ASSISTANT_VENDOR = ROOT / "vendor/timeblock-assistant"
 LOCK_PATH = ASSISTANT_VENDOR / "SOURCE_LOCK.json"
-SOURCE_SHA = "db955f98a37871f4e399f2d2f4adc092fe9d55fb"
+SOURCE_SHA = "3d80947b5fd294607831ce242a937293fbef1852"
 
 
 def _lock() -> dict[str, Any]:
@@ -55,22 +55,22 @@ def test_assistant_lock_is_exactly_pinned_to_the_target_timeblock_source():
     assert lock["source_repo"] == "Panjiaphu/fumap-bot-life"
     assert lock["source_sha"] == SOURCE_SHA
     assert lock["source_checkout_head"] == SOURCE_SHA
-    assert lock["sync_version"] == 3
+    assert lock["sync_version"] == 4
     assert lock["generated_from_local_checkout"] is True
     assert lock["source_extraction"] == {
         "mode": "git_object_database",
         "working_tree_filters_applied": False,
     }
     assert lock["runtime_network_source"] is False
-    assert len(lock["source_paths"]) == 217
-    assert len(set(lock["source_paths"])) == 217
-    assert len(lock["source_hashes"]) == 217
-    assert len(lock["destination_paths"]) == 217
-    assert len(lock["entries"]) == 426
-    assert len(lock["adaptation_class"]) == 426
+    assert len(lock["source_paths"]) == 219
+    assert len(set(lock["source_paths"])) == 219
+    assert len(lock["source_hashes"]) == 219
+    assert len(lock["destination_paths"]) == 219
+    assert len(lock["entries"]) == 430
+    assert len(lock["adaptation_class"]) == 430
 
 
-def test_all_424_locked_destinations_are_exact_hash_matches():
+def test_all_430_locked_destinations_are_exact_hash_matches():
     lock = _lock()
     source_paths = set(lock["source_paths"])
     destination_paths: set[str] = set()
@@ -94,7 +94,7 @@ def test_all_424_locked_destinations_are_exact_hash_matches():
         assert destination.is_file(), destination_path
         assert _sha256(destination) == entry["source_sha256"], destination_path
 
-    assert len(destination_paths) == 426
+    assert len(destination_paths) == 430
 
 
 def test_every_source_has_an_exact_vendor_mirror_and_required_runtime_copy():
@@ -144,11 +144,13 @@ def test_template_inheritance_and_asset_load_graph_are_locked_and_present():
     runtime_assets = _all_runtime_assets(lock)
     assert {
         "static/css/assistant.css",
+        "static/css/assistant_mobile_conversation_v1.css",
         "static/css/timeblock_v2.css",
         "static/css/call_workspace.css",
         "static/css/call_translation_plugin.css",
         "static/css/app_settings.css",
         "static/js/call-v1/bootstrap.js",
+        "static/js/assistant_mobile_conversation_v1.js",
         "static/js/incoming_call_ringtone.js",
         "static/js/app_settings.js",
         "static/i18n/messaging_ux_v1.json",

@@ -1355,17 +1355,19 @@
 }
 
 .market-symbol-selector {
-  grid-template-columns: repeat(4, minmax(220px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   max-height: 280px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding-right: 4px;
 }
 
 .market-symbol-chip {
   display: grid;
-  grid-template-columns: minmax(88px, 0.9fr) minmax(92px, 1fr) auto;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.9fr) minmax(0, 1.05fr);
   gap: 10px;
   align-items: center;
+  min-width: 0;
   min-height: 54px;
   border: 1px solid rgba(24, 31, 42, 0.1);
   border-radius: 8px;
@@ -1375,6 +1377,24 @@
   text-align: left;
   cursor: pointer;
   text-decoration: none;
+}
+
+.market-symbol-chip > span,
+.market-symbol-chip > strong,
+.market-symbol-chip > small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.market-symbol-chip > strong {
+  text-align: right;
+}
+
+.market-symbol-chip > small {
+  justify-self: stretch;
+  text-align: right;
 }
 
 .market-symbol-chip-source {
@@ -1399,6 +1419,11 @@
 .market-symbol-chip small {
   justify-self: end;
   font-weight: 900;
+}
+
+.market-symbol-chip-source > small {
+  justify-self: stretch;
+  font-size: 0.7rem;
 }
 
 .signal-table-wrap {
@@ -1844,7 +1869,7 @@
   }
 
   .market-symbol-chip {
-    grid-template-columns: minmax(76px, 0.8fr) minmax(88px, 1fr) auto;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.9fr) minmax(0, 1.05fr);
     padding: 9px 10px;
   }
 
@@ -2030,17 +2055,18 @@
   }
 
   .market-symbol-selector {
-    display: flex;
-    max-height: none;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 0 0 6px;
-    scroll-snap-type: x proximity;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    max-height: min(52vh, 420px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 0 4px 6px 0;
+    scroll-snap-type: none;
   }
 
   .market-symbol-chip {
-    min-width: min(82vw, 286px);
-    scroll-snap-align: start;
+    min-width: 0;
+    scroll-snap-align: none;
   }
 }
 

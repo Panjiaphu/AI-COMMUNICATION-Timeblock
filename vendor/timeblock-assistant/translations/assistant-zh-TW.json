@@ -159,6 +159,7 @@
   "assistant.communication.group_call": "群組通話",
   "assistant.communication.group_video": "群組視訊",
   "assistant.communication.group_radio": "群組 Radio",
+  "assistant.communication.group_plugin": "群組外掛程式",
   "assistant.communication.group_launch": "開啟",
   "assistant.communication.group_launching": "正在開啟安全工作階段…",
   "assistant.communication.group_launch_error": "無法開啟群組工作階段，請再試一次。",

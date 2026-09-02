@@ -313,6 +313,8 @@
   "market.backtest.status.strong": "樣本偏強",
   "market.backtest.status.valid": "可用樣本",
   "market.backtest.status.weak": "樣本偏弱",
+  "market.backtest.status.pending": "等待歷史資料",
+  "market.backtest.window.90d": "90 天",
   "market.backtest.note.rsi": "檢查 RSI 是否位於可延續或反轉區。",
   "market.backtest.note.macd": "檢查 MACD 動能是否確認目前方向。",
   "market.backtest.note.ema": "檢查 EMA 20、50、100 的趨勢排列。",

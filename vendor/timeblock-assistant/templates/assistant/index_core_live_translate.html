@@ -17,6 +17,7 @@
   {% elif name == "video" %}<rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/>
   {% elif name == "video-off" %}<path d="M10.7 6H14a2 2 0 0 1 2 2v3m0 4v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1M16 10l5-3v10l-5-3M3 3l18 18"/>
   {% elif name == "users" %}<circle cx="9" cy="9" r="3"/><path d="M3 19c0-3 2.2-5 6-5s6 2 6 5M15.5 7.2a2.7 2.7 0 1 1 0 5.2M17 14c2.6.5 4 2.1 4 5"/>
+  {% elif name == "external-link" %}<path d="M14 5h5v5M19 5l-8 8"/><path d="M19 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>
   {% elif name == "radio" %}<circle cx="12" cy="12" r="2.5"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.8 4.8a10 10 0 0 0 0 14.4M19.2 4.8a10 10 0 0 1 0 14.4"/>
   {% elif name == "minimize" %}<path d="M5 12h14"/>
   {% elif name == "maximize" %}<path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/>
@@ -33,7 +34,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css', v='call-v1-hotfix-20260820b') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/live_translate.css', v='live-translate-v1-20260822') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_core_v2.css', v='uiux-20260729') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/group_launcher_v3.css', v='group-v3-p9') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/group_launcher_v3.css', v='group-v3-p13') }}">
   {% if config.MESSAGING_ADVANCED_ATTACHMENTS_ENABLED %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_composer_attachments_v2.css', v='uiux-20260729') }}" data-messaging-composer-attachments-v2>
   {% endif %}
@@ -298,28 +299,6 @@
   data-copy-call-event-missed="{{ t('assistant.call.event_missed') }}"
   data-copy-call-audio="{{ t('assistant.call.audio') }}"
   data-copy-call-video="{{ t('assistant.call.video') }}"
-  data-copy-group-created="{{ t('assistant.communication.group_created') }}"
-  data-copy-group="{{ t('assistant.communication.group') }}"
-  data-copy-group-members-count="{{ t('assistant.communication.group_members_count') }}"
-  data-copy-group-connections-required="{{ t('assistant.communication.group_connections_required') }}"
-  data-copy-group-empty="{{ t('assistant.communication.group_empty') }}"
-  data-copy-group-open="{{ t('assistant.communication.group_open') }}"
-  data-copy-group-contract="{{ t('assistant.communication.group_contract') }}"
-  data-copy-group-secure="{{ t('assistant.communication.group_secure') }}"
-  data-copy-group-selected="{{ t('assistant.communication.group_selected') }}"
-  data-copy-group-select-hint="{{ t('assistant.communication.group_select_hint') }}"
-  data-copy-group-selected-meta="{{ t('assistant.communication.group_selected_meta') }}"
-  data-copy-group-chat="{{ t('assistant.communication.group_chat') }}"
-  data-copy-group-call="{{ t('assistant.communication.group_call') }}"
-  data-copy-group-video="{{ t('assistant.communication.group_video') }}"
-  data-copy-group-radio="{{ t('assistant.communication.group_radio') }}"
-  data-copy-group-launch="{{ t('assistant.communication.group_launch') }}"
-  data-copy-group-launching="{{ t('assistant.communication.group_launching') }}"
-  data-copy-group-launch-error="{{ t('assistant.communication.group_launch_error') }}"
-  data-copy-group-radio-auth="{{ t('assistant.communication.group_radio_auth') }}"
-  data-copy-group-members-panel-empty="{{ t('assistant.communication.group_members_panel_empty') }}"
-  data-copy-group-members-panel-search-empty="{{ t('assistant.communication.group_members_panel_search_empty') }}"
-  data-copy-group-translation-pair="{{ t('assistant.communication.group_translation_pair') }}"
   data-copy-call-empty="{{ t('assistant.communication.call_empty') }}"
   data-copy-call-open="{{ t('assistant.communication.call_open') }}"
   data-copy-ptt-message="{{ t('assistant.communication.ptt_message') }}"
@@ -457,7 +436,7 @@
       <section class="assistant-mode-panel" id="assistant-panel-messages" role="tabpanel" data-mode-panel="messages">
         <nav class="assistant-communication-tabs" role="tablist" aria-label="{{ t('assistant.communication.title') }}">
           <button type="button" role="tab" aria-selected="true" class="is-active" data-communication-tab="conversations">{{ icon('message') }}<span>{{ t('assistant.communication.conversations') }}</span></button>
-          <button type="button" role="tab" aria-selected="false" data-communication-tab="groups">{{ icon('message') }}<span>{{ t('assistant.communication.groups') }}</span></button>
+          <button type="button" role="tab" aria-selected="false" data-communication-tab="groups">{{ icon('users') }}<span>{{ t('messaging.group.launcher_title') }}</span></button>
           <button type="button" role="tab" aria-selected="false" data-communication-tab="calls">{{ icon('phone') }}<span>{{ t('assistant.communication.calls') }}</span></button>
         </nav>
         <div class="assistant-messages-layout" data-messaging-layout>
@@ -667,17 +646,19 @@
             data-ready="{{ t('messaging.group.launcher_ready') }}"
             data-error="{{ t('messaging.group.launcher_error') }}"
             data-popup-blocked="{{ t('messaging.group.launcher_popup_blocked') }}"
+            data-handoff-failed="{{ t('messaging.group.launcher_handoff_failed') }}"
+            data-timeout="{{ t('messaging.group.launcher_timeout') }}"
             aria-labelledby="assistant-group-launcher-title">
             <div class="group-launcher-heading">
-              <span class="group-launcher-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg></span>
+              <span class="group-launcher-mark" aria-hidden="true">{{ icon('users') }}</span>
               <div><p class="eyebrow">{{ t('messaging.group.eyebrow') }}</p><h2 id="assistant-group-launcher-title">{{ t('messaging.group.launcher_title') }}</h2><p>{{ t('messaging.group.launcher_note') }}</p></div>
               <span class="group-launcher-badge">V3</span>
             </div>
             <div class="group-launcher-actions" aria-label="{{ t('messaging.group.launcher_title') }}">
-              <button type="button" data-group-launch="chat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/></svg><span>{{ t('messaging.group.chat') }}</span></button>
-              <button type="button" data-group-launch="call"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2a9 9 0 0 1 9 9"/><path d="M13 6a5 5 0 0 1 5 5"/><path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"/></svg><span>{{ t('messaging.group.call') }}</span></button>
-              <button type="button" data-group-launch="video"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span>{{ t('messaging.group.video') }}</span></button>
-              <button type="button" data-group-launch="radio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.9 16.1C1 12.2 1 5.8 4.9 1.9"/><path d="M7.8 4.7a6.14 6.14 0 0 0-.8 7.5"/><circle cx="12" cy="9" r="2"/><path d="M16.2 4.8c2 2 2.26 5.11.8 7.47"/><path d="M19.1 1.9a9.96 9.96 0 0 1 0 14.1"/><path d="M9.5 18h5"/><path d="m8 22 4-11 4 11"/></svg><span>{{ t('messaging.group.radio') }}</span></button>
+              <button type="button" data-group-launch>
+                <span class="group-launcher-action-leading">{{ icon('users') }}<span>{{ t('messaging.group.launcher_action') }}</span></span>
+                {{ icon('external-link') }}
+              </button>
             </div>
             <p class="group-launcher-status" data-group-launcher-status role="status" aria-live="polite"></p>
           </section>
@@ -893,8 +874,8 @@
   <script src="{{ url_for('static', filename='js/call-v1/translation_plugin.js', v='call-v1-ios-auto-read-20260826') }}" defer></script>
   <script src="{{ url_for('static', filename='js/call-v1/bootstrap.js', v='call-v1-hotfix-20260820b') }}" defer></script>
   <script src="{{ url_for('static', filename='js/live_translate.js', v='live-translate-v1-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/assistant.js', v='group-ownership-v3-p9') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/group_launcher_v3.js', v='group-v3-p9') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/assistant.js', v='group-ownership-v3-p10') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/group_launcher_v3.js', v='group-v3-p13') }}" defer></script>
   <script src="{{ url_for('static', filename='js/messaging_core_v2.js', v='uiux-20260729') }}" defer></script>
   {% if config.MESSAGING_ADVANCED_ATTACHMENTS_ENABLED %}
     <script src="{{ url_for('static', filename='js/messaging_composer_attachments_v2.js', v='uiux-20260729') }}" defer></script>

@@ -159,6 +159,7 @@
   "assistant.communication.group_call": "Group Call",
   "assistant.communication.group_video": "Group Video",
   "assistant.communication.group_radio": "Group Radio",
+  "assistant.communication.group_plugin": "Group Plugin",
   "assistant.communication.group_launch": "Open",
   "assistant.communication.group_launching": "Opening secure session…",
   "assistant.communication.group_launch_error": "Unable to open the group session. Try again.",

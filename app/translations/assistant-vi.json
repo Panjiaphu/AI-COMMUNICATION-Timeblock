@@ -159,6 +159,7 @@
   "assistant.communication.group_call": "Call nhóm",
   "assistant.communication.group_video": "Video nhóm",
   "assistant.communication.group_radio": "Radio nhóm",
+  "assistant.communication.group_plugin": "Plugin nhóm",
   "assistant.communication.group_launch": "Mở",
   "assistant.communication.group_launching": "Đang mở phiên bảo mật…",
   "assistant.communication.group_launch_error": "Không thể mở phiên nhóm. Vui lòng thử lại.",

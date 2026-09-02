@@ -10,11 +10,11 @@
     if (!button || !button.closest("[data-group-launcher-v3]")) return;
 
     const surface = String(button.dataset.groupLaunch || "").toLowerCase();
-    if (!allowedSurfaces.has(surface)) return;
+    const targetPath = allowedSurfaces.has(surface) ? `/group/${surface}` : "/group";
 
     event.preventDefault();
     event.stopImmediatePropagation();
-    const target = new URL(`/group/${surface}`, window.location.origin);
+    const target = new URL(targetPath, window.location.origin);
     target.searchParams.set("lang", document.documentElement.lang || "vi");
     window.location.assign(target.href);
   }, true);
