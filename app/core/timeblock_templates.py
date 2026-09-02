@@ -85,7 +85,7 @@ def _group_handoff_root_receiver(settings: Settings) -> str:
     return (
         f'<script id="guilua-group-handoff-root-config" type="application/json">'
         f"{config}</script>\n    "
-        '<script src="/static/js/group_handoff_root_receiver.js?v=20260902-root-handoff-1" '
+        '<script src="/static/js/group_handoff_root_receiver.js?v=20260902-root-handoff-2" '
         'data-guilua-group-handoff-root-receiver defer></script>'
     )
 

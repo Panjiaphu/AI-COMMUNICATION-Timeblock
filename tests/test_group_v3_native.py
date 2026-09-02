@@ -419,8 +419,13 @@ def test_generic_handoff_receiver_has_no_capability_selector_or_browser_secret_s
     )
     assert "transport: \"postmessage-memory\"" in root_receiver
     assert 'body: JSON.stringify({ handoff_code: handoffCode, source_origin: sourceOrigin })' in root_receiver
-    assert 'if (message.transport !== "postmessage-memory") return false;' in root_receiver
+    assert (
+        'if (message.transport !== undefined && message.transport !== "postmessage-memory") return false;'
+        in root_receiver
+    )
     assert 'if (message.transport !== "postmessage-memory") return false;' in native_receiver
+    assert 'const compatibleSurfaces = Object.freeze(["chat", "call", "video", "radio", "plugin"]);' in root_receiver
+    assert "surface," in root_receiver
     assert "window.location.replace(\"/group\")" in root_receiver
     assert "surface: text(message.surface" not in root_receiver
     assert "surface: text(message.surface" not in native_receiver
