@@ -6,6 +6,7 @@ services:
     runtime: python
     plan: starter
     buildCommand: bash scripts/build_render.sh
+    preDeployCommand: bash scripts/predeploy_render.sh
     startCommand: bash scripts/start_render.sh
     healthCheckPath: /readyz/
     envVars:
@@ -56,15 +57,71 @@ services:
       - key: MESSAGING_ADVANCED_ATTACHMENTS_ENABLED
         value: "true"
       - key: GROUP_TRANSLATION_ENABLED
-        value: "false"
+        value: "true"
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_REALTIME_TRANSLATION_MODEL
         value: gpt-realtime-translate
+      - key: OPENAI_REALTIME_TRANSCRIPTION_MODEL
+        value: gpt-realtime-whisper
+      - key: OPENAI_TEXT_TRANSLATION_MODEL
+        value: gpt-4.1-mini
       - key: GROUP_TRANSLATION_MAX_TARGETS
         value: "2"
+      - key: GROUP_TRANSLATION_CLIENT_SECRET_TTL_SECONDS
+        value: "60"
+      - key: GROUP_TRANSLATION_RESERVATION_TTL_SECONDS
+        value: "300"
+      - key: GROUP_TRANSLATION_MAX_SEGMENT_SECONDS
+        value: "300"
+      - key: GROUP_TRANSLATION_MONTHLY_AUDIO_TARGET_SECONDS
+        value: "3600"
+      - key: GROUP_TRANSLATION_MONTHLY_VIDEO_TARGET_SECONDS
+        value: "1800"
+      - key: GROUP_TRANSLATION_POLICY_VERSION
+        value: group-translation-v3-2026-08-31
+      - key: GROUP_V3_ENABLED
+        value: "true"
+      - key: GROUP_HANDOFF_AUDIENCE
+        value: ai-communication-group-v3
+      - key: GROUP_HANDOFF_MAX_BYTES
+        value: "8192"
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_POOL_SIZE
+        value: "5"
+      - key: DATABASE_MAX_OVERFLOW
+        value: "5"
+      - key: GROUP_MESSAGE_ENCRYPTION_KEY
+        sync: false
+      - key: GROUP_ATTACHMENT_MAX_BYTES
+        value: "5242880"
+      - key: GROUP_MEDIA_ENABLED
+        value: "true"
+      - key: GROUP_LIVEKIT_URL
+        sync: false
+      - key: GROUP_LIVEKIT_API_KEY
+        sync: false
+      - key: GROUP_LIVEKIT_API_SECRET
+        sync: false
+      - key: GROUP_LIVEKIT_REGION
+        value: Singapore
+      - key: GROUP_LIVEKIT_TOKEN_TTL_SECONDS
+        value: "300"
+      - key: GROUP_MEDIA_MAX_PARTICIPANTS
+        value: "8"
       - key: GROUP_RADIO_FLOOR_LEASE_SECONDS
         value: "15"
+      - key: GROUP_RADIO_V3_ENABLED
+        value: "true"
+      - key: GROUP_RADIO_REDIS_URL
+        sync: false
+      - key: GROUP_RADIO_REDIS_NAMESPACE
+        value: ai-communication:group-radio:v3
+      - key: GROUP_RADIO_HEARTBEAT_SECONDS
+        value: "5"
+      - key: GROUP_RADIO_DEVICE_LOST_SECONDS
+        value: "10"
       - key: GROUP_RADIO_MAX_BURST_SECONDS
         value: "30"
       - key: GROUP_RADIO_MAX_ROOMS

@@ -609,9 +609,8 @@
       else url.searchParams.set("communication", tabName);
       window.history.replaceState({ mode: "messages", communication: tabName }, "", url);
     }
-    if (state.ready) {
-      if (tabName === "groups") loadGroups().catch((error) => setFeedback($('[data-group-feedback]'), errorMessage(error), true));
-      if (tabName === "calls") loadCallHistory().catch((error) => setFeedback($('[data-call-history-feedback]'), errorMessage(error), true));
+    if (state.ready && tabName === "calls") {
+      loadCallHistory().catch((error) => setFeedback($('[data-call-history-feedback]'), errorMessage(error), true));
     }
   }
 
@@ -1841,8 +1840,6 @@
       const failed = results.find((result) => result.status === "rejected");
       if (failed) throw failed.reason;
       state.lastNetworkRefresh = Date.now();
-      renderGroupMembers();
-      if (state.communicationTab === "groups") await loadGroups();
       if (state.communicationTab === "calls") await loadCallHistory();
       setFeedback(feedback, "", false);
       const initialConnect = String(app.dataset.initialConnect || "").trim();

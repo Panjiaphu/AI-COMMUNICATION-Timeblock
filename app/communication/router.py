@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 from uuid import uuid4
 
-from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
@@ -23,8 +23,30 @@ from app.integrations.timeblock.client import TimeblockIntegrationError
 logger = logging.getLogger('guilua.communication')
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[1] / 'templates')
-SAFE_GROUP_SURFACES = frozenset({'call', 'video', 'radio'})
-SAFE_GROUP_QA_STATES = frozenset({'READY', 'FLOOR_BUSY', 'TALKING', 'FINALIZING_BURST', 'DEVICE_LOST'})
+SAFE_GROUP_SURFACES = frozenset({'chat', 'call', 'video', 'radio', 'plugin'})
+SAFE_GROUP_NAV_SURFACES = SAFE_GROUP_SURFACES | frozenset({
+    'chat-translation',
+    'radio-translation',
+})
+SAFE_GROUP_QA_STATES = frozenset({
+    'READY',
+    'FLOOR_BUSY',
+    'TALKING',
+    'STOPPING',
+    'FINALIZING',
+    'FINALIZING_BURST',
+    'DISCONNECTED',
+    'DEVICE_LOST',
+    'ENDED',
+})
+
+
+def _group_handoff_runtime_config(settings) -> dict[str, object]:
+    return {
+        'group_handoff_event': 'timeblock.group.handoff.v3',
+        'group_handoff_contract_version': '3',
+        'allowed_handoff_origins': sorted(settings.timeblock_handoff_origins),
+    }
 
 
 def now_iso() -> str:
@@ -63,7 +85,7 @@ async def _assistant_page(
     session = request.app.state.bff_session_store.get(
         request.cookies.get(settings.guilua_session_cookie)
     )
-    if session:
+    if session and session.timeblock_token:
         usage = None
         try:
             usage_result = await request.app.state.timeblock_client.client_get(
@@ -99,6 +121,7 @@ async def _assistant_page(
             'session': session,
             'initial_mode': legacy_mode if legacy_mode in {'ai', 'communication', 'translation', 'notifications'} else 'ai',
             'initial_conversation_id': conversation_id or request.query_params.get('conversation_id', ''),
+            'group_handoff_config': _group_handoff_runtime_config(settings),
         },
     )
 
@@ -106,12 +129,14 @@ async def _assistant_page(
 @router.get('/', response_class=HTMLResponse)
 async def home(request: Request) -> HTMLResponse:
     requested_surface = str(request.query_params.get('surface') or '').strip().lower()
-    if requested_surface in SAFE_GROUP_SURFACES:
-        locale = resolve_timeblock_locale(request, request.app.state.settings.default_locale)
-        # Authentication stays in the one-time postMessage handoff. Only this
-        # allowlisted presentation hint and normalized locale enter the URL.
-        query = urlencode({'surface': requested_surface, 'lang': locale})
-        return RedirectResponse(f'/communication?{query}', status_code=307)
+    settings = request.app.state.settings
+    session = request.app.state.bff_session_store.get(
+        request.cookies.get(settings.guilua_session_cookie)
+    )
+    if (session and session.group_authorized) or requested_surface in SAFE_GROUP_SURFACES:
+        return await communication(request)
+    if session:
+        return await _assistant_page(request)
     return await _assistant_page(request)
 
 
@@ -164,10 +189,11 @@ async def local_logout(request: Request) -> RedirectResponse:
         request.cookies.get(settings.guilua_session_cookie)
     )
     if session:
-        try:
-            await request.app.state.timeblock_client.revoke_guilua_session(session.timeblock_token)
-        except TimeblockIntegrationError:
-            pass
+        if session.timeblock_token:
+            try:
+                await request.app.state.timeblock_client.revoke_guilua_session(session.timeblock_token)
+            except TimeblockIntegrationError:
+                pass
         request.app.state.bff_session_store.delete(session.session_id)
     response = RedirectResponse(f'/?lang={locale}', status_code=303)
     response.delete_cookie(settings.guilua_session_cookie, path='/')
@@ -176,15 +202,76 @@ async def local_logout(request: Request) -> RedirectResponse:
 
 @router.get('/calls/{call_id}', response_class=HTMLResponse)
 async def call_deep_link(request: Request, call_id: str) -> HTMLResponse:
-    return await communication(request)
+    # Direct 1:1 call deep links stay on the protected legacy runtime. Group
+    # surfaces enter through the single Group Communication launcher instead.
+    settings = request.app.state.settings
+    locale = resolve_timeblock_locale(request, settings.default_locale)
+    return templates.TemplateResponse(
+        request=request,
+        name='communication.html',
+        context={
+            'runtime_config': {
+                'handoff_event': 'timeblock.communication.handoff.v1',
+                'allowed_handoff_origins': sorted(settings.timeblock_handoff_origins),
+                'development_query_handoff': settings.development_query_handoff_enabled,
+                'timeblock_entry_url': settings.primary_timeblock_handoff_origin,
+                'locale': locale,
+                'initial_call_id': str(call_id),
+                'copy': communication_copy(locale),
+            },
+            'locale': locale,
+            'copy': communication_copy(locale),
+            'settings': settings,
+        },
+    )
 
 
 @router.get('/communication', response_class=HTMLResponse)
 async def communication(request: Request) -> HTMLResponse:
+    return await _communication_page(request)
+
+
+@router.get('/group', response_class=HTMLResponse)
+async def group_workspace(request: Request) -> HTMLResponse:
+    """Expose the AI-owned Group workspace through normal app navigation."""
+
+    return await _communication_page(request, force_group=True, forced_surface='chat')
+
+
+@router.get('/group/{surface}', response_class=HTMLResponse)
+async def group_surface_workspace(request: Request, surface: str) -> HTMLResponse:
+    normalized_surface = str(surface or '').strip().lower()
+    if normalized_surface not in SAFE_GROUP_NAV_SURFACES:
+        raise HTTPException(status_code=404, detail='group_surface_not_found')
+    return await _communication_page(
+        request,
+        force_group=True,
+        forced_surface=normalized_surface,
+    )
+
+
+async def _communication_page(
+    request: Request,
+    *,
+    force_group: bool = False,
+    forced_surface: str = '',
+) -> HTMLResponse:
     settings = request.app.state.settings
     locale = resolve_timeblock_locale(request, settings.default_locale)
-    requested_surface = str(request.query_params.get('surface') or '').strip().lower()
-    initial_surface = requested_surface if requested_surface in SAFE_GROUP_SURFACES else ''
+    requested_surface = forced_surface or str(
+        request.query_params.get('surface') or ''
+    ).strip().lower()
+    session = request.app.state.bff_session_store.get(
+        request.cookies.get(settings.guilua_session_cookie)
+    )
+    initial_surface = (
+        forced_surface
+        if forced_surface in SAFE_GROUP_NAV_SURFACES
+        else session.group_surface
+        if session and session.group_authorized and session.group_surface in SAFE_GROUP_SURFACES
+        else requested_surface if requested_surface in SAFE_GROUP_NAV_SURFACES
+        else 'chat' if force_group else ''
+    )
     requested_state = str(request.query_params.get('state') or '').strip().upper()
     initial_qa_state = (
         requested_state
@@ -194,19 +281,25 @@ async def communication(request: Request) -> HTMLResponse:
     copy = communication_copy(locale)
     runtime_config = {
         'handoff_event': 'timeblock.communication.handoff.v1',
-        'group_handoff_event': 'timeblock.group.communication.handoff.v2',
-        'group_handoff_contract_version': '2',
+        'group_handoff_event': 'timeblock.group.handoff.v3',
+        'group_handoff_contract_version': '3',
         'allowed_handoff_origins': sorted(settings.timeblock_handoff_origins),
         'development_query_handoff': settings.development_query_handoff_enabled,
         'timeblock_entry_url': settings.primary_timeblock_handoff_origin,
         'locale': locale,
         'initial_surface': initial_surface,
+        'direct_available': bool(session and session.timeblock_token),
+        'group_authorized': bool(session and session.group_authorized),
+        'group_translation_policy_version': settings.group_translation_policy_version,
         'initial_qa_state': initial_qa_state,
         'copy': copy,
     }
+    template_name = 'group_communication_v3.html' if force_group or (
+        session and session.group_authorized
+    ) or requested_surface in SAFE_GROUP_NAV_SURFACES else 'communication.html'
     return templates.TemplateResponse(
         request=request,
-        name='communication.html',
+        name=template_name,
         context={'runtime_config': runtime_config, 'locale': locale, 'copy': copy, 'settings': settings},
     )
 

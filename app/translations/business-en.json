@@ -212,5 +212,8 @@
   "business.control.mobile.overview": "Overview",
   "business.control.mobile.integrations": "Integrations",
   "business.control.mobile.profile": "Profile",
-  "business.control.mobile.center": "Center"
+  "business.control.mobile.center": "Center",
+  "business.control.mobile.menu": "Menu",
+  "business.control.mobile.open_menu": "Open business menu",
+  "business.control.mobile.close_menu": "Close business menu"
 }

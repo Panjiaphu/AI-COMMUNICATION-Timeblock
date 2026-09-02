@@ -1,38 +1,41 @@
-# Group Radio P7–P10 contract
+# Group Radio V3 P7–P10 contract
+
+Status: `V3_NATIVE_OWNER`
+
+This document supersedes the former hybrid contract. Timeblock is not the
+system of record for new Group Radio sessions or history.
 
 ## Ownership
 
-Timeblock remains the system of record for conversation membership, Radio
-session status, consent, quota, encrypted final/corrected translation history,
-and audit. AI-COMMUNICATION owns only the ephemeral floor lease, provider
-sidecar routing, recipient TTS queue, and teardown ledger.
+AI-COMMUNICATION owns Group spaces and membership, Radio session status,
+distributed floor leases, bursts, consent, encrypted FINAL/corrected
+translation history, recipient TTS state and audit. Timeblock owns identity,
+account status, entitlement, billing/quota grants and the one-time Handoff V3.
 
 ## P7 floor
 
-Each session uses `group-radio:<session_id>`. A room has one active lease. The
-lease is idempotent for the same participant/generation, expires after the
-configured lease, and is released immediately on `finalize`, `leave`, or
-`end`. A burst cannot exceed 30 seconds and a deployment may have at most 20
-active Radio rooms.
+Each session uses the configured Valkey namespace plus
+`:floor:<session_id>`. A room has one active lease. The lease expires after the
+configured interval and is released before downstream STT/translation/TTS.
+A burst cannot exceed 30 seconds and a deployment may have at most 20 active
+Radio rooms.
 
 ## P8 translation
 
-The runtime calls the existing Group Translation broker once per distinct
-target language. Partial events stay pending and are never persisted or sent
-to TTS. Final/corrected events are forwarded without raw audio; the browser
-TTS queue is FIFO, deduplicated by generation/segment/target, pauses while the
-local participant transmits, and exposes autoplay-blocked state.
+The native Group Translation broker issues only short-lived OpenAI client
+secrets. The server-only OpenAI key is never returned to the browser. Partial
+events are not persisted or sent to TTS. FINAL/corrected events are stored by
+AI-COMMUNICATION without raw audio; FINAL text is visible before Auto Read.
 
 ## P9 retrieval
 
-History search is always proxied to Timeblock and requires the member's BFF
-session. Timeblock decrypts only after membership authorization, filters
-final/corrected events, caps the result and records `history.search` audit.
+History is authorized, decrypted and returned directly by AI-COMMUNICATION
+after validating the native Group HttpOnly session and active membership.
+Timeblock is never used as a Group Radio data proxy.
 
 ## P10 teardown
 
-The resource ledger invalidates a generation before clearing mic, remote audio,
-provider, floor, TTS/STT, timer and listener handles. A successful terminal
-state must report `resource_zero=true`; late callbacks cannot register new
-resources. This is a contract and automated unit coverage, not physical-device
-or production deployment evidence.
+STOP releases the distributed floor before changing a burst to FINALIZING or
+FINAL. LEAVE never means END FOR ALL. DEVICE_LOST releases the floor and
+suppresses private audio/Auto Read. Physical-device and multi-account QA
+remain owner acceptance evidence after deployment.

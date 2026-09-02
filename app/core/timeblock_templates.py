@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from types import SimpleNamespace
@@ -57,9 +58,36 @@ _TIMEBLOCK_ENDPOINTS = {
 _ASSISTANT_BUCKETS = ("text", "image", "audio", "video", "speech")
 _ASSISTANT_RUNTIME_ADAPTER = (
     '<link rel="stylesheet" '
-    'href="/static/css/assistant_runtime_adapter.css?v=20260831-nav-icons-3" '
-    'data-guilua-assistant-runtime-adapter>'
+    'href="/static/css/assistant_runtime_adapter.css?v=20260902-group-native-1" '
+    'data-guilua-assistant-runtime-adapter>\n    '
+    '<script src="/static/js/assistant_group_native_entry.js?v=20260902-group-native-1" '
+    'data-guilua-group-native-entry defer></script>'
 )
+
+
+def _group_handoff_root_receiver(settings: Settings) -> str:
+    config = json.dumps(
+        {
+            "group_handoff_event": "timeblock.group.handoff.v3",
+            "group_handoff_contract_version": "3",
+            "allowed_handoff_origins": sorted(settings.timeblock_handoff_origins),
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    # The origins are configuration, not credentials. Escape HTML-sensitive
+    # characters before embedding JSON in a script element.
+    config = (
+        config.replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+    )
+    return (
+        f'<script id="guilua-group-handoff-root-config" type="application/json">'
+        f"{config}</script>\n    "
+        '<script src="/static/js/group_handoff_root_receiver.js?v=20260902-root-handoff-1" '
+        'data-guilua-group-handoff-root-receiver defer></script>'
+    )
 
 
 def _safe_base_url(value: str) -> str:
@@ -214,7 +242,7 @@ def _template_config(settings: Settings) -> TemplateConfig:
     public_base_url = str(settings.public_base_url or "").strip().rstrip("/")
     return TemplateConfig(
         ADSENSE_CLIENT="",
-        COMMUNICATION_GROUP_UI_URL=f"{public_base_url}/communication",
+        COMMUNICATION_GROUP_UI_URL=f"{public_base_url}/group",
         MESSAGING_ADVANCED_ATTACHMENTS_ENABLED=settings.messaging_advanced_attachments_enabled,
         MESSAGING_REALTIME_ENABLED=settings.messaging_realtime_enabled,
         MESSAGING_MAILBOX_LOCK_ENABLED=settings.messaging_mailbox_lock_enabled,
@@ -227,13 +255,14 @@ def _canonical_url(settings: Settings, path: str, locale: str) -> str:
     return f"{base_url}{path}?{urlencode({'lang': locale})}"
 
 
-def _inject_assistant_runtime_adapter(html: str) -> str:
+def _inject_assistant_runtime_adapter(html: str, settings: Settings) -> str:
     """Append Guilua-only CSS without modifying the exact Timeblock vendor mirror."""
 
     marker = "</head>"
     if marker not in html:
         raise ValueError("source-locked assistant template is missing </head>")
-    return html.replace(marker, f"    {_ASSISTANT_RUNTIME_ADAPTER}\n  {marker}", 1)
+    adapter = f"{_ASSISTANT_RUNTIME_ADAPTER}\n    {_group_handoff_root_receiver(settings)}"
+    return html.replace(marker, f"    {adapter}\n  {marker}", 1)
 
 
 def _base_context(
@@ -299,7 +328,7 @@ def render_timeblock_assistant(
     # Request object. Render through the same configured Jinja environment and
     # return HTML directly so neither framework contract is impersonated.
     vendor_html = timeblock_templates.get_template("assistant/index.html").render(context)
-    response = HTMLResponse(_inject_assistant_runtime_adapter(vendor_html))
+    response = HTMLResponse(_inject_assistant_runtime_adapter(vendor_html, settings))
     response.headers["Cache-Control"] = "no-store"
     response.headers["Permissions-Policy"] = (
         "camera=(self), microphone=(self), speaker-selection=(self), geolocation=()"

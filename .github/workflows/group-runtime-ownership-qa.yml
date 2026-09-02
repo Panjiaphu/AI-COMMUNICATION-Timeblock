@@ -1,0 +1,67 @@
+name: Group Runtime Ownership QA
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/group-runtime-ownership-qa.yml"
+      - "app/group_v3/**"
+      - "app/group_radio/**"
+      - "app/group_translation/**"
+      - "app/handoff/**"
+      - "app/integrations/timeblock/client.py"
+      - "app/models.py"
+      - "app/core/config.py"
+      - "docs/group-communication/**"
+      - "docs/skills/ai-communication-group-runtime/**"
+      - "tests/test_group_*.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/group-runtime-ownership-qa.yml"
+      - "app/group_v3/**"
+      - "app/group_radio/**"
+      - "app/group_translation/**"
+      - "app/handoff/**"
+      - "app/integrations/timeblock/client.py"
+      - "app/models.py"
+      - "app/core/config.py"
+      - "docs/group-communication/**"
+      - "docs/skills/ai-communication-group-runtime/**"
+      - "tests/test_group_*.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  group-runtime-owner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      APP_ENV: test
+      DEBUG: "true"
+      SECRET_KEY: group-runtime-owner-ci-secret
+      GROUP_V3_ENABLED: "true"
+      GROUP_MESSAGE_ENCRYPTION_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -r requirements.txt pytest
+      - name: Reject Timeblock Group data proxy
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          source = Path("app/integrations/timeblock/client.py").read_text(encoding="utf-8")
+          forbidden = "/api/communication/group/runtime/v3"
+          if forbidden in source:
+              raise SystemExit(f"forbidden Group data proxy: {forbidden}")
+          PY
+      - name: Compile canonical Group runtime
+        run: python -m compileall -q app/group_v3 app/group_radio app/group_translation app/handoff
+      - name: Run Group ownership tests
+        run: pytest -q tests/test_group_v3_native.py tests/test_group_handoff_p2.py tests/test_group_handoff_p3.py

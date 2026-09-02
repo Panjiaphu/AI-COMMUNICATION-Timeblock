@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -76,30 +77,83 @@ def test_http_and_legacy_absence():
             assert client.get(path, follow_redirects=False).status_code == 404
 
 
-def test_root_only_redirects_safe_group_surfaces_without_forwarding_secrets():
+def test_root_renders_safe_group_surfaces_without_forwarding_secrets():
     with client_for() as client:
-        for surface in ('call', 'video', 'radio'):
+        for surface in ('call', 'video', 'radio', 'plugin'):
             response = client.get(
                 f'/?surface={surface}&lang=en&token=do-not-forward&api_key=do-not-forward',
                 follow_redirects=False,
             )
-            assert response.status_code == 307
-            assert response.headers['location'] == f'/communication?surface={surface}&lang=en'
-            assert 'token' not in response.headers['location']
-            assert 'api_key' not in response.headers['location']
+            assert response.status_code == 200
+            assert f'"initial_surface": "{surface}"' in response.text
+            assert 'do-not-forward' not in response.text
 
         invalid = client.get('/?surface=group_radio&token=do-not-forward', follow_redirects=False)
         assert invalid.status_code == 200
-        assert 'location' not in invalid.headers
+        assert 'do-not-forward' not in invalid.text
 
 
 def test_communication_exposes_only_allowlisted_initial_surface():
     with client_for() as client:
-        safe = client.get('/communication?surface=radio&lang=vi')
+        for surface in ('radio', 'plugin'):
+            safe = client.get(f'/communication?surface={surface}&lang=vi')
+            assert safe.status_code == 200
+            assert f'"initial_surface": "{surface}"' in safe.text
         unsafe = client.get('/communication?surface=group_radio&lang=vi')
-        assert safe.status_code == unsafe.status_code == 200
-        assert '"initial_surface": "radio"' in safe.text
+        assert unsafe.status_code == 200
         assert '"initial_surface": ""' in unsafe.text
+
+
+def test_normal_group_routes_are_visible_without_technical_surface_query():
+    with client_for() as client:
+        default_group = client.get('/group?lang=vi')
+        radio_group = client.get('/group/radio?lang=en')
+        chat_translation = client.get('/group/chat-translation?lang=vi')
+        radio_translation = client.get('/group/radio-translation?lang=zh-TW')
+        invalid_group = client.get('/group/group_radio?lang=vi')
+        direct = client.get('/communication?lang=vi')
+
+        assert default_group.status_code == 200
+        assert 'id="group-native-app"' in default_group.text
+        assert '<link rel="icon" href="data:,">' in default_group.text
+        assert '"initial_surface": "chat"' in default_group.text
+        assert radio_group.status_code == 200
+        assert '"initial_surface": "radio"' in radio_group.text
+        assert chat_translation.status_code == 200
+        assert '"initial_surface": "chat-translation"' in chat_translation.text
+        assert (
+            '"group_translation_policy_version": '
+            '"group-translation-v3-2026-08-31"'
+        ) in chat_translation.text
+        assert radio_translation.status_code == 200
+        assert '"initial_surface": "radio-translation"' in radio_translation.text
+        assert invalid_group.status_code == 404
+        assert 'group_v3_app.js' not in direct.text
+
+
+def test_ai_owned_group_entry_does_not_call_retired_timeblock_group_proxy():
+    root = Path(__file__).resolve().parents[1]
+    adapter = (root / 'app/static/js/assistant_group_native_entry.js').read_text(
+        encoding='utf-8'
+    )
+    styles = (root / 'app/static/css/assistant_runtime_adapter.css').read_text(
+        encoding='utf-8'
+    )
+
+    assert 'new URL(`/group/${surface}`' in adapter
+    assert '/api/communication/group/handoffs' not in adapter
+    assert 'searchParams.set("surface"' not in adapter
+    assert '[data-communication-tab="groups"],' not in styles
+
+
+def test_group_navigation_labels_can_wrap_without_hiding_long_localized_copy():
+    root = Path(__file__).resolve().parents[1]
+    styles = (root / 'app/static/group-v3/group_v3.css').read_text(
+        encoding='utf-8'
+    )
+
+    assert styles.count('-webkit-line-clamp: 2') >= 2
+    assert styles.count('white-space: normal') >= 2
 
 
 def test_group_visual_state_query_is_development_only_and_allowlisted():

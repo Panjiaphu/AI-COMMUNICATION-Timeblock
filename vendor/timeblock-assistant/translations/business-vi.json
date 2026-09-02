@@ -212,5 +212,8 @@
   "business.control.mobile.overview": "Tổng quan",
   "business.control.mobile.integrations": "Tích hợp",
   "business.control.mobile.profile": "Hồ sơ",
-  "business.control.mobile.center": "Trung tâm"
+  "business.control.mobile.center": "Trung tâm",
+  "business.control.mobile.menu": "Menu",
+  "business.control.mobile.open_menu": "Mở menu doanh nghiệp",
+  "business.control.mobile.close_menu": "Đóng menu doanh nghiệp"
 }

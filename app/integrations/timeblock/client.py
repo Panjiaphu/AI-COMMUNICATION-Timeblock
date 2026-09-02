@@ -275,6 +275,24 @@ class TimeblockClient:
             raise TimeblockIntegrationError('timeblock_contract_mismatch')
         return data
 
+    async def redeem_group_handoff_v3(
+        self,
+        handoff_code: str,
+        *,
+        source_origin: str,
+        target_origin: str,
+        audience: str,
+    ) -> dict:
+        return await self._post(
+            '/api/communication/group/handoffs/redeem',
+            {
+                'handoff_code': handoff_code,
+                'source_origin': source_origin,
+                'target_origin': target_origin,
+                'audience': audience,
+            },
+        )
+
     @staticmethod
     def parse_group_handoff(payload: Mapping[str, object]) -> GroupHandoff:
         """Validate a browser-delivered Group Contract V2 envelope in memory."""

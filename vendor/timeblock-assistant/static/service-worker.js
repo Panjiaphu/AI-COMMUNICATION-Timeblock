@@ -1,4 +1,4 @@
-const CACHE_NAME = "timeblock-pwa-v21-group-communication";
+const CACHE_NAME = "timeblock-pwa-v22-group-ownership-v3";
 const CALL_V1_RUNTIME_VERSION = "call-v1-ring-owner-20260822";
 const CALL_VIBRATION_PATTERN = [
   320, 305, 120, 505, 120, 505, 120, 505,
@@ -26,7 +26,8 @@ const CALL_RUNTIME_ASSETS = new Set([
   "/static/js/call-v1/translation_plugin.js",
   "/static/js/call-v1/bootstrap.js",
   "/static/css/call_translation_plugin.css",
-  "/static/css/group_communication_v2.css",
+  "/static/css/group_launcher_v3.css",
+  "/static/js/group_launcher_v3.js",
 ]);
 const CORE_ASSETS = [
   "/static/css/main.css",

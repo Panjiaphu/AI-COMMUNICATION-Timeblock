@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="retired hybrid Group UI; covered by test_group_v3_native")
+
 from app.core.communication_i18n import communication_copy
 
 

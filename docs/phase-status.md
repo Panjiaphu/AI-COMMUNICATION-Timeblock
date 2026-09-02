@@ -44,8 +44,8 @@ merge, exact Render deploys and the remaining physical-device QA boundary.
 - Vendored the canonical Assistant template inheritance graph, required static
   assets, localization bundles and PWA resources from the exact Timeblock
   snapshot. Guilua does not load the UI from GitHub at runtime.
-- Added local template/static/i18n adapters while preserving Timeblock as the
-  durable System of Record.
+- Added local template/static/i18n adapters. That historical statement applies
+  to Direct/client compatibility only; AI PostgreSQL is canonical for Group V3.
 - Preserved the existing `/communication` realtime runtime and session routes.
 - Added an explicit same-origin BFF allowlist spanning Assistant media/image
   generation/TTS/context, messaging/contact/attachments/reactions/pin/edit/
@@ -62,9 +62,10 @@ merge, exact Render deploys and the remaining physical-device QA boundary.
 
 ## Remaining production follow-up
 
-Timeblock remains authoritative for identity, permissions, entitlement, quota,
-durable conversations/messages/media, calls, notifications, audit and
-retention. The contract and Render readiness gates now pass. Remaining work:
+For Direct/client compatibility, Timeblock remains authoritative for identity
+and its existing Direct data. For Group V3, AI-COMMUNICATION owns membership,
+authorization, durable messages/media results, Radio/translation history,
+usage, audit and retention. Remaining work:
 
 1. Run authenticated two-account checks for messaging, attachments, location,
    recorder and Call V1 on a physical iPhone/Android device.

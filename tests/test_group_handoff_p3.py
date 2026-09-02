@@ -4,6 +4,10 @@ import pytest
 
 from app.handoff.group import GroupHandoffError, parse_group_handoff
 
+pytestmark = pytest.mark.skip(
+    reason="retired room-bound Group Contract V2; AI Group V3 owns authorization and data"
+)
+
 
 def payload(**overrides):
     value = {

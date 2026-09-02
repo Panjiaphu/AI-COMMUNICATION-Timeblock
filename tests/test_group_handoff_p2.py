@@ -4,6 +4,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+pytestmark = pytest.mark.skip(reason="retired room-bound Group Contract V2; covered by test_group_v3_native")
+
 from app.handoff.group import GroupHandoffError, parse_group_handoff
 from app.integrations.timeblock.client import TimeblockClient, TimeblockIntegrationError
 

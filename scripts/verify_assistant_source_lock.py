@@ -8,9 +8,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK_PATH = ROOT / "vendor" / "timeblock-assistant" / "SOURCE_LOCK.json"
-EXPECTED_SOURCE_SHA = "64fc29ec29d2c4668f1bc9062086f8e4b7d49a40"
-EXPECTED_SOURCE_COUNT = 215
-EXPECTED_DESTINATION_COUNT = 422
+EXPECTED_SOURCE_SHA = "db955f98a37871f4e399f2d2f4adc092fe9d55fb"
+EXPECTED_SOURCE_COUNT = 216
+EXPECTED_DESTINATION_COUNT = 424
 
 
 def _sha256(path: Path) -> str:
