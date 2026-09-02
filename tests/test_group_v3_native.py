@@ -408,6 +408,12 @@ def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     assert "const vi =" in i18n_js
     assert "const en =" in i18n_js
     assert "const zhTW =" in i18n_js
+    assert "AI-COMMUNICATION lưu bền thành viên" in i18n_js
+    assert "AI-COMMUNICATION durably stores memberships" in i18n_js
+    assert "AI-COMMUNICATION 會持久保存成員資格" in i18n_js
+    assert "Timeblock durably stores" not in i18n_js
+    assert "Timeblock lưu bền" not in i18n_js
+    assert 'group_v3_i18n.js?v=20260902-ownership-copy-1' in template
 
 
 def test_generic_handoff_receiver_has_no_capability_selector_or_browser_secret_storage():
