@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="retired hybrid Group LiveKit client; covered by test_group_v3_native")
+
 
 ROOT = Path(__file__).resolve().parents[1]
 

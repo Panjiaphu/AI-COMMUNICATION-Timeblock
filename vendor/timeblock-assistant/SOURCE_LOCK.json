@@ -1,7 +1,7 @@
 {
   "source_repo": "Panjiaphu/fumap-bot-life",
-  "source_sha": "64fc29ec29d2c4668f1bc9062086f8e4b7d49a40",
-  "source_checkout_head": "64fc29ec29d2c4668f1bc9062086f8e4b7d49a40",
+  "source_sha": "db955f98a37871f4e399f2d2f4adc092fe9d55fb",
+  "source_checkout_head": "db955f98a37871f4e399f2d2f4adc092fe9d55fb",
   "source_paths": [
     "templates/base.html",
     "templates/partials/nav.html",
@@ -25,7 +25,7 @@
     "static/css/messaging_enterprise_workspace.css",
     "static/css/messaging_network_identity_restore.css",
     "static/css/messaging_contact_v1.css",
-    "static/css/group_communication_v2.css",
+    "static/css/group_launcher_v3.css",
     "static/css/call_workspace.css",
     "static/css/call_translation_plugin.css",
     "static/css/messaging_ux_v1.css",
@@ -81,6 +81,7 @@
     "static/js/live_translate_hotfix_bootstrap.js",
     "static/js/live_translate_history.js",
     "static/js/assistant.js",
+    "static/js/group_launcher_v3.js",
     "static/js/assistant_image_generation.js",
     "static/js/messaging_core_v2.js",
     "static/js/messaging_mobile_immersive.js",
@@ -225,7 +226,7 @@
     "templates/partials/nav.html": "f8ae3c28e5d99509dad955451b3aa584ea7ecf8bc735c46df2f35809b774c6ea",
     "templates/partials/footer.html": "769a603ea8922b7efde245bd618a11046e227aecc0a3c802be04509d1d6fad2c",
     "templates/partials/market_assistant.html": "d9e832a39b4be320a9db46c288e2a74cbb92aa422d0bbdf6ff22add6a627f435",
-    "templates/assistant/index_core_live_translate.html": "dd57ac0d48aafd54b717e21a57aed03cf316b94f26213083d7f4f24b2381d918",
+    "templates/assistant/index_core_live_translate.html": "28013abaae5b9656949840f3b3097edc37a52b84605f57f03a5965dfcb801eae",
     "templates/assistant/index_core.html": "95e1eb3564dbe760d715af08390180a19cdde319afe6f14ec38cc18588f12e7b",
     "templates/assistant/index.html": "1e421152caf5fe466d1d087743c7438cd7935b5a54e594243654e0e2b4a3744d",
     "templates/assistant/settings.html": "b5518ee3640e8cc712d51c87e7f0780e5ae96627f257bea714ddfd254bc088d0",
@@ -243,7 +244,7 @@
     "static/css/messaging_enterprise_workspace.css": "a1722c3ad589ee39e6015da5b38a464336f6b74823291a25d328df51c8ed10b5",
     "static/css/messaging_network_identity_restore.css": "577e4348dcf61e7b97efa5dcce6a1b4105d3f01aba1b829ebf9e8132b5536aca",
     "static/css/messaging_contact_v1.css": "83bdc78182c26be3edb685e0258c44eaf7e9bc8e501e59492241168e34858282",
-    "static/css/group_communication_v2.css": "8f0fe972fd8451ab2b90b14fee281b5f1ff67bd5b94e499d2d9b1bdc30dafd9b",
+    "static/css/group_launcher_v3.css": "e0bb51c3bddd9f7596de8d933e4a47f1a125bdb3db0c87ff325cd026ab1c93aa",
     "static/css/call_workspace.css": "374b6468de87488dbc979399a4a4e7431924e0cf06000ad50f883b0366e4cafe",
     "static/css/call_translation_plugin.css": "dea1b12db16b85ddef9c51bc20ae489d4bb1bfa8c7e578d25825f456f5a66cb2",
     "static/css/messaging_ux_v1.css": "92c33ee9273ca740cdadbaed24638f6c0e7d0f4c13a6ad181d902876d002e5f7",
@@ -298,7 +299,8 @@
     "static/js/live_translate_hotfix_media.js": "62a148374fb3d1fa51787dfd693198c5da5ec9f1f2b51c4b73de5cd0d53ec1e5",
     "static/js/live_translate_hotfix_bootstrap.js": "d41b761ccd0c402fd353df7bc08a445ef049884f7525ef6068bdfc50dc3c0b43",
     "static/js/live_translate_history.js": "610390b893c12e6b0449ba53b322144bfbfac9bd7a2b883f47f5cb7b0399c709",
-    "static/js/assistant.js": "2a0fc5ba72d539d83551e70a02c259626893d893807515a7df6cf0100a4bfdac",
+    "static/js/assistant.js": "0cf5f7b778e8a02aa5a8d1f95a6a1c2568872ecd0dbf9ac1ec1636f3f7ae4000",
+    "static/js/group_launcher_v3.js": "d315535b620104dfd8d086c36bb518a382ca112b5b5e2b00dc0cb7a9a412820a",
     "static/js/assistant_image_generation.js": "a6c1ff603d6be210f2e91c0793f7129f757e393a0afbc0c2b859a4a1adeb642b",
     "static/js/messaging_core_v2.js": "6c0d814aa157d8a07061b5eeb1f5bc078fbb7a433be06245694f27fc7954104f",
     "static/js/messaging_mobile_immersive.js": "cfd884c9b0d0c6f262989cc161312d7563d631518a6c145838aca5a24cca6c1d",
@@ -336,7 +338,7 @@
     "static/js/messaging.js": "edcb33272308b2a6614c2803d5caef7977a457cff4309a7018bf1ceb34b765d9",
     "static/js/timeblock_call_runtime.js": "204d961416d9754d1b2ed83ea87da2d2dbeeae072dfa7997fa5d61be705c5579",
     "static/manifest.webmanifest": "ba952582958b5b0735e80003c7003ee2404e00bcb78072fb00f13f6d3e3ed6d5",
-    "static/service-worker.js": "164d9e07b8c666521d46c968c7f528ae74403723cc98ab7f2d93623bcafd5468",
+    "static/service-worker.js": "63523ee6559591cf1d01f8cb3554cdb565c04adbd94a4f77f93f4bd30ef82a92",
     "static/vendor/jsqr/1.4.0/LICENSE": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
     "static/i18n/messaging_ux_v1.json": "bb8420f93ebb3b432643f1852dde147c8e1b7b10df8e0434937f5ca33d0d4fd3",
     "static/img/timeblock-icon.svg": "b18e0c6702000c803eb84f3d1a45343290214c550059e0d58cefc96c3f62b19d",
@@ -350,13 +352,13 @@
     "translations/ui-vi.json": "a77d4a8e43db18fb514e2892e0ea64d44a2442307599389fe099957edd5623f9",
     "translations/home-vi.json": "e9a7165d34f176c82dc83847f2b48e023ac0428ec9671fae816bf5736af3083d",
     "translations/checkout-vi.json": "eb501cbd5dfd6216a2201c30f57d2aad5d9d0d189c0415c0e8216949dbeb7a1e",
-    "translations/member-vi.json": "93c6bafe9c9af1f35f7903a59f284750d05c13723e5ccfb9b84a93e58cd185b6",
+    "translations/member-vi.json": "165eca2928eae6675311a5b9156509d24357744c8ea59777fe04b9eb955d2f68",
     "translations/points-vi.json": "1b2c4b1eb03e2ffe9f313cd84762af761e7784210709e62b19ea34808678582c",
     "translations/fgo-vi.json": "e5a30d7d1a88fa25209fe35c0646b4c33aeeed4c24638a3c6d86b394a3dbaab1",
-    "translations/business-vi.json": "e5772664548946125869542c01943f487c550f03f2b3f21a20eab8708087222f",
+    "translations/business-vi.json": "df6813ff64fd8e12d2fe8b37556a8928b525f0b7fba3294b7bce9fbabbb244cd",
     "translations/tbqr-vi.json": "269d9040690af37e417c5c9b0caa301555d1acd35d5e6c69431549a5a16a1c99",
     "translations/chat-vi.json": "299d13cd2e39ed7547656dbbdf3c6e1b16d9b5783d56af508d78a3573d07d0f6",
-    "translations/messaging-vi.json": "11c543477bba546923ef8d3ec52a57f4269b3587ab2517ed3f17512aa5b6e1b5",
+    "translations/messaging-vi.json": "a1e7ed8705fc8958c94d7db896899f32978cb17562b3a5b48632cc3794993447",
     "translations/messaging_core_v2-vi.json": "cfefa9b9b3e62dac76af172a15b142882037aa962b83ad3439210c662f65e6cd",
     "translations/messaging_contact_v1-vi.json": "fda3436adfc6bcc5cf56325bc8a9d4009d450a9d4d079528b92b4ea69f87fff9",
     "translations/assistant-vi.json": "6fc9da5515e393e2ef28307af4ad87e55b68eaa788a5e398fc11717b448c5cc7",
@@ -380,13 +382,13 @@
     "translations/ui-en.json": "cb55ba06677c6f86d1ce228102907efeafea9f92664aa3b0b27feac32db9f8c3",
     "translations/home-en.json": "b1bef62877e9cabcaf8571de6a37491e36f5f69ccb65d0fe4eb9edea2d165f3a",
     "translations/checkout-en.json": "d11fb966ca6211ffca2e0aa9ca811409b92f0adfd60d4f1e4cca9880625b6d31",
-    "translations/member-en.json": "98df63d5dbce768c74519b227473f9f91cd4ed8a37d07eeadf2d0c0d7bafbc93",
+    "translations/member-en.json": "b6b9aac25110d71cc78511749655872919ba2ef5f2f6569c65948d6b77795738",
     "translations/points-en.json": "f05e67d9e9fd003178c08357d109c5d947689eb51f81a457274bd4f4d45c6231",
     "translations/fgo-en.json": "455495c4493aabe7c19df1da6284f55d332679837ca1528d2cbe1f43bc08066d",
-    "translations/business-en.json": "72c5993ac6f3f890ba6f20097669a3be49fe9c2d4a1caa61f896095557cddb26",
+    "translations/business-en.json": "b066dbe089d840c407e2c321c6bcf2815f8594ee016e14159d56dbd63a59ba8e",
     "translations/tbqr-en.json": "f7261fc79f780208988890607c69482559c2e988f6736103f21ec8e1538351fd",
     "translations/chat-en.json": "2edd0527af2719c10488195005ad013fa32093118792671cf51d2d62a98b17e8",
-    "translations/messaging-en.json": "3eea9cfae62e5a71f68510e51b43f993d40bf2c50faac3812be452833c15aa39",
+    "translations/messaging-en.json": "b0931cc291915348eb3477138d389c3ff74816c016b14ad2d5ad35d6bce708aa",
     "translations/messaging_core_v2-en.json": "ef46cae720f017d6d10e665290f7cbf23860f0bb6464c48f077ae655f3a0a921",
     "translations/messaging_contact_v1-en.json": "54a1eed083191e6d6d7a7dd28eb0752977a17375ccfeb7027175477b0d90f103",
     "translations/assistant-en.json": "85ddf9aa3c9af39f9d7a5d8f10b12c1c4104e367abb7cc0f35c8cb03d814d800",
@@ -410,13 +412,13 @@
     "translations/ui-zh-TW.json": "de89ebdca1ecc515cedd75904538de084cbdfe3cdb1dcc3ed7dce30be7549d90",
     "translations/home-zh-TW.json": "6c8ea72e3c7c62d1846a152d4424ff1d4db87170c11429310116495248e220aa",
     "translations/checkout-zh-TW.json": "979a711152cea5a6a67274fcbd495a4a1d1e12eac13436630e1a244e7034f19d",
-    "translations/member-zh-TW.json": "17f1f90cc6821824a7ce8726f02beacbae58b2f29fc7d63d7efde8e1a50709c2",
+    "translations/member-zh-TW.json": "5da37311e159492322e3d30d4a029824dc49ec0669a00c0119097b0510dff191",
     "translations/points-zh-TW.json": "17545afac830d8f66d262d109859ca9a9de2e884644b496bde19b001767a8859",
     "translations/fgo-zh-TW.json": "1a33739fff9ac292bf770a51c27c4753ec9f3805455e61119f680dc5f3ea575e",
-    "translations/business-zh-TW.json": "3fea3f2f135d0afe2afc9b423c0d27589b7c169eb3e7581fdb38bad96c886c04",
+    "translations/business-zh-TW.json": "479711f500befb2588bb7b15705f0e43ce9ac84a47a7b50973ffa656a3980ef6",
     "translations/tbqr-zh-TW.json": "165df48b085f8557e1f9d6e82092fa4974264819265b22feb5773fe8c466e149",
     "translations/chat-zh-TW.json": "b092c1f2e1003f20d76ca6c6b1c6a68c8e8d00780493b806346569c3bc8e63aa",
-    "translations/messaging-zh-TW.json": "b5642da3d468d6f1637438ea99401642c63243acf6452172e865954ace1772b4",
+    "translations/messaging-zh-TW.json": "6b44981fb970e7dfdecffe880d08de659b2e1b096a8cd38a39181ff246877b7b",
     "translations/messaging_core_v2-zh-TW.json": "27079b6bf441b88376c457249d23ea6e227200423fd616c54701285ecdbe49e6",
     "translations/messaging_contact_v1-zh-TW.json": "59fe7d6a8e676d19d672f3a0b3379b026b6efc261587c350489986cda3118074",
     "translations/assistant-zh-TW.json": "c8ea079f807518b95483a999c3c0aef1b90298c9de56d603c25dea7ef30e75d7",
@@ -519,9 +521,9 @@
       "vendor/timeblock-assistant/static/css/messaging_contact_v1.css",
       "app/static/css/messaging_contact_v1.css"
     ],
-    "static/css/group_communication_v2.css": [
-      "vendor/timeblock-assistant/static/css/group_communication_v2.css",
-      "app/static/css/group_communication_v2.css"
+    "static/css/group_launcher_v3.css": [
+      "vendor/timeblock-assistant/static/css/group_launcher_v3.css",
+      "app/static/css/group_launcher_v3.css"
     ],
     "static/css/call_workspace.css": [
       "vendor/timeblock-assistant/static/css/call_workspace.css",
@@ -742,6 +744,10 @@
     "static/js/assistant.js": [
       "vendor/timeblock-assistant/static/js/assistant.js",
       "app/static/js/assistant.js"
+    ],
+    "static/js/group_launcher_v3.js": [
+      "vendor/timeblock-assistant/static/js/group_launcher_v3.js",
+      "app/static/js/group_launcher_v3.js"
     ],
     "static/js/assistant_image_generation.js": [
       "vendor/timeblock-assistant/static/js/assistant_image_generation.js",
@@ -1333,8 +1339,8 @@
     "app/static/css/messaging_network_identity_restore.css": "EXACT_VENDOR",
     "vendor/timeblock-assistant/static/css/messaging_contact_v1.css": "EXACT_VENDOR",
     "app/static/css/messaging_contact_v1.css": "EXACT_VENDOR",
-    "vendor/timeblock-assistant/static/css/group_communication_v2.css": "EXACT_VENDOR",
-    "app/static/css/group_communication_v2.css": "EXACT_VENDOR",
+    "vendor/timeblock-assistant/static/css/group_launcher_v3.css": "EXACT_VENDOR",
+    "app/static/css/group_launcher_v3.css": "EXACT_VENDOR",
     "vendor/timeblock-assistant/static/css/call_workspace.css": "EXACT_VENDOR",
     "app/static/css/call_workspace.css": "EXACT_VENDOR",
     "vendor/timeblock-assistant/static/css/call_translation_plugin.css": "EXACT_VENDOR",
@@ -1445,6 +1451,8 @@
     "app/static/js/live_translate_history.js": "EXACT_VENDOR",
     "vendor/timeblock-assistant/static/js/assistant.js": "EXACT_VENDOR",
     "app/static/js/assistant.js": "EXACT_VENDOR",
+    "vendor/timeblock-assistant/static/js/group_launcher_v3.js": "EXACT_VENDOR",
+    "app/static/js/group_launcher_v3.js": "EXACT_VENDOR",
     "vendor/timeblock-assistant/static/js/assistant_image_generation.js": "EXACT_VENDOR",
     "app/static/js/assistant_image_generation.js": "EXACT_VENDOR",
     "vendor/timeblock-assistant/static/js/messaging_core_v2.js": "EXACT_VENDOR",
@@ -1753,9 +1761,9 @@
     },
     {
       "source_path": "templates/assistant/index_core_live_translate.html",
-      "source_sha256": "dd57ac0d48aafd54b717e21a57aed03cf316b94f26213083d7f4f24b2381d918",
+      "source_sha256": "28013abaae5b9656949840f3b3097edc37a52b84605f57f03a5965dfcb801eae",
       "destination_path": "vendor/timeblock-assistant/templates/assistant/index_core_live_translate.html",
-      "destination_sha256": "dd57ac0d48aafd54b717e21a57aed03cf316b94f26213083d7f4f24b2381d918",
+      "destination_sha256": "28013abaae5b9656949840f3b3097edc37a52b84605f57f03a5965dfcb801eae",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -1976,17 +1984,17 @@
       "adaptation_class": "EXACT_VENDOR"
     },
     {
-      "source_path": "static/css/group_communication_v2.css",
-      "source_sha256": "8f0fe972fd8451ab2b90b14fee281b5f1ff67bd5b94e499d2d9b1bdc30dafd9b",
-      "destination_path": "vendor/timeblock-assistant/static/css/group_communication_v2.css",
-      "destination_sha256": "8f0fe972fd8451ab2b90b14fee281b5f1ff67bd5b94e499d2d9b1bdc30dafd9b",
+      "source_path": "static/css/group_launcher_v3.css",
+      "source_sha256": "e0bb51c3bddd9f7596de8d933e4a47f1a125bdb3db0c87ff325cd026ab1c93aa",
+      "destination_path": "vendor/timeblock-assistant/static/css/group_launcher_v3.css",
+      "destination_sha256": "e0bb51c3bddd9f7596de8d933e4a47f1a125bdb3db0c87ff325cd026ab1c93aa",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
-      "source_path": "static/css/group_communication_v2.css",
-      "source_sha256": "8f0fe972fd8451ab2b90b14fee281b5f1ff67bd5b94e499d2d9b1bdc30dafd9b",
-      "destination_path": "app/static/css/group_communication_v2.css",
-      "destination_sha256": "8f0fe972fd8451ab2b90b14fee281b5f1ff67bd5b94e499d2d9b1bdc30dafd9b",
+      "source_path": "static/css/group_launcher_v3.css",
+      "source_sha256": "e0bb51c3bddd9f7596de8d933e4a47f1a125bdb3db0c87ff325cd026ab1c93aa",
+      "destination_path": "app/static/css/group_launcher_v3.css",
+      "destination_sha256": "e0bb51c3bddd9f7596de8d933e4a47f1a125bdb3db0c87ff325cd026ab1c93aa",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -2747,16 +2755,30 @@
     },
     {
       "source_path": "static/js/assistant.js",
-      "source_sha256": "2a0fc5ba72d539d83551e70a02c259626893d893807515a7df6cf0100a4bfdac",
+      "source_sha256": "0cf5f7b778e8a02aa5a8d1f95a6a1c2568872ecd0dbf9ac1ec1636f3f7ae4000",
       "destination_path": "vendor/timeblock-assistant/static/js/assistant.js",
-      "destination_sha256": "2a0fc5ba72d539d83551e70a02c259626893d893807515a7df6cf0100a4bfdac",
+      "destination_sha256": "0cf5f7b778e8a02aa5a8d1f95a6a1c2568872ecd0dbf9ac1ec1636f3f7ae4000",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "static/js/assistant.js",
-      "source_sha256": "2a0fc5ba72d539d83551e70a02c259626893d893807515a7df6cf0100a4bfdac",
+      "source_sha256": "0cf5f7b778e8a02aa5a8d1f95a6a1c2568872ecd0dbf9ac1ec1636f3f7ae4000",
       "destination_path": "app/static/js/assistant.js",
-      "destination_sha256": "2a0fc5ba72d539d83551e70a02c259626893d893807515a7df6cf0100a4bfdac",
+      "destination_sha256": "0cf5f7b778e8a02aa5a8d1f95a6a1c2568872ecd0dbf9ac1ec1636f3f7ae4000",
+      "adaptation_class": "EXACT_VENDOR"
+    },
+    {
+      "source_path": "static/js/group_launcher_v3.js",
+      "source_sha256": "d315535b620104dfd8d086c36bb518a382ca112b5b5e2b00dc0cb7a9a412820a",
+      "destination_path": "vendor/timeblock-assistant/static/js/group_launcher_v3.js",
+      "destination_sha256": "d315535b620104dfd8d086c36bb518a382ca112b5b5e2b00dc0cb7a9a412820a",
+      "adaptation_class": "EXACT_VENDOR"
+    },
+    {
+      "source_path": "static/js/group_launcher_v3.js",
+      "source_sha256": "d315535b620104dfd8d086c36bb518a382ca112b5b5e2b00dc0cb7a9a412820a",
+      "destination_path": "app/static/js/group_launcher_v3.js",
+      "destination_sha256": "d315535b620104dfd8d086c36bb518a382ca112b5b5e2b00dc0cb7a9a412820a",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -3279,16 +3301,16 @@
     },
     {
       "source_path": "static/service-worker.js",
-      "source_sha256": "164d9e07b8c666521d46c968c7f528ae74403723cc98ab7f2d93623bcafd5468",
+      "source_sha256": "63523ee6559591cf1d01f8cb3554cdb565c04adbd94a4f77f93f4bd30ef82a92",
       "destination_path": "vendor/timeblock-assistant/static/service-worker.js",
-      "destination_sha256": "164d9e07b8c666521d46c968c7f528ae74403723cc98ab7f2d93623bcafd5468",
+      "destination_sha256": "63523ee6559591cf1d01f8cb3554cdb565c04adbd94a4f77f93f4bd30ef82a92",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "static/service-worker.js",
-      "source_sha256": "164d9e07b8c666521d46c968c7f528ae74403723cc98ab7f2d93623bcafd5468",
+      "source_sha256": "63523ee6559591cf1d01f8cb3554cdb565c04adbd94a4f77f93f4bd30ef82a92",
       "destination_path": "app/static/service-worker.js",
-      "destination_sha256": "164d9e07b8c666521d46c968c7f528ae74403723cc98ab7f2d93623bcafd5468",
+      "destination_sha256": "63523ee6559591cf1d01f8cb3554cdb565c04adbd94a4f77f93f4bd30ef82a92",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -3475,16 +3497,16 @@
     },
     {
       "source_path": "translations/member-vi.json",
-      "source_sha256": "93c6bafe9c9af1f35f7903a59f284750d05c13723e5ccfb9b84a93e58cd185b6",
+      "source_sha256": "165eca2928eae6675311a5b9156509d24357744c8ea59777fe04b9eb955d2f68",
       "destination_path": "vendor/timeblock-assistant/translations/member-vi.json",
-      "destination_sha256": "93c6bafe9c9af1f35f7903a59f284750d05c13723e5ccfb9b84a93e58cd185b6",
+      "destination_sha256": "165eca2928eae6675311a5b9156509d24357744c8ea59777fe04b9eb955d2f68",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "translations/member-vi.json",
-      "source_sha256": "93c6bafe9c9af1f35f7903a59f284750d05c13723e5ccfb9b84a93e58cd185b6",
+      "source_sha256": "165eca2928eae6675311a5b9156509d24357744c8ea59777fe04b9eb955d2f68",
       "destination_path": "app/translations/member-vi.json",
-      "destination_sha256": "93c6bafe9c9af1f35f7903a59f284750d05c13723e5ccfb9b84a93e58cd185b6",
+      "destination_sha256": "165eca2928eae6675311a5b9156509d24357744c8ea59777fe04b9eb955d2f68",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -3517,16 +3539,16 @@
     },
     {
       "source_path": "translations/business-vi.json",
-      "source_sha256": "e5772664548946125869542c01943f487c550f03f2b3f21a20eab8708087222f",
+      "source_sha256": "df6813ff64fd8e12d2fe8b37556a8928b525f0b7fba3294b7bce9fbabbb244cd",
       "destination_path": "vendor/timeblock-assistant/translations/business-vi.json",
-      "destination_sha256": "e5772664548946125869542c01943f487c550f03f2b3f21a20eab8708087222f",
+      "destination_sha256": "df6813ff64fd8e12d2fe8b37556a8928b525f0b7fba3294b7bce9fbabbb244cd",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "translations/business-vi.json",
-      "source_sha256": "e5772664548946125869542c01943f487c550f03f2b3f21a20eab8708087222f",
+      "source_sha256": "df6813ff64fd8e12d2fe8b37556a8928b525f0b7fba3294b7bce9fbabbb244cd",
       "destination_path": "app/translations/business-vi.json",
-      "destination_sha256": "e5772664548946125869542c01943f487c550f03f2b3f21a20eab8708087222f",
+      "destination_sha256": "df6813ff64fd8e12d2fe8b37556a8928b525f0b7fba3294b7bce9fbabbb244cd",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -3559,16 +3581,16 @@
     },
     {
       "source_path": "translations/messaging-vi.json",
-      "source_sha256": "11c543477bba546923ef8d3ec52a57f4269b3587ab2517ed3f17512aa5b6e1b5",
+      "source_sha256": "a1e7ed8705fc8958c94d7db896899f32978cb17562b3a5b48632cc3794993447",
       "destination_path": "vendor/timeblock-assistant/translations/messaging-vi.json",
-      "destination_sha256": "11c543477bba546923ef8d3ec52a57f4269b3587ab2517ed3f17512aa5b6e1b5",
+      "destination_sha256": "a1e7ed8705fc8958c94d7db896899f32978cb17562b3a5b48632cc3794993447",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "translations/messaging-vi.json",
-      "source_sha256": "11c543477bba546923ef8d3ec52a57f4269b3587ab2517ed3f17512aa5b6e1b5",
+      "source_sha256": "a1e7ed8705fc8958c94d7db896899f32978cb17562b3a5b48632cc3794993447",
       "destination_path": "app/translations/messaging-vi.json",
-      "destination_sha256": "11c543477bba546923ef8d3ec52a57f4269b3587ab2517ed3f17512aa5b6e1b5",
+      "destination_sha256": "a1e7ed8705fc8958c94d7db896899f32978cb17562b3a5b48632cc3794993447",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -3895,16 +3917,16 @@
     },
     {
       "source_path": "translations/member-en.json",
-      "source_sha256": "98df63d5dbce768c74519b227473f9f91cd4ed8a37d07eeadf2d0c0d7bafbc93",
+      "source_sha256": "b6b9aac25110d71cc78511749655872919ba2ef5f2f6569c65948d6b77795738",
       "destination_path": "vendor/timeblock-assistant/translations/member-en.json",
-      "destination_sha256": "98df63d5dbce768c74519b227473f9f91cd4ed8a37d07eeadf2d0c0d7bafbc93",
+      "destination_sha256": "b6b9aac25110d71cc78511749655872919ba2ef5f2f6569c65948d6b77795738",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "translations/member-en.json",
-      "source_sha256": "98df63d5dbce768c74519b227473f9f91cd4ed8a37d07eeadf2d0c0d7bafbc93",
+      "source_sha256": "b6b9aac25110d71cc78511749655872919ba2ef5f2f6569c65948d6b77795738",
       "destination_path": "app/translations/member-en.json",
-      "destination_sha256": "98df63d5dbce768c74519b227473f9f91cd4ed8a37d07eeadf2d0c0d7bafbc93",
+      "destination_sha256": "b6b9aac25110d71cc78511749655872919ba2ef5f2f6569c65948d6b77795738",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -3937,16 +3959,16 @@
     },
     {
       "source_path": "translations/business-en.json",
-      "source_sha256": "72c5993ac6f3f890ba6f20097669a3be49fe9c2d4a1caa61f896095557cddb26",
+      "source_sha256": "b066dbe089d840c407e2c321c6bcf2815f8594ee016e14159d56dbd63a59ba8e",
       "destination_path": "vendor/timeblock-assistant/translations/business-en.json",
-      "destination_sha256": "72c5993ac6f3f890ba6f20097669a3be49fe9c2d4a1caa61f896095557cddb26",
+      "destination_sha256": "b066dbe089d840c407e2c321c6bcf2815f8594ee016e14159d56dbd63a59ba8e",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "translations/business-en.json",
-      "source_sha256": "72c5993ac6f3f890ba6f20097669a3be49fe9c2d4a1caa61f896095557cddb26",
+      "source_sha256": "b066dbe089d840c407e2c321c6bcf2815f8594ee016e14159d56dbd63a59ba8e",
       "destination_path": "app/translations/business-en.json",
-      "destination_sha256": "72c5993ac6f3f890ba6f20097669a3be49fe9c2d4a1caa61f896095557cddb26",
+      "destination_sha256": "b066dbe089d840c407e2c321c6bcf2815f8594ee016e14159d56dbd63a59ba8e",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -3979,16 +4001,16 @@
     },
     {
       "source_path": "translations/messaging-en.json",
-      "source_sha256": "3eea9cfae62e5a71f68510e51b43f993d40bf2c50faac3812be452833c15aa39",
+      "source_sha256": "b0931cc291915348eb3477138d389c3ff74816c016b14ad2d5ad35d6bce708aa",
       "destination_path": "vendor/timeblock-assistant/translations/messaging-en.json",
-      "destination_sha256": "3eea9cfae62e5a71f68510e51b43f993d40bf2c50faac3812be452833c15aa39",
+      "destination_sha256": "b0931cc291915348eb3477138d389c3ff74816c016b14ad2d5ad35d6bce708aa",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "translations/messaging-en.json",
-      "source_sha256": "3eea9cfae62e5a71f68510e51b43f993d40bf2c50faac3812be452833c15aa39",
+      "source_sha256": "b0931cc291915348eb3477138d389c3ff74816c016b14ad2d5ad35d6bce708aa",
       "destination_path": "app/translations/messaging-en.json",
-      "destination_sha256": "3eea9cfae62e5a71f68510e51b43f993d40bf2c50faac3812be452833c15aa39",
+      "destination_sha256": "b0931cc291915348eb3477138d389c3ff74816c016b14ad2d5ad35d6bce708aa",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -4315,16 +4337,16 @@
     },
     {
       "source_path": "translations/member-zh-TW.json",
-      "source_sha256": "17f1f90cc6821824a7ce8726f02beacbae58b2f29fc7d63d7efde8e1a50709c2",
+      "source_sha256": "5da37311e159492322e3d30d4a029824dc49ec0669a00c0119097b0510dff191",
       "destination_path": "vendor/timeblock-assistant/translations/member-zh-TW.json",
-      "destination_sha256": "17f1f90cc6821824a7ce8726f02beacbae58b2f29fc7d63d7efde8e1a50709c2",
+      "destination_sha256": "5da37311e159492322e3d30d4a029824dc49ec0669a00c0119097b0510dff191",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "translations/member-zh-TW.json",
-      "source_sha256": "17f1f90cc6821824a7ce8726f02beacbae58b2f29fc7d63d7efde8e1a50709c2",
+      "source_sha256": "5da37311e159492322e3d30d4a029824dc49ec0669a00c0119097b0510dff191",
       "destination_path": "app/translations/member-zh-TW.json",
-      "destination_sha256": "17f1f90cc6821824a7ce8726f02beacbae58b2f29fc7d63d7efde8e1a50709c2",
+      "destination_sha256": "5da37311e159492322e3d30d4a029824dc49ec0669a00c0119097b0510dff191",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -4357,16 +4379,16 @@
     },
     {
       "source_path": "translations/business-zh-TW.json",
-      "source_sha256": "3fea3f2f135d0afe2afc9b423c0d27589b7c169eb3e7581fdb38bad96c886c04",
+      "source_sha256": "479711f500befb2588bb7b15705f0e43ce9ac84a47a7b50973ffa656a3980ef6",
       "destination_path": "vendor/timeblock-assistant/translations/business-zh-TW.json",
-      "destination_sha256": "3fea3f2f135d0afe2afc9b423c0d27589b7c169eb3e7581fdb38bad96c886c04",
+      "destination_sha256": "479711f500befb2588bb7b15705f0e43ce9ac84a47a7b50973ffa656a3980ef6",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "translations/business-zh-TW.json",
-      "source_sha256": "3fea3f2f135d0afe2afc9b423c0d27589b7c169eb3e7581fdb38bad96c886c04",
+      "source_sha256": "479711f500befb2588bb7b15705f0e43ce9ac84a47a7b50973ffa656a3980ef6",
       "destination_path": "app/translations/business-zh-TW.json",
-      "destination_sha256": "3fea3f2f135d0afe2afc9b423c0d27589b7c169eb3e7581fdb38bad96c886c04",
+      "destination_sha256": "479711f500befb2588bb7b15705f0e43ce9ac84a47a7b50973ffa656a3980ef6",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -4399,16 +4421,16 @@
     },
     {
       "source_path": "translations/messaging-zh-TW.json",
-      "source_sha256": "b5642da3d468d6f1637438ea99401642c63243acf6452172e865954ace1772b4",
+      "source_sha256": "6b44981fb970e7dfdecffe880d08de659b2e1b096a8cd38a39181ff246877b7b",
       "destination_path": "vendor/timeblock-assistant/translations/messaging-zh-TW.json",
-      "destination_sha256": "b5642da3d468d6f1637438ea99401642c63243acf6452172e865954ace1772b4",
+      "destination_sha256": "6b44981fb970e7dfdecffe880d08de659b2e1b096a8cd38a39181ff246877b7b",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "translations/messaging-zh-TW.json",
-      "source_sha256": "b5642da3d468d6f1637438ea99401642c63243acf6452172e865954ace1772b4",
+      "source_sha256": "6b44981fb970e7dfdecffe880d08de659b2e1b096a8cd38a39181ff246877b7b",
       "destination_path": "app/translations/messaging-zh-TW.json",
-      "destination_sha256": "b5642da3d468d6f1637438ea99401642c63243acf6452172e865954ace1772b4",
+      "destination_sha256": "6b44981fb970e7dfdecffe880d08de659b2e1b096a8cd38a39181ff246877b7b",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -4752,7 +4774,7 @@
       "static/css/messaging_enterprise_workspace.css",
       "static/css/messaging_network_identity_restore.css",
       "static/css/messaging_contact_v1.css",
-      "static/css/group_communication_v2.css"
+      "static/css/group_launcher_v3.css"
     ],
     "assistant_initial_js": [
       "static/js/main.js",
@@ -4775,6 +4797,7 @@
       "static/js/live_translate_hotfix_bootstrap.js",
       "static/js/live_translate_history.js",
       "static/js/assistant.js",
+      "static/js/group_launcher_v3.js",
       "static/js/assistant_image_generation.js",
       "static/js/messaging_core_v2.js",
       "static/js/messaging_mobile_immersive.js",
@@ -4933,7 +4956,9 @@
       "static/js/call-v1/runtime.js",
       "static/js/call-v1/translation_plugin.js",
       "static/js/call-v1/bootstrap.js",
-      "static/css/call_translation_plugin.css"
+      "static/css/call_translation_plugin.css",
+      "static/css/group_launcher_v3.css",
+      "static/js/group_launcher_v3.js"
     ],
     "manifest_icons": [
       "static/img/timeblock-icon-192.png",

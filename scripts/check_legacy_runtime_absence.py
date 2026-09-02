@@ -3,7 +3,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FORBIDDEN_PATHS = [ROOT / 'odds', ROOT / 'config', ROOT / 'manage.py', ROOT / 'app' / 'templates' / 'admin', ROOT / 'app' / 'templates' / 'member', ROOT / 'app' / 'templates' / 'auth']
 RUNTIME_ROOTS = [ROOT / 'app', ROOT / 'scripts' / 'start_render.sh', ROOT / 'scripts' / 'build_render.sh', ROOT / 'requirements.txt']
-FORBIDDEN_RUNTIME_TOKENS = ('import django', 'from django', 'import sqlalchemy', 'from sqlalchemy', 'import alembic', 'from alembic', 'create_all(', 'alembic upgrade', 'app.routers.slbo', 'app.routers.member', 'app.routers.admin')
+# Group Communication V3 deliberately owns its SQLAlchemy models and Alembic
+# migrations. This gate now targets the retired Django/SLBO application and
+# unsafe runtime schema creation, not the native V3 persistence stack.
+FORBIDDEN_RUNTIME_TOKENS = (
+    'import django',
+    'from django',
+    'create_all(',
+    'alembic upgrade',
+    'app.routers.slbo',
+    'app.routers.member',
+    'app.routers.admin',
+)
 
 
 def iter_runtime_files():

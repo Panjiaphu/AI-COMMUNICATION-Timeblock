@@ -1,4 +1,5 @@
 $ErrorActionPreference = "Stop"
+$PSNativeCommandUseErrorActionPreference = $true
 
 Write-Host "LOCAL_QA=ON"
 Write-Host "HEAD=$((git rev-parse HEAD))"

@@ -89,6 +89,8 @@ def test_unauthenticated_entrypoints_keep_the_existing_login_shell(runtime, path
     assert response.status_code == 200
     assert 'class="assistant-auth-card"' in response.text
     assert 'href="/api/session/start"' in response.text
+    assert 'id="guilua-group-handoff-root-config"' in response.text
+    assert 'src="/static/js/group_handoff_root_receiver.js?v=20260902-root-handoff-1"' in response.text
     assert 'id="assistant-app"' not in response.text
     assert "server-side-timeblock-token" not in response.text
 
@@ -120,7 +122,13 @@ def test_authenticated_assistant_renders_canonical_vendor_dom_and_locale(runtime
     assert 'data-actor-id="member-42"' in response.text
     assert 'data-messaging-realtime-enabled="true"' in response.text
     assert 'data-messaging-mailbox-lock-enabled="true"' in response.text
-    assert 'data-group-ui-url="http://testserver/communication"' in response.text
+    assert "data-group-ui-url" not in response.text
+    assert 'data-communication-tab="groups"' in response.text
+    assert 'data-communication-panel="groups"' in response.text
+    assert 'src="/static/js/assistant_group_native_entry.js?v=20260902-group-native-1"' in response.text
+    assert 'id="guilua-group-handoff-root-config"' in response.text
+    assert 'src="/static/js/group_handoff_root_receiver.js?v=20260902-root-handoff-1"' in response.text
+    assert '"group_handoff_event":"timeblock.group.handoff.v3"' in response.text
     assert 'data-initial-mode="messages"' in response.text
     assert 'data-initial-conversation="42"' in response.text
     assert 'data-mode-tab="ai"' in response.text
@@ -128,7 +136,7 @@ def test_authenticated_assistant_renders_canonical_vendor_dom_and_locale(runtime
     assert 'href="/static/css/assistant.css?' in response.text
     assert 'href="/static/css/timeblock_v2.css?' in response.text
     assert (
-        'href="/static/css/assistant_runtime_adapter.css?v=20260831-nav-icons-3" '
+        'href="/static/css/assistant_runtime_adapter.css?v=20260902-group-native-1" '
         "data-guilua-assistant-runtime-adapter"
     ) in response.text
     assert 'src="/static/js/call-v1/bootstrap.js?' in response.text

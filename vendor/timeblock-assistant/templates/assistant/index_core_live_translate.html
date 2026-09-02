@@ -33,7 +33,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css', v='call-v1-hotfix-20260820b') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/live_translate.css', v='live-translate-v1-20260822') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_core_v2.css', v='uiux-20260729') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/group_communication_v2.css', v='uiux-20260831a') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/group_launcher_v3.css', v='group-v3-p9') }}">
   {% if config.MESSAGING_ADVANCED_ATTACHMENTS_ENABLED %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_composer_attachments_v2.css', v='uiux-20260729') }}" data-messaging-composer-attachments-v2>
   {% endif %}
@@ -82,8 +82,6 @@
   data-initial-symbol="{{ request.args.get('symbol', '') }}"
   data-initial-connect="{{ request.args.get('connect', '') }}"
   data-initial-conversation="{{ request.args.get('conversation', '') }}"
-  data-group-ui-url="{{ config.COMMUNICATION_GROUP_UI_URL }}"
-  data-group-handoff-event="timeblock.group.communication.handoff.v2"
   data-v2-filters-label="{{ t('messaging.v2.filters.label') }}"
   data-v2-filters-inbox="{{ t('messaging.v2.filters.inbox') }}"
   data-v2-filters-archived="{{ t('messaging.v2.filters.archived') }}"
@@ -535,13 +533,6 @@
                 <button class="assistant-icon-button" type="button" data-call-start="video" title="{{ t('assistant.call.video') }}">{{ icon('video') }}<span class="assistant-sr-only">{{ t('assistant.call.video') }}</span></button>
                 <button class="assistant-danger-button" type="button" data-call-end hidden>{{ t('assistant.call.end') }}</button>
               </div>
-              <nav class="assistant-group-context-toolbar" data-group-context-toolbar hidden role="toolbar" aria-label="{{ t('assistant.communication.group_surfaces') }}">
-                <button class="assistant-group-context-plugin" type="button" data-group-detail-toggle aria-controls="assistant-group-detail-panel" aria-expanded="false">{{ icon('translate') }} <span>{{ t('assistant.communication.group_plugin') }}</span></button>
-                <button class="assistant-group-context-button is-active" type="button" data-group-context-surface="chat">{{ icon('message') }}<span>{{ t('assistant.communication.group_chat') }}</span></button>
-                <button class="assistant-group-context-button" type="button" data-group-context-surface="call">{{ icon('phone') }}<span>{{ t('assistant.communication.group_call') }}</span></button>
-                <button class="assistant-group-context-button" type="button" data-group-context-surface="video">{{ icon('video') }}<span>{{ t('assistant.communication.group_video') }}</span></button>
-                <button class="assistant-group-context-button assistant-group-context-radio" type="button" data-group-context-surface="radio">{{ icon('radio') }}<span>{{ t('assistant.communication.group_radio') }}</span></button>
-              </nav>
             </header>
             <div class="assistant-incoming-call" data-incoming-call hidden>
               <strong data-incoming-label>{{ t('assistant.call.incoming') }}</strong>
@@ -669,69 +660,27 @@
               <p class="assistant-composer-meta" data-call-status>{{ t('assistant.network.encryption_note') }}</p>
             </form>
           </section>
-          <aside class="assistant-group-detail-panel" id="assistant-group-detail-panel" data-group-detail-panel hidden tabindex="-1" aria-label="{{ t('assistant.communication.group_details') }}">
-            <header class="assistant-group-detail-heading">
-              <div>
-                <p class="assistant-group-kicker">{{ t('assistant.communication.group_contract') }}</p>
-                <h3>{{ t('assistant.communication.group_members_panel') }} <span data-group-detail-count>0</span></h3>
-              </div>
-              <button class="assistant-icon-button assistant-group-detail-close" type="button" data-group-detail-close aria-label="{{ t('assistant.common.close') }}">{{ icon('close') }}</button>
-            </header>
-            <label class="assistant-group-detail-search">
-              <span class="assistant-sr-only">{{ t('assistant.communication.group_members_panel_search') }}</span>
-              <input type="search" autocomplete="off" data-group-detail-search placeholder="{{ t('assistant.communication.group_members_panel_search') }}">
-            </label>
-            <div class="assistant-group-detail-members" data-group-detail-members>
-              <p class="assistant-group-detail-empty">{{ t('assistant.communication.group_members_panel_empty') }}</p>
-            </div>
-            <section class="assistant-group-translation-card" aria-labelledby="assistant-group-translation-card-title">
-              <div class="assistant-group-translation-card-heading">
-                <span class="assistant-group-translation-mark">{{ icon('translate') }}</span>
-                <div><p class="assistant-group-kicker">{{ t('assistant.communication.group_plugin') }}</p><h3 id="assistant-group-translation-card-title">{{ t('assistant.communication.group_translation_title') }}</h3></div>
-              </div>
-              <p>{{ t('assistant.communication.group_translation_note') }}</p>
-              <span class="assistant-group-translation-pair" data-group-translation-pair>{{ t('assistant.communication.group_translation_pair') }}</span>
-              <button class="assistant-primary-button" type="button" data-group-translation-preferences>{{ t('assistant.communication.group_translation_preferences') }}</button>
-            </section>
-          </aside>
         </div>
-        <section class="assistant-communication-workspace assistant-group-workspace" data-communication-panel="groups" data-group-design-version="2" hidden>
-          <header class="assistant-communication-heading assistant-group-heading">
-            <div class="assistant-feature-icon">{{ icon('users') }}</div>
-            <div><p class="assistant-group-kicker">{{ t('assistant.communication.group_contract') }}</p><h2>{{ t('assistant.communication.groups_title') }}</h2><p>{{ t('assistant.communication.groups_note') }}</p></div>
-            <span class="assistant-group-contract-badge">{{ t('assistant.communication.group_secure') }}</span>
-          </header>
-          <section class="assistant-card assistant-group-surface-card" aria-labelledby="assistant-group-surface-title">
-            <div class="assistant-group-surface-heading">
-              <div><p class="assistant-group-kicker">{{ t('assistant.communication.group_selected') }}</p><h3 id="assistant-group-surface-title" data-group-selected-title>{{ t('assistant.communication.group_select_hint') }}</h3><p data-group-selected-meta>{{ t('assistant.communication.group_select_meta') }}</p></div>
-              <span class="assistant-group-plugin-badge">{{ icon('translate') }} {{ t('assistant.communication.group_plugin') }}</span>
+        <section class="assistant-communication-workspace" data-communication-panel="groups" hidden>
+          <section class="group-native-launcher-v3" data-group-launcher-v3
+            data-launching="{{ t('messaging.group.launcher_launching') }}"
+            data-ready="{{ t('messaging.group.launcher_ready') }}"
+            data-error="{{ t('messaging.group.launcher_error') }}"
+            data-popup-blocked="{{ t('messaging.group.launcher_popup_blocked') }}"
+            aria-labelledby="assistant-group-launcher-title">
+            <div class="group-launcher-heading">
+              <span class="group-launcher-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg></span>
+              <div><p class="eyebrow">{{ t('messaging.group.eyebrow') }}</p><h2 id="assistant-group-launcher-title">{{ t('messaging.group.launcher_title') }}</h2><p>{{ t('messaging.group.launcher_note') }}</p></div>
+              <span class="group-launcher-badge">V3</span>
             </div>
-            <div class="assistant-group-surface-toolbar" role="toolbar" aria-label="{{ t('assistant.communication.group_surfaces') }}">
-              <button class="assistant-group-surface-button is-active" type="button" data-group-surface="chat" disabled>{{ icon('message') }}<span>{{ t('assistant.communication.group_chat') }}</span></button>
-              <button class="assistant-group-surface-button" type="button" data-group-surface="call" disabled>{{ icon('phone') }}<span>{{ t('assistant.communication.group_call') }}</span></button>
-              <button class="assistant-group-surface-button" type="button" data-group-surface="video" disabled>{{ icon('video') }}<span>{{ t('assistant.communication.group_video') }}</span></button>
-              <button class="assistant-group-surface-button assistant-group-surface-radio" type="button" data-group-surface="radio" disabled>{{ icon('radio') }}<span>{{ t('assistant.communication.group_radio') }}</span></button>
+            <div class="group-launcher-actions" aria-label="{{ t('messaging.group.launcher_title') }}">
+              <button type="button" data-group-launch="chat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/></svg><span>{{ t('messaging.group.chat') }}</span></button>
+              <button type="button" data-group-launch="call"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2a9 9 0 0 1 9 9"/><path d="M13 6a5 5 0 0 1 5 5"/><path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"/></svg><span>{{ t('messaging.group.call') }}</span></button>
+              <button type="button" data-group-launch="video"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span>{{ t('messaging.group.video') }}</span></button>
+              <button type="button" data-group-launch="radio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.9 16.1C1 12.2 1 5.8 4.9 1.9"/><path d="M7.8 4.7a6.14 6.14 0 0 0-.8 7.5"/><circle cx="12" cy="9" r="2"/><path d="M16.2 4.8c2 2 2.26 5.11.8 7.47"/><path d="M19.1 1.9a9.96 9.96 0 0 1 0 14.1"/><path d="M9.5 18h5"/><path d="m8 22 4-11 4 11"/></svg><span>{{ t('messaging.group.radio') }}</span></button>
             </div>
-            <p class="assistant-group-launch-status" data-group-launch-status role="status" aria-live="polite">{{ t('assistant.communication.group_select_hint') }}</p>
+            <p class="group-launcher-status" data-group-launcher-status role="status" aria-live="polite"></p>
           </section>
-          <div class="assistant-group-directory-layout">
-            <form class="assistant-card assistant-group-form" data-group-form>
-              <div class="assistant-group-card-heading"><div><p class="assistant-group-kicker">{{ t('assistant.communication.group_create_kicker') }}</p><h3>{{ t('assistant.communication.group_create') }}</h3></div><span class="assistant-group-step">01</span></div>
-              <label>{{ t('assistant.communication.group_name') }}
-                <input type="text" maxlength="80" required data-group-title placeholder="{{ t('assistant.communication.group_name_placeholder') }}">
-              </label>
-              <fieldset>
-                <legend>{{ t('assistant.communication.group_members') }}</legend>
-                <div class="assistant-group-member-list" data-group-members></div>
-              </fieldset>
-              <button class="assistant-primary-button" type="submit">{{ t('assistant.communication.group_create_action') }}</button>
-              <p class="assistant-feedback" data-group-feedback></p>
-            </form>
-            <article class="assistant-card assistant-group-directory">
-              <div class="assistant-group-card-heading"><div><p class="assistant-group-kicker">{{ t('assistant.communication.group_directory_kicker') }}</p><h3>{{ t('assistant.communication.my_groups') }}</h3></div><button class="assistant-secondary-button" type="button" data-group-refresh>{{ t('assistant.communication.refresh') }}</button></div>
-              <div class="assistant-communication-list" data-group-list></div>
-            </article>
-          </div>
         </section>
         <section class="assistant-communication-workspace" data-communication-panel="calls" hidden>
           <header class="assistant-communication-heading">
@@ -944,7 +893,8 @@
   <script src="{{ url_for('static', filename='js/call-v1/translation_plugin.js', v='call-v1-ios-auto-read-20260826') }}" defer></script>
   <script src="{{ url_for('static', filename='js/call-v1/bootstrap.js', v='call-v1-hotfix-20260820b') }}" defer></script>
   <script src="{{ url_for('static', filename='js/live_translate.js', v='live-translate-v1-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/assistant.js', v='group-context-20260830') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/assistant.js', v='group-ownership-v3-p9') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/group_launcher_v3.js', v='group-v3-p9') }}" defer></script>
   <script src="{{ url_for('static', filename='js/messaging_core_v2.js', v='uiux-20260729') }}" defer></script>
   {% if config.MESSAGING_ADVANCED_ATTACHMENTS_ENABLED %}
     <script src="{{ url_for('static', filename='js/messaging_composer_attachments_v2.js', v='uiux-20260729') }}" defer></script>

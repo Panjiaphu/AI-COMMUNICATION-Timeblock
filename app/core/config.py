@@ -49,8 +49,40 @@ class Settings(BaseSettings):
     group_translation_enabled: bool = False
     openai_api_key: str | None = None
     openai_realtime_translation_model: str = 'gpt-realtime-translate'
+    openai_realtime_transcription_model: str = 'gpt-realtime-whisper'
+    openai_text_translation_model: str = 'gpt-4.1-mini'
     group_translation_max_targets: int = Field(default=2, ge=1, le=3)
+    group_translation_client_secret_ttl_seconds: int = Field(default=60, ge=10, le=300)
+    group_translation_reservation_ttl_seconds: int = Field(default=300, ge=60, le=900)
+    group_translation_max_segment_seconds: int = Field(default=300, ge=1, le=900)
+    group_translation_monthly_audio_target_seconds: int = Field(
+        default=3600, ge=60, le=10_000_000
+    )
+    group_translation_monthly_video_target_seconds: int = Field(
+        default=1800, ge=60, le=10_000_000
+    )
+    group_translation_policy_version: str = 'group-translation-v3-2026-08-31'
+    group_v3_enabled: bool = False
+    group_handoff_audience: str = 'ai-communication-group-v3'
+    group_handoff_max_bytes: int = Field(default=8192, ge=1024, le=65536)
+    database_url: str = 'sqlite:///./.data/ai-communication.db'
+    database_pool_size: int = Field(default=5, ge=1, le=20)
+    database_max_overflow: int = Field(default=5, ge=0, le=40)
+    group_message_encryption_key: str | None = None
+    group_attachment_max_bytes: int = Field(default=5 * 1024 * 1024, ge=1024, le=25 * 1024 * 1024)
+    group_media_enabled: bool = False
+    group_livekit_url: str | None = None
+    group_livekit_api_key: str | None = None
+    group_livekit_api_secret: str | None = None
+    group_livekit_region: str = 'Singapore'
+    group_livekit_token_ttl_seconds: int = Field(default=300, ge=60, le=600)
+    group_media_max_participants: int = Field(default=8, ge=2, le=50)
     group_radio_floor_lease_seconds: int = Field(default=15, ge=5, le=120)
+    group_radio_v3_enabled: bool = False
+    group_radio_redis_url: str | None = None
+    group_radio_redis_namespace: str = 'ai-communication:group-radio:v3'
+    group_radio_heartbeat_seconds: int = Field(default=5, ge=1, le=30)
+    group_radio_device_lost_seconds: int = Field(default=10, ge=3, le=60)
     group_radio_max_burst_seconds: int = Field(default=30, ge=5, le=300)
     group_radio_max_rooms: int = Field(default=20, ge=1, le=1000)
 
@@ -139,6 +171,30 @@ class Settings(BaseSettings):
             raise ValueError('ALLOWED_WEBSOCKET_ORIGINS must be configured in production')
         if self.is_production and not self.timeblock_handoff_origins:
             raise ValueError('ALLOWED_TIMEBLOCK_HANDOFF_ORIGINS must be configured in production')
+        if not self.group_handoff_audience.strip():
+            raise ValueError('GROUP_HANDOFF_AUDIENCE must be non-empty')
+        if self.is_production and self.group_v3_enabled:
+            if self.database_url.strip().lower().startswith('sqlite'):
+                raise ValueError('DATABASE_URL must use PostgreSQL when GROUP_V3_ENABLED is true in production')
+            if not self.group_message_encryption_key:
+                raise ValueError('GROUP_MESSAGE_ENCRYPTION_KEY is required when GROUP_V3_ENABLED is true in production')
+            if self.group_media_enabled:
+                if not all((self.group_livekit_url, self.group_livekit_api_key, self.group_livekit_api_secret)):
+                    raise ValueError('Group LiveKit configuration is required when GROUP_MEDIA_ENABLED is true')
+                if self.group_livekit_region != 'Singapore':
+                    raise ValueError('GROUP_LIVEKIT_REGION must remain Singapore')
+                if self.group_livekit_token_ttl_seconds != 300:
+                    raise ValueError('GROUP_LIVEKIT_TOKEN_TTL_SECONDS must remain 300')
+            if self.group_translation_enabled and not self.openai_api_key:
+                raise ValueError('OPENAI_API_KEY is required when GROUP_TRANSLATION_ENABLED is true')
+            if self.group_radio_v3_enabled:
+                if not self.group_media_enabled:
+                    raise ValueError('GROUP_MEDIA_ENABLED must be true when GROUP_RADIO_V3_ENABLED is true')
+                radio_url = str(self.group_radio_redis_url or '')
+                if not radio_url.startswith(('redis://', 'rediss://')):
+                    raise ValueError('GROUP_RADIO_REDIS_URL is required when GROUP_RADIO_V3_ENABLED is true')
+                if self.group_radio_floor_lease_seconds <= self.group_radio_heartbeat_seconds * 2:
+                    raise ValueError('GROUP_RADIO_FLOOR_LEASE_SECONDS must exceed two heartbeat intervals')
         return self
 
 

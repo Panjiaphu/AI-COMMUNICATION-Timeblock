@@ -78,7 +78,7 @@ ASSISTANT_INITIAL_CSS = (
     "static/css/messaging_enterprise_workspace.css",
     "static/css/messaging_network_identity_restore.css",
     "static/css/messaging_contact_v1.css",
-    "static/css/group_communication_v2.css",
+    "static/css/group_launcher_v3.css",
 )
 
 CALL_BOOTSTRAP_CSS = (
@@ -148,6 +148,7 @@ ASSISTANT_INITIAL_JS = (
     "static/js/live_translate_hotfix_bootstrap.js",
     "static/js/live_translate_history.js",
     "static/js/assistant.js",
+    "static/js/group_launcher_v3.js",
     "static/js/assistant_image_generation.js",
     "static/js/messaging_core_v2.js",
     "static/js/messaging_mobile_immersive.js",
@@ -246,6 +247,8 @@ PWA_CALL_RUNTIME_ASSETS = (
     "static/js/call-v1/translation_plugin.js",
     "static/js/call-v1/bootstrap.js",
     "static/css/call_translation_plugin.css",
+    "static/css/group_launcher_v3.css",
+    "static/js/group_launcher_v3.js",
 )
 
 

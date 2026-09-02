@@ -1,8 +1,7 @@
-"""Provider-neutral Group Audio readiness contract.
+"""Legacy Contract V2 Group Audio manifest parser.
 
-Timeblock remains the authorization/data authority. AI-COMMUNICATION may
-parse this manifest before a future provider-backed media session, but this
-module deliberately does not import an SFU SDK or acquire browser media.
+Native Group V3 authorization and data are AI-COMMUNICATION-owned. This
+compatibility module does not import an SFU SDK or acquire browser media.
 """
 
 from __future__ import annotations

@@ -112,7 +112,9 @@ Do not combine that provider integration with the authentication-boundary PR.
   `ab52967a060e5510636a879cd71c8e1406760518`.
 - Timeblock presentation source is pinned to current main
   `1ca83486c8985f2c28d60a767be9b30a68701dae` in
-  `vendor/timeblock-communication/SOURCE_LOCK.json`.
+  the historical `vendor/timeblock-communication/SOURCE_LOCK.json` snapshot.
+  Group Communication V3 Phase 9 retired that obsolete Group source-lock;
+  this dated entry is evidence only and is not a current runtime path.
 - Added a unique Timeblock Chat manifest, static-only service worker,
   fail-closed PWA re-entry state, localized standalone runtime copy, exact
   production handoff settings, manual-only QA workflows, and local Phase 8

@@ -154,7 +154,8 @@ CANONICAL_PROXY_ROUTES: tuple[ProxyRouteSpec, ...] = (
         forward_last_event_id=True,
     ),
 
-    # Group-call rooms. Timeblock remains the membership/call-record authority.
+    # Legacy Group-call proxy specs remain for Direct/client compatibility only.
+    # Native Group V3 membership and call records are AI-owned.
     _spec("GET", "/api/messaging/conversations/{conversation_id:int}/call-rooms", "calls.read"),
     _spec("POST", "/api/messaging/conversations/{conversation_id:int}/call-rooms", "calls.start"),
     _spec("GET", "/api/messaging/groups/{conversation_id:int}/call-rooms", "calls.read"),
@@ -268,6 +269,8 @@ def _session(request: Request) -> BffSession:
 
 
 def _require_scopes(session: BffSession, spec: ProxyRouteSpec) -> None:
+    if not session.timeblock_token:
+        raise HTTPException(status_code=403, detail="direct_session_required")
     granted = set(session.scope)
     if not set(spec.scope_all).issubset(granted):
         raise HTTPException(status_code=403, detail="scope_denied")
