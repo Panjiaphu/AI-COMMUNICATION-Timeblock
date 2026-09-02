@@ -13,6 +13,7 @@
 
   const eventName = runtimeConfig.group_handoff_event || "timeblock.group.handoff.v3";
   const expectedVersion = String(runtimeConfig.group_handoff_contract_version || "3");
+  const compatibleSurfaces = Object.freeze(["chat", "call", "video", "radio", "plugin"]);
   const allowedOrigins = new Set(
     Array.isArray(runtimeConfig.allowed_handoff_origins)
       ? runtimeConfig.allowed_handoff_origins.map((origin) => String(origin || "").replace(/\/$/, ""))
@@ -39,7 +40,9 @@
   const validEnvelope = (message) => {
     if (!message || typeof message !== "object" || message.type !== eventName) return false;
     if (String(message.contract_version || "") !== expectedVersion) return false;
-    if (message.transport !== "postmessage-memory") return false;
+    // Timeblock V3 declares postmessage-memory in the server handoff response,
+    // but its current browser envelope omits the repeated transport field.
+    if (message.transport !== undefined && message.transport !== "postmessage-memory") return false;
     const code = text(message.handoff_code, 256);
     const expiry = Date.parse(text(message.expires_at, 64));
     return code.length >= 48 && !/\s/.test(code)
@@ -82,11 +85,14 @@
   });
 
   allowedOrigins.forEach((origin) => {
-    window.opener.postMessage({
-      type: `${eventName}.ready`,
-      contract_version: expectedVersion,
-      transport: "postmessage-memory",
-    }, origin);
+    compatibleSurfaces.forEach((surface) => {
+      window.opener.postMessage({
+        type: `${eventName}.ready`,
+        contract_version: expectedVersion,
+        transport: "postmessage-memory",
+        surface,
+      }, origin);
+    });
   });
 
   window.GroupHandoffRootReceiver = Object.freeze({

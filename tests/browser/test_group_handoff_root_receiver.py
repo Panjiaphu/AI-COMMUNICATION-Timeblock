@@ -24,11 +24,12 @@ def test_root_receiver_redeems_generic_handoff_and_enters_group_route():
     window.addEventListener("message", (event) => {{
       if (event.source !== popup || event.origin !== "{TARGET_ORIGIN}") return;
       if (event.data?.type !== "timeblock.group.handoff.v3.ready") return;
+      if (event.data?.surface !== "chat") return;
       popup.postMessage({{
         type: "timeblock.group.handoff.v3",
         contract_version: "3",
-        transport: "postmessage-memory",
         handoff_code: "{HANDOFF_CODE}",
+        surface: "chat",
         expires_at: new Date(Date.now() + 60000).toISOString()
       }}, event.origin);
     }});
