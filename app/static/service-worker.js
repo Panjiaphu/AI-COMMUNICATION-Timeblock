@@ -1,5 +1,5 @@
-const CACHE_NAME = "timeblock-pwa-v25-group-launcher-root";
-// Frozen Direct 1:1 source-contract marker; the active cache is V25:
+const CACHE_NAME = "timeblock-pwa-v26-assistant-overview-entry";
+// Frozen Direct 1:1 source-contract marker; the active cache is versioned separately:
 // const CACHE_NAME = "timeblock-pwa-v21-group-communication";
 const CALL_V1_RUNTIME_VERSION = "call-v1-viewport-contract-20260903";
 const CALL_VIBRATION_PATTERN = [

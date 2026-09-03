@@ -11,7 +11,7 @@ def test_manifest_uses_the_canonical_assistant_settings_entrypoints():
     manifest = json.loads((ROOT / "app/static/manifest.webmanifest").read_text(encoding="utf-8"))
     assert manifest["id"] == "/"
     assert manifest["name"] == "Timeblock"
-    assert manifest["start_url"] == "/assistant?source=pwa"
+    assert manifest["start_url"] == "/assistant?mode=ai&entry=overview&source=pwa"
     assert manifest["scope"] == "/"
     assert manifest["display"] == "standalone"
     assert {"192x192", "512x512"}.issubset({icon["sizes"] for icon in manifest["icons"]})
@@ -59,7 +59,7 @@ def test_static_manifest_entrypoint_serves_the_source_locked_manifest():
     with TestClient(create_app()) as client:
         response = client.get('/static/manifest.webmanifest')
     assert response.status_code == 200
-    assert response.json()["start_url"] == "/assistant?source=pwa"
+    assert response.json()["start_url"] == "/assistant?mode=ai&entry=overview&source=pwa"
     assert response.content == (ROOT / "app/static/manifest.webmanifest").read_bytes()
 
 
