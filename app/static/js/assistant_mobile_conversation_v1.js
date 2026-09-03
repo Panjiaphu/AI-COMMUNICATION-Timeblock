@@ -14,6 +14,8 @@
 
   const mq = window.matchMedia("(max-width: 767px)");
   const standaloneMq = window.matchMedia("(display-mode: standalone)");
+  const entryParams = new URL(window.location.href).searchParams;
+  const overviewEntry = entryParams.get("entry") === "overview" || entryParams.get("source") === "pwa";
   const chat = app.querySelector("#assistant-panel-ai .assistant-chat-column");
   const preview = app.querySelector("#assistant-panel-ai .assistant-conversation-preview");
   const messages = app.querySelector("[data-ai-messages]");
@@ -239,7 +241,9 @@
 
   const shouldHandOffAiInput = () => (
     Boolean(aiInput)
-    && isMobileBrowserOverview()
+    && overviewEntry
+    && mq.matches
+    && !document.body.classList.contains("assistant-ai-conversation-active")
     && app.querySelector('[data-mode-panel="ai"]')?.classList.contains("is-active")
   );
 
@@ -304,7 +308,7 @@
       return;
     }
     const aiPanel = app.querySelector('[data-mode-panel="ai"]');
-    if (aiPanel?.classList.contains("is-active")) activate();
+    if (aiPanel?.classList.contains("is-active") && !overviewEntry) activate();
     else syncAiInputMode();
   };
 

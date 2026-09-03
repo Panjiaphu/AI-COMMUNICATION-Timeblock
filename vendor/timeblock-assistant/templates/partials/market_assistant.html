@@ -7,7 +7,7 @@
 {%- endmacro %}
 
 {% if (not active_user or active_user.role in ["member", "business"]) and request.endpoint != "assistant.workspace" %}
-  {% set assistant_destination = url_for('assistant.workspace', mode='ai', lang=current_locale, context_type='equities' if request.endpoint and request.endpoint.startswith('equities.') else 'market', country=request.args.get('country', ''), symbol=request.args.get('symbol', '')) %}
+  {% set assistant_destination = url_for('assistant.workspace', mode='ai', entry='overview', lang=current_locale, context_type='equities' if request.endpoint and request.endpoint.startswith('equities.') else 'market', country=request.args.get('country', ''), symbol=request.args.get('symbol', '')) %}
   <aside
     class="market-assistant"
     data-market-assistant

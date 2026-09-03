@@ -32,7 +32,7 @@
 {% elif active_user and active_user.role == 'admin' %}
   {% set center_href = url_for('admin.dashboard', lang=current_locale) %}
 {% endif %}
-{% set nav_assistant_destination = url_for('assistant.workspace', lang=current_locale) %}
+{% set nav_assistant_destination = url_for('assistant.workspace', mode='ai', entry='overview', lang=current_locale) %}
 {% set nav_assistant_href = nav_assistant_destination if active_user else url_for('auth.login', next=nav_assistant_destination, lang=current_locale) %}
 
 <header class="site-header tbv2-header" data-header data-v2-header>

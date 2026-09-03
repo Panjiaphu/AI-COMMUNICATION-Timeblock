@@ -9,7 +9,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK_PATH = ROOT / "vendor/timeblock-assistant/SOURCE_LOCK.json"
-SOURCE_SHA = "0100dd583496edd22f412121cf201b8ac8d34339"
+SOURCE_SHA = "c12e37f8137552159d7756cf3d96eab0d812585f"
 
 CANONICAL_ASSETS = {
     "static/css/mobile_input_keyboard_contract.css": ROOT
