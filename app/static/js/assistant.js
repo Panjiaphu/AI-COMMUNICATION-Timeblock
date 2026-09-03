@@ -1630,6 +1630,8 @@
     state.qrProfile = null;
     $('[data-qr-preview]').hidden = true;
     $('[data-qr-confirm]').disabled = true;
+    $('[data-qr-add-friend]').hidden = true;
+    $('[data-qr-add-friend]').disabled = true;
     $('[data-qr-preview-name]').textContent = "-";
     $('[data-qr-preview-id]').textContent = "-";
     $('[data-qr-preview-type]').textContent = "";
@@ -1670,6 +1672,10 @@
         ? copy("qrBusiness")
         : copy("qrMember");
       $('[data-qr-preview-avatar]').textContent = initials(profile);
+      const addFriendButton = $('[data-qr-add-friend]');
+      const noActionRelationship = new Set(["accepted", "pending_sent", "pending_received"]);
+      addFriendButton.hidden = noActionRelationship.has(profile.relationship);
+      addFriendButton.disabled = addFriendButton.hidden;
       $('[data-qr-preview]').hidden = false;
       $('[data-qr-confirm]').disabled = false;
       setFeedback(feedback, copy("qrReady").replace("{id}", profile.public_id), false);
@@ -1692,6 +1698,30 @@
     $('[data-qr-camera]').focus();
   }
 
+  function ensureQrScannerInstance() {
+    if (state.qrScanner || typeof window.TimeblockQrScanner !== "function") {
+      return state.qrScanner;
+    }
+    const video = $('[data-qr-video]');
+    if (!video) return null;
+    state.qrScanner = new window.TimeblockQrScanner({
+      video,
+      scanIntervalMs: 320,
+      onValue: resolveQrValue,
+    });
+    return state.qrScanner;
+  }
+
+  async function ensureQrScannerReady() {
+    const scanner = ensureQrScannerInstance();
+    if (scanner) return scanner;
+    const pending = window.__TIMEBLOCK_QR_SCANNER_READY__;
+    if (pending && typeof pending.then === "function") {
+      await pending.catch(() => null);
+    }
+    return ensureQrScannerInstance();
+  }
+
   async function startQrCamera(event) {
     const button = event.currentTarget;
     const feedback = $('[data-qr-feedback]');
@@ -1700,9 +1730,10 @@
     clearQrPreview();
     setFeedback(feedback, copy("loading"), false);
     try {
-      if (!state.qrScanner) throw new Error("qr-unsupported");
+      const scanner = await ensureQrScannerReady();
+      if (!scanner) throw new Error("qr-unsupported");
       video.hidden = false;
-      await state.qrScanner.startCamera();
+      await scanner.startCamera();
       setFeedback(feedback, "", false);
     } catch (error) {
       stopQrScanner();
@@ -1720,8 +1751,9 @@
     try {
       clearQrPreview();
       setFeedback(feedback, copy("loading"), false);
-      if (!state.qrScanner) throw new Error("qr-unsupported");
-      const value = await state.qrScanner.decodeFile(file);
+      const scanner = await ensureQrScannerReady();
+      if (!scanner) throw new Error("qr-unsupported");
+      const value = await scanner.decodeFile(file);
       if (!value || !(await resolveQrValue(value))) setFeedback(feedback, copy("qrInvalid"), true);
     } catch (error) {
       setFeedback(
@@ -1840,19 +1872,13 @@
   }
 
   function initQrScanner() {
-    const video = $('[data-qr-video]');
-    if (typeof window.TimeblockQrScanner === "function") {
-      state.qrScanner = new window.TimeblockQrScanner({
-        video,
-        scanIntervalMs: 320,
-        onValue: resolveQrValue,
-      });
-    }
+    ensureQrScannerInstance();
     $('[data-qr-scan]').addEventListener("click", openQrScanner);
     $('[data-qr-camera]').addEventListener("click", startQrCamera);
     $('[data-qr-close]').addEventListener("click", closeQrScanner);
     $('[data-qr-cancel]').addEventListener("click", closeQrScanner);
     $('[data-qr-confirm]').addEventListener("click", confirmQrProfile);
+    $('[data-qr-add-friend]').addEventListener("click", confirmQrProfile);
     $('[data-qr-file]').addEventListener("change", scanQrFile);
     $('[data-qr-manual-form]').addEventListener("submit", async (event) => {
       event.preventDefault();

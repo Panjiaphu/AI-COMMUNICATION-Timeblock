@@ -9,6 +9,7 @@
   const loadedScripts = new Map();
   const loadedStyles = new Map();
   let qrReady = false;
+  let qrReadyPromise = null;
   let attachmentReady = false;
   let capabilitySurfacesReady = false;
   let messagingUxReady = false;
@@ -16,8 +17,17 @@
   function loadScriptOnce(src) {
     if (loadedScripts.has(src)) return loadedScripts.get(src);
     const promise = new Promise((resolve, reject) => {
-      const existing = document.querySelector(`script[src="${src}"]`);
-      if (existing?.dataset.loaded === "true") {
+      const requestedUrl = new URL(src, window.location.href);
+      const existing = Array.from(document.scripts).find((candidate) => {
+        if (!candidate.src) return false;
+        return new URL(candidate.src, window.location.href).pathname === requestedUrl.pathname;
+      });
+      const alreadyAvailable = existing?.dataset.loaded === "true"
+        || (requestedUrl.pathname.endsWith("/jsQR.min.js") && typeof window.jsQR === "function")
+        || (requestedUrl.pathname.endsWith("/qr_friend_scanner.js")
+          && typeof window.TimeblockQrScanner === "function");
+      if (alreadyAvailable) {
+        if (existing) existing.dataset.loaded = "true";
         resolve(existing);
         return;
       }
@@ -69,15 +79,27 @@
   }
 
   async function ensureQrScannerLoaded() {
-    if (qrReady) return;
+    if (qrReady) return window.TimeblockQrScanner;
     setControlsLoading("[data-qr-camera], [data-qr-file]", true);
     try {
       await loadScriptOnce("/static/vendor/jsqr/1.4.0/jsQR.min.js");
       await loadScriptOnce("/static/js/qr_friend_scanner.js?v=startup-20260730b");
       qrReady = true;
+      return window.TimeblockQrScanner;
     } finally {
       setControlsLoading("[data-qr-camera], [data-qr-file]", false);
     }
+  }
+
+  function requestQrScannerLoad() {
+    if (!qrReadyPromise) {
+      qrReadyPromise = ensureQrScannerLoaded().catch((error) => {
+        qrReadyPromise = null;
+        throw error;
+      });
+    }
+    window.__TIMEBLOCK_QR_SCANNER_READY__ = qrReadyPromise;
+    return qrReadyPromise;
   }
 
   async function ensureAttachmentComposerLoaded() {
@@ -118,7 +140,7 @@
     if (!target) return;
 
     if (target.closest("[data-qr-scan]")) {
-      ensureQrScannerLoaded().catch(reportLoadFailure);
+      requestQrScannerLoad().catch(reportLoadFailure);
       return;
     }
 
