@@ -18,6 +18,7 @@
   const preview = app.querySelector("#assistant-panel-ai .assistant-conversation-preview");
   const messages = app.querySelector("[data-ai-messages]");
   const composer = app.querySelector("[data-ai-form]");
+  const aiInput = app.querySelector("[data-ai-input]");
   const fileInput = app.querySelector("[data-ai-file]");
   const attachLabel = fileInput?.closest("label");
   const contextPanel = app.querySelector("[data-context-panel]");
@@ -36,8 +37,24 @@
     || window.navigator.standalone === true
   );
 
+  const isMobileBrowserOverview = () => (
+    Boolean(aiInput)
+    && mq.matches
+    && !isStandalone()
+    && !document.body.classList.contains("assistant-ai-conversation-active")
+  );
+
+  const syncAiInputMode = () => {
+    if (!aiInput) return;
+    const launcherOnly = isMobileBrowserOverview();
+    aiInput.readOnly = launcherOnly;
+    if (launcherOnly) aiInput.setAttribute("aria-readonly", "true");
+    else aiInput.removeAttribute("aria-readonly");
+  };
+
   const syncStandaloneClass = () => {
     document.body.classList.toggle("assistant-pwa-standalone", isStandalone());
+    syncAiInputMode();
   };
 
   attachLabel?.classList.add("assistant-mobile-add-trigger");
@@ -204,6 +221,7 @@
     if (!aiPanel?.classList.contains("is-active")) return;
     syncStandaloneClass();
     document.body.classList.add("assistant-ai-conversation-active");
+    syncAiInputMode();
     syncContextLabel();
     requestAnimationFrame(() => {
       if (messages.scrollHeight - messages.scrollTop - messages.clientHeight < 180) {
@@ -215,7 +233,21 @@
   const deactivate = () => {
     closeAllOverlays();
     document.body.classList.remove("assistant-ai-conversation-active");
+    syncAiInputMode();
     preview?.focus();
+  };
+
+  const shouldHandOffAiInput = () => (
+    Boolean(aiInput)
+    && isMobileBrowserOverview()
+    && app.querySelector('[data-mode-panel="ai"]')?.classList.contains("is-active")
+  );
+
+  const focusImmersiveAiInput = () => {
+    if (!shouldHandOffAiInput()) return;
+    activate();
+    syncAiInputMode();
+    aiInput.focus({ preventScroll: true });
   };
 
   back.addEventListener("click", deactivate);
@@ -226,6 +258,14 @@
   backdrop.addEventListener("click", closeAllOverlays);
   contextClose?.addEventListener("click", () => queueMicrotask(() => backdrop.classList.remove("is-open")));
   preview?.addEventListener("click", activate);
+  aiInput?.addEventListener("pointerdown", (event) => {
+    if (!shouldHandOffAiInput()) return;
+    event.preventDefault();
+    focusImmersiveAiInput();
+  });
+  aiInput?.addEventListener("focus", () => {
+    focusImmersiveAiInput();
+  });
 
   app.querySelectorAll("[data-mode-tab]").forEach((tab) => {
     tab.addEventListener("click", () => {
@@ -260,10 +300,12 @@
     syncStandaloneClass();
     if (!mq.matches) {
       document.body.classList.remove("assistant-ai-conversation-active");
+      syncAiInputMode();
       return;
     }
     const aiPanel = app.querySelector('[data-mode-panel="ai"]');
     if (aiPanel?.classList.contains("is-active")) activate();
+    else syncAiInputMode();
   };
 
   mq.addEventListener?.("change", onBreakpoint);
