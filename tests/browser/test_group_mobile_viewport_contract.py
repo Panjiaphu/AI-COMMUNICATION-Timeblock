@@ -84,6 +84,7 @@ def _fixture_html() -> str:
             <section class="native-main">
               <div class="session-strip"><span>ACTIVE</span></div>
               <header class="group-header"><strong>Group</strong></header>
+              <div class="mobile-language-bar"><button type="button">VI</button></div>
               <div class="chat-content surface-content">
                 <section class="thread-column">
                   <div class="thread-scroll"><p>Message</p></div>
@@ -91,7 +92,6 @@ def _fixture_html() -> str:
                 </section>
               </div>
             </section>
-            <div class="mobile-language-bar"><button type="button">VI</button></div>
             <nav class="mobile-bottom-nav"><a href="#">Chat</a><button type="button">Call</button><button type="button">Video</button><button type="button">Radio</button></nav>
           </div>
         </main>
@@ -113,11 +113,25 @@ def test_group_mobile_nav_and_standalone_keyboard_geometry(browser_fixture, requ
         closed = page.locator("#group-native-app").evaluate(
             """root => {
               const nav = root.querySelector('.mobile-bottom-nav');
+              const main = root.querySelector('.native-main');
+              const language = root.querySelector('.mobile-language-bar');
+              const composer = root.querySelector('.composer');
+              const navRect = nav.getBoundingClientRect();
+              const mainRect = main.getBoundingClientRect();
+              const languageRect = language.getBoundingClientRect();
+              const composerRect = composer.getBoundingClientRect();
               const rect = nav.getBoundingClientRect();
               return {
                 rootHeight: root.getBoundingClientRect().height,
                 navPosition: getComputedStyle(nav).position,
                 navBottom: rect.bottom,
+                navTop: navRect.top,
+                mainBottom: mainRect.bottom,
+                languageTop: languageRect.top,
+                languageBottom: languageRect.bottom,
+                languageInsideMain: languageRect.top >= mainRect.top && languageRect.bottom <= mainRect.bottom,
+                composerTop: composerRect.top,
+                composerBottom: composerRect.bottom,
                 viewport: window.innerHeight,
                 horizontalOverflow: document.documentElement.scrollWidth - window.innerWidth,
               };
@@ -126,6 +140,10 @@ def test_group_mobile_nav_and_standalone_keyboard_geometry(browser_fixture, requ
         assert closed["rootHeight"] == pytest.approx(844, abs=1)
         assert closed["navPosition"] == "fixed"
         assert closed["navBottom"] == pytest.approx(844, abs=1)
+        assert closed["composerBottom"] == pytest.approx(closed["navTop"], abs=1)
+        assert closed["mainBottom"] == pytest.approx(closed["composerBottom"], abs=1)
+        assert closed["languageInsideMain"] is True
+        assert closed["languageBottom"] <= closed["composerTop"] + 1
         assert closed["horizontalOverflow"] <= 1
 
         page.evaluate("window.__groupViewportQa.setStandalone(true); window.GroupMobileViewportContractV1.sync()")
@@ -136,13 +154,17 @@ def test_group_mobile_nav_and_standalone_keyboard_geometry(browser_fixture, requ
             """() => ({
               keyboard: document.body.classList.contains('group-keyboard-open'),
               navDisplay: getComputedStyle(document.querySelector('.mobile-bottom-nav')).display,
-              rootHeight: document.querySelector('#group-native-app').getBoundingClientRect().height,
+              root: document.querySelector('#group-native-app').getBoundingClientRect(),
+              language: document.querySelector('.mobile-language-bar').getBoundingClientRect(),
+              composer: document.querySelector('.composer').getBoundingClientRect(),
               keyboardHeight: getComputedStyle(document.body).getPropertyValue('--group-keyboard-height').trim(),
             })"""
         )
         assert opened["keyboard"] is True
         assert opened["navDisplay"] == "none"
-        assert opened["rootHeight"] == pytest.approx(500, abs=1)
+        assert opened["root"]["height"] == pytest.approx(500, abs=1)
+        assert opened["composer"]["bottom"] == pytest.approx(opened["root"]["bottom"], abs=1)
+        assert opened["language"]["bottom"] <= opened["composer"]["top"] + 1
         assert opened["keyboardHeight"] == "344px"
 
         page.locator("textarea[data-group-text-entry]").blur()

@@ -802,8 +802,8 @@
       '<header class="mobile-app-header"><div class="app-logo"><span class="app-logo-mark"><img src="/static/group-v3/timeblock-chat.svg" alt=""></span><span><strong>AI-COMMUNICATION</strong><small>' +
       esc(t("nativeGroupApp")) + '</small></span></div><span class="mobile-state-dot"></span></header>' + renderRooms() +
       '<section class="native-main ' + (banner ? "has-banner" : "") + '"><div class="session-strip"><span><i></i>' +
-      esc(t("signedIn")) + "</span><span>" + esc(state.groupAuthorized ? t("groupSession") : t("handoffRequiredTitle")) + "</span></div>" + banner + (state.groupAuthorized ? header() : "") + surface() +
-      "</section>" + mobileLanguageBar() + nav.mobile + "</div>";
+      esc(t("signedIn")) + "</span><span>" + esc(state.groupAuthorized ? t("groupSession") : t("handoffRequiredTitle")) + "</span></div>" + banner + (state.groupAuthorized ? header() : "") + mobileLanguageBar() + surface() +
+      "</section>" + nav.mobile + "</div>";
     root.dataset.runtimeState = "READY";
     syncMediaElements();
     resizeTextEntry(root.querySelector("textarea[data-group-text-entry]"));
