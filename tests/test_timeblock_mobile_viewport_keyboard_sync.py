@@ -118,6 +118,14 @@ def test_timeblock_mobile_viewport_keyboard_contract_is_locked_and_scoped():
         assert event_name in standalone_js
     assert "--assistant-visual-viewport-height" not in standalone_js
 
+    runtime_adapter_css = _text("app/static/css/assistant_runtime_adapter.css")
+    assert "assistant-ai-conversation-active:not(.is-keyboard-open)" in runtime_adapter_css
+    assert "timeblock-mobile-immersive-conversation:not(.is-keyboard-open)" in runtime_adapter_css
+    assert "display: grid !important;" in runtime_adapter_css
+    assert "--assistant-bottom-nav-height" in runtime_adapter_css
+    assert "--assistant-ai-viewport-bottom" in runtime_adapter_css
+    assert "--timeblock-message-viewport-bottom" in runtime_adapter_css
+
     assistant_template = _text("vendor/timeblock-assistant/templates/assistant/index.html")
     assert "filename='css/mobile_input_keyboard_contract.css'" in assistant_template
     assert "filename='css/timeblock_v2_mobile_nav_safe_area_v1.css'" in assistant_template

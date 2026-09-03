@@ -136,7 +136,7 @@ def test_authenticated_assistant_renders_canonical_vendor_dom_and_locale(runtime
     assert 'href="/static/css/assistant.css?' in response.text
     assert 'href="/static/css/timeblock_v2.css?' in response.text
     assert (
-        'href="/static/css/assistant_runtime_adapter.css?v=20260902-group-native-1" '
+        'href="/static/css/assistant_runtime_adapter.css?v=20260903-mobile-nav-gap-1" '
         "data-guilua-assistant-runtime-adapter"
     ) in response.text
     assert 'src="/static/js/call-v1/bootstrap.js?' in response.text

@@ -210,3 +210,55 @@
     height: 21px;
   }
 }
+
+/* The source-locked immersive conversation styles hide the shared nav. Keep
+ * that behavior while the keyboard is open, but restore the real bottom nav
+ * when the conversation is idle. The shell must consume the same nav height;
+ * otherwise the hidden-nav reserve becomes a blank strip below the composer. */
+@media (max-width: 760px), (max-height: 500px) and (max-width: 900px) {
+  body.assistant-workspace-page.assistant-ai-conversation-active:not(.is-keyboard-open),
+  body.assistant-workspace-page.timeblock-mobile-immersive-conversation:not(.is-keyboard-open) {
+    --assistant-bottom-nav-height: calc(
+      var(--assistant-mobile-nav-row-height, 60px)
+      + env(safe-area-inset-bottom, 0px)
+    );
+    padding-bottom: var(--assistant-bottom-nav-height);
+  }
+
+  body.assistant-workspace-page.assistant-ai-conversation-active:not(.is-keyboard-open) .mobile-bottom-nav,
+  body.assistant-workspace-page.timeblock-mobile-immersive-conversation:not(.is-keyboard-open) .mobile-bottom-nav {
+    display: grid !important;
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 1100;
+    max-width: none;
+    border-radius: 0;
+    padding:
+      5px
+      max(8px, env(safe-area-inset-right, 0px))
+      calc(5px + env(safe-area-inset-bottom, 0px))
+      max(8px, env(safe-area-inset-left, 0px));
+  }
+
+  body.assistant-workspace-page.assistant-ai-conversation-active:not(.is-keyboard-open) #main-content {
+    height: calc(
+      var(--assistant-ai-viewport-bottom, 100dvh)
+      - var(--assistant-bottom-nav-height, 0px)
+    );
+    min-height: 0;
+  }
+
+  body.assistant-workspace-page.timeblock-mobile-immersive-conversation:not(.is-keyboard-open) #main-content {
+    height: calc(
+      var(--timeblock-message-viewport-bottom, 100dvh)
+      - var(--assistant-bottom-nav-height, 0px)
+    );
+    min-height: 0;
+  }
+
+  body.assistant-workspace-page.assistant-ai-conversation-active:not(.is-keyboard-open) .assistant-page,
+  body.assistant-workspace-page.timeblock-mobile-immersive-conversation:not(.is-keyboard-open) .assistant-page {
+    height: 100%;
+    min-height: 0;
+  }
+}

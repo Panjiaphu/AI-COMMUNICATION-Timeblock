@@ -58,7 +58,7 @@ _TIMEBLOCK_ENDPOINTS = {
 _ASSISTANT_BUCKETS = ("text", "image", "audio", "video", "speech")
 _ASSISTANT_RUNTIME_ADAPTER = (
     '<link rel="stylesheet" '
-    'href="/static/css/assistant_runtime_adapter.css?v=20260902-group-native-1" '
+    'href="/static/css/assistant_runtime_adapter.css?v=20260903-mobile-nav-gap-1" '
     'data-guilua-assistant-runtime-adapter>\n    '
     '<script src="/static/js/assistant_group_native_entry.js?v=20260902-group-native-1" '
     'data-guilua-group-native-entry defer></script>'
