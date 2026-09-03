@@ -117,6 +117,10 @@ class GroupRadioService:
                         raise GroupServiceError("group_radio_invitee_not_found", 404)
                     session = GroupRadioSession(id=session_id, space_id=space_id, title=values.get("title") or "", created_by_membership_id=creator.id, livekit_room_name=room_name(f"radio:{session_id}"), status="ready")
                     db.add(session)
+                    # Radio participants reference the newly-created session.
+                    # Materialize the parent before inserting dependents when
+                    # SQLite FK enforcement or PostgreSQL is in use.
+                    db.flush()
                     for membership in [creator, *invitees]:
                         is_creator = membership.id == creator.id
                         db.add(GroupRadioParticipant(id=str(uuid4()), radio_session_id=session.id, membership_id=membership.id, principal_type=membership.principal_type, principal_id=membership.principal_id, principal_user_id=membership.principal_user_id, display_name=membership.display_name, livekit_identity=participant_identity(f"radio:{session.id}", membership.id), status="joined" if is_creator else "invited", joined_at=_now() if is_creator else None))

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
@@ -14,6 +14,14 @@ GROUP_V3_SCHEMA_REVISION = "20260902_0018"
 
 class Base(DeclarativeBase):
     pass
+
+
+def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record) -> None:
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA foreign_keys=ON")
+    finally:
+        cursor.close()
 
 
 def normalize_database_url(database_url: str) -> str:
@@ -48,6 +56,8 @@ class Database:
                 }
             )
         self.engine: Engine = create_engine(database_url, **engine_options)
+        if database_url.startswith("sqlite"):
+            event.listen(self.engine, "connect", _enable_sqlite_foreign_keys)
         self.session_factory = sessionmaker(
             bind=self.engine,
             class_=Session,
