@@ -1,0 +1,85 @@
+/* Timeblock Direct Messaging mobile keyboard geometry contract.
+   assistant.js remains the single VisualViewport owner. This stylesheet only
+   consumes the published viewport variables and keeps the conversation shell
+   aligned to the visible interval [offsetTop, offsetTop + height]. */
+
+@media (max-width: 760px), (max-height: 500px) and (max-width: 900px) {
+  body.timeblock-mobile-immersive-conversation {
+    --timeblock-message-safe-top: max(
+      0px,
+      calc(
+        env(safe-area-inset-top, 0px)
+        - var(--assistant-visual-viewport-offset-top, 0px)
+      )
+    );
+    --timeblock-message-header-height: calc(56px + var(--timeblock-message-safe-top));
+    --timeblock-message-viewport-bottom: calc(
+      var(--assistant-visual-viewport-offset-top, 0px)
+      + var(--assistant-visual-viewport-height, 100dvh)
+    );
+  }
+
+  /* #main-content is overflow-hidden in the shared mobile workspace. Its box
+     therefore has to reach the visual viewport bottom, not stop at VV_HEIGHT. */
+  body.timeblock-mobile-immersive-conversation #main-content {
+    height: var(--timeblock-message-viewport-bottom, 100dvh);
+    min-height: 0;
+  }
+
+  /* The page border box spans layout origin -> visual viewport bottom. The
+     top padding consumes VV_TOP, leaving exactly VV_HEIGHT for the shell. */
+  body.timeblock-mobile-immersive-conversation .assistant-page {
+    box-sizing: border-box;
+    height: var(--timeblock-message-viewport-bottom, 100dvh);
+    min-height: 0;
+    margin: 0;
+    padding: var(--assistant-visual-viewport-offset-top, 0px) 0 0;
+  }
+
+  body.timeblock-mobile-immersive-conversation .assistant-shell,
+  body.timeblock-mobile-immersive-conversation .assistant-panels,
+  body.timeblock-mobile-immersive-conversation #assistant-panel-messages,
+  body.timeblock-mobile-immersive-conversation .assistant-messages-layout,
+  body.timeblock-mobile-immersive-conversation .assistant-thread-column {
+    min-height: 0;
+  }
+
+  body.timeblock-mobile-immersive-conversation .assistant-shell {
+    height: 100%;
+  }
+
+  body.timeblock-mobile-immersive-conversation .assistant-thread-header {
+    min-height: var(--timeblock-message-header-height, 56px);
+    padding-top: var(--timeblock-message-safe-top, 0px);
+  }
+
+  body.timeblock-mobile-immersive-conversation .messaging-mobile-load-older {
+    top: calc(var(--timeblock-message-header-height, 56px) + 8px);
+  }
+
+  body.timeblock-mobile-immersive-conversation.is-keyboard-open .assistant-thread-header {
+    min-height: var(--timeblock-message-header-height, 56px);
+    padding-top: var(--timeblock-message-safe-top, 0px);
+  }
+
+  body.timeblock-mobile-immersive-conversation .assistant-thread-messages {
+    min-height: 0;
+    overscroll-behavior: contain;
+  }
+
+  body.timeblock-mobile-immersive-conversation .assistant-composer {
+    position: relative;
+    inset: auto;
+    transform: none;
+  }
+
+  /* Static iOS anti-zoom protection only. These selectors do not constitute
+     rendered keyboard QA for the non-messaging surfaces. */
+  [data-ai-input],
+  [data-message-input],
+  [data-image-generation-prompt],
+  [data-live-translate-text],
+  [data-call-translation-text] {
+    font-size: max(16px, 1em);
+  }
+}

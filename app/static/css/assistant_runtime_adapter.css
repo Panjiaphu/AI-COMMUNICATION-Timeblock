@@ -210,3 +210,36 @@
     height: 21px;
   }
 }
+
+/* Immersive conversations own the entire mobile viewport. The global nav is
+ * useful on workspace surfaces, but it must stay out of Direct 1:1 and AI
+ * Advisor conversations so it cannot shorten the message timeline or appear
+ * between the composer and the iOS keyboard. */
+@media (max-width: 760px), (max-height: 500px) and (max-width: 900px) {
+  body.assistant-workspace-page.assistant-ai-conversation-active,
+  body.assistant-workspace-page.timeblock-mobile-immersive-conversation {
+    --assistant-bottom-nav-height: 0px;
+    padding-bottom: 0;
+  }
+
+  body.assistant-workspace-page.assistant-ai-conversation-active .mobile-bottom-nav,
+  body.assistant-workspace-page.timeblock-mobile-immersive-conversation .mobile-bottom-nav {
+    display: none !important;
+  }
+
+  body.assistant-workspace-page.assistant-ai-conversation-active #main-content {
+    height: var(--assistant-ai-viewport-bottom, 100dvh);
+    min-height: 0;
+  }
+
+  body.assistant-workspace-page.timeblock-mobile-immersive-conversation #main-content {
+    height: var(--timeblock-message-viewport-bottom, 100dvh);
+    min-height: 0;
+  }
+
+  body.assistant-workspace-page.assistant-ai-conversation-active .assistant-page,
+  body.assistant-workspace-page.timeblock-mobile-immersive-conversation .assistant-page {
+    height: 100%;
+    min-height: 0;
+  }
+}

@@ -88,6 +88,11 @@
         event.preventDefault();
         this.translateText();
       });
+      this.elements.text?.addEventListener("focus", () => this.scheduleTextEntryVisibility());
+      // assistant.js publishes the viewport contract; this listener only keeps
+      // the Live Translate panel's local scroll owner aligned after resize.
+      this.environment.visualViewport?.addEventListener("resize", () => this.scheduleTextEntryVisibility());
+      this.environment.visualViewport?.addEventListener("scroll", () => this.scheduleTextEntryVisibility());
       this.elements.voice?.addEventListener("click", () => this.toggleVoice());
       this.elements.tts?.addEventListener("click", () => this.toggleTts());
       this.elements.reset?.addEventListener("click", () => this.reset());
@@ -101,6 +106,48 @@
       this.setPhase(PHASES.IDLE);
       this.renderEmptyResult();
       return true;
+    }
+
+    viewportContract() {
+      const view = this.environment.visualViewport;
+      const style = this.environment.getComputedStyle?.(this.environment.document?.body);
+      const read = (name, fallback) => {
+        const value = Number.parseFloat(style?.getPropertyValue(name) || "");
+        return Number.isFinite(value) ? value : fallback;
+      };
+      const top = read("--assistant-visual-viewport-offset-top", Number(view?.offsetTop || 0));
+      const height = read(
+        "--assistant-visual-viewport-height",
+        Number(view?.height || this.environment.innerHeight || 0),
+      );
+      return { top: Math.max(0, top), bottom: Math.max(0, top + height) };
+    }
+
+    scheduleTextEntryVisibility() {
+      const frame = this.environment.requestAnimationFrame;
+      if (typeof frame !== "function") {
+        this.ensureTextEntryVisibility();
+        return;
+      }
+      frame.call(this.environment, () => this.ensureTextEntryVisibility());
+    }
+
+    ensureTextEntryVisibility() {
+      const panel = this.elements.panel;
+      const text = this.elements.text;
+      if (!panel || !text || typeof panel.scrollTop !== "number") return;
+      const viewport = this.viewportContract();
+      const rect = text.getBoundingClientRect?.();
+      if (!rect) return;
+      const padding = 12;
+      const panelRect = panel.getBoundingClientRect?.();
+      const visibleTop = Math.max(viewport.top + padding, (panelRect?.top || viewport.top) + padding);
+      const visibleBottom = Math.min(viewport.bottom - padding, (panelRect?.bottom || viewport.bottom) - padding);
+      if (rect.top < visibleTop) {
+        panel.scrollTop = Math.max(0, panel.scrollTop - (visibleTop - rect.top));
+      } else if (rect.bottom > visibleBottom) {
+        panel.scrollTop += rect.bottom - visibleBottom;
+      }
     }
 
     setActive(active) {

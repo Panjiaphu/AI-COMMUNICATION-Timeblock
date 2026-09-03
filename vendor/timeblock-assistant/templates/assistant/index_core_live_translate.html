@@ -31,8 +31,8 @@
 {% block title %}{{ t('assistant.page_title') }} | Timeblock{% endblock %}
 {% block body_class %}assistant-workspace-page{% endblock %}
 {% block head %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css', v='call-v1-hotfix-20260820b') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/live_translate.css', v='live-translate-v1-20260822') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css', v='call-v1-viewport-contract-20260903') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/live_translate.css', v='live-translate-v2-keyboard-contract-20260903') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_core_v2.css', v='uiux-20260729') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/group_launcher_v3.css', v='group-v3-p13') }}">
   {% if config.MESSAGING_ADVANCED_ATTACHMENTS_ENABLED %}
@@ -865,15 +865,15 @@
   <script src="{{ url_for('static', filename='vendor/jsqr/1.4.0/jsQR.min.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/qr_friend_scanner.js', v='uiux-20260729') }}" defer></script>
   <script>window.__TIMEBLOCK_CALL_V1_ENABLED__ = true;</script>
-  <script src="{{ url_for('static', filename='js/call-v1/session.js', v='call-v1-hotfix-20260820b') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/media.js', v='call-v1-hotfix-20260820b') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/peer.js', v='call-v1-hotfix-20260820b') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/signaling.js', v='call-v1-hotfix-20260820b') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/ring-audio.js', v='call-v1-hotfix-20260820b') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/runtime.js', v='call-v1-hotfix-20260820b') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/translation_plugin.js', v='call-v1-ios-auto-read-20260826') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/bootstrap.js', v='call-v1-hotfix-20260820b') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/live_translate.js', v='live-translate-v1-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/session.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/media.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/peer.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/signaling.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/ring-audio.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/runtime.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/translation_plugin.js', v='call-v1-translation-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/bootstrap.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/live_translate.js', v='live-translate-v2-keyboard-contract-20260903') }}" defer></script>
   <script src="{{ url_for('static', filename='js/assistant.js', v='group-ownership-v3-p10') }}" defer></script>
   <script src="{{ url_for('static', filename='js/group_launcher_v3.js', v='group-v3-p13') }}" defer></script>
   <script src="{{ url_for('static', filename='js/messaging_core_v2.js', v='uiux-20260729') }}" defer></script>

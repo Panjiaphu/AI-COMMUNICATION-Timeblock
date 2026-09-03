@@ -20,7 +20,10 @@
   }
 
   body.group-v3-body .native-mobile {
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    /* The bottom nav is fixed and therefore must not consume a root grid row.
+       Keep the language controls inside native-main so the composer can end
+       exactly at the nav edge while the keyboard is closed. */
+    grid-template-rows: auto minmax(0, 1fr);
     height: 100%;
     min-height: 0;
     padding-bottom: var(--group-mobile-nav-height);
@@ -29,6 +32,35 @@
 
   body.group-v3-body .native-mobile .native-main {
     min-height: 0;
+    grid-template-rows: 24px 62px auto minmax(0, 1fr);
+  }
+
+  body.group-v3-body .native-mobile .native-main:not(.has-banner) .mobile-language-bar {
+    grid-row: 3;
+  }
+
+  body.group-v3-body .native-mobile .native-main:not(.has-banner) .surface-content {
+    grid-row: 4;
+  }
+
+  body.group-v3-body .native-mobile .native-main.has-banner {
+    grid-template-rows: 24px 38px 62px auto minmax(0, 1fr);
+  }
+
+  body.group-v3-body .native-mobile .native-main.has-banner .runtime-banner {
+    grid-row: 2;
+  }
+
+  body.group-v3-body .native-mobile .native-main.has-banner .group-header {
+    grid-row: 3;
+  }
+
+  body.group-v3-body .native-mobile .native-main.has-banner .mobile-language-bar {
+    grid-row: 4;
+  }
+
+  body.group-v3-body .native-mobile .native-main.has-banner .surface-content {
+    grid-row: 5;
   }
 
   body.group-v3-body .native-mobile .mobile-bottom-nav {

@@ -1,0 +1,56 @@
+/* Timeblock V2 mobile bottom-nav geometry hardening for the Assistant workspace.
+   Timeblock V2 owns global nav geometry; Assistant owns only reserved height and
+   visibility. The installed iOS PWA additionally needs a full-layout viewport
+   authority because WebKit may report a shortened visualViewport with
+   viewport-fit=cover while the keyboard is closed. */
+
+@media (max-width: 760px), (max-height: 500px) and (max-width: 900px) {
+  body.tbv2-shell.assistant-workspace-page {
+    --assistant-mobile-nav-row-height: 60px;
+    --assistant-bottom-nav-height: calc(
+      var(--assistant-mobile-nav-row-height)
+      + env(safe-area-inset-bottom, 0px)
+    );
+  }
+
+  body.tbv2-shell.assistant-workspace-page .tbv2-bottom-nav.mobile-bottom-nav {
+    position: fixed;
+    inset: auto 0 0;
+    gap: 3px;
+    max-width: none;
+    padding:
+      5px
+      max(8px, env(safe-area-inset-right, 0px))
+      calc(5px + env(safe-area-inset-bottom, 0px))
+      max(8px, env(safe-area-inset-left, 0px));
+    border-radius: 0;
+  }
+
+  body.tbv2-shell.assistant-workspace-page .tbv2-bottom-nav.mobile-bottom-nav a {
+    min-height: 50px;
+  }
+
+  body.tbv2-shell.assistant-workspace-page.is-keyboard-open {
+    --assistant-bottom-nav-height: 0px;
+  }
+}
+
+/* WebKit bug 254868: installed standalone apps using viewport-fit=cover may
+   report a shortened VisualViewport even with the keyboard closed. assistant.js
+   writes --assistant-visual-viewport-height inline, so this declaration must be
+   important to make 100vh the full-shell authority only while the keyboard is
+   closed. When is-keyboard-open is present, the existing inline VisualViewport
+   value becomes authoritative again for the keyboard-constrained visible area. */
+@media (display-mode: standalone) {
+  body.tbv2-shell.assistant-workspace-page:not(.is-keyboard-open) {
+    --assistant-visual-viewport-height: 100vh !important;
+    --assistant-visual-viewport-offset-top: 0px !important;
+  }
+}
+
+/* iOS compatibility path. assistant_mobile_conversation_v1.js is the existing
+   standalone detector and owns this class via display-mode + navigator.standalone. */
+body.tbv2-shell.assistant-workspace-page.assistant-pwa-standalone:not(.is-keyboard-open) {
+  --assistant-visual-viewport-height: 100vh !important;
+  --assistant-visual-viewport-offset-top: 0px !important;
+}

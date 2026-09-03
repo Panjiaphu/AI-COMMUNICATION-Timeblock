@@ -3,7 +3,10 @@
  */
 
 :root {
+  --timeblock-call-viewport-top: 0px;
   --timeblock-call-viewport-height: 100dvh;
+  --timeblock-call-viewport-bottom: 100dvh;
+  --timeblock-call-viewport-page-top: 0px;
   --timeblock-call-safe-top: env(safe-area-inset-top, 0px);
   --timeblock-call-safe-right: env(safe-area-inset-right, 0px);
   --timeblock-call-safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -286,7 +289,7 @@ body.timeblock-call-active .assistant-call-stage:fullscreen {
     position: fixed;
     z-index: 2400;
     inset: 0;
-    top: 0;
+    top: var(--timeblock-call-viewport-top, 0px);
     left: 0;
     width: 100vw;
     height: var(--timeblock-call-viewport-height, 100dvh);

@@ -79,7 +79,9 @@ ASSISTANT_INITIAL_CSS = (
     "static/css/messaging_enterprise_workspace.css",
     "static/css/messaging_network_identity_restore.css",
     "static/css/messaging_contact_v1.css",
+    "static/css/mobile_input_keyboard_contract.css",
     "static/css/group_launcher_v3.css",
+    "static/css/timeblock_v2_mobile_nav_safe_area_v1.css",
 )
 
 CALL_BOOTSTRAP_CSS = (
@@ -149,6 +151,7 @@ ASSISTANT_INITIAL_JS = (
     "static/js/live_translate_hotfix_bootstrap.js",
     "static/js/live_translate_history.js",
     "static/js/assistant.js",
+    "static/js/assistant_pwa_standalone_viewport_v1.js",
     "static/js/assistant_mobile_conversation_v1.js",
     "static/js/group_launcher_v3.js",
     "static/js/assistant_image_generation.js",

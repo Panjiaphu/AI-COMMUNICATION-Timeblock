@@ -1,17 +1,19 @@
 {% extends "assistant/index_core.html" %}
 
 {% block head %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css', v='call-v1-ring-owner-20260822') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant_mobile_conversation_v1.css', v='assistant-mobile-conversation-v1e-20260903') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant_image_generation.css', v='assistant-image-generation-v4') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/live_translate.css', v='assistant-layout-history-mobile-20260822') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css', v='call-v1-viewport-contract-20260903') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant_mobile_conversation_v1.css', v='assistant-mobile-conversation-v1d-20260903') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant_image_generation.css', v='assistant-image-generation-v5-20260903') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/live_translate.css', v='live-translate-v2-keyboard-contract-20260903') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/live_translate_history.css', v='translation-history-mobile-20260822') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_core_v2.css', v='startup-20260730') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_mobile_immersive.css', v='assistant-layout-hotfix-20260822') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_enterprise_workspace.css', v='contact-layout-owner-20260824e') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_network_identity_restore.css', v='network-identity-boundary-20260823') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_contact_v1.css', v='contact-v1-compact-20260824') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile_input_keyboard_contract.css', v='mobile-input-keyboard-contract-v2-20260903') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/group_launcher_v3.css', v='group-v3-p13') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/timeblock_v2_mobile_nav_safe_area_v1.css', v='mobile-bottom-nav-safe-area-v2-20260903') }}">
 {% endblock %}
 
 {% block scripts %}
@@ -21,22 +23,23 @@
     defer
   ></script>
   <script>window.__TIMEBLOCK_CALL_V1_ENABLED__ = true;</script>
-  <script src="{{ url_for('static', filename='js/call_audio_ownership.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/session.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/media.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/peer.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/signaling.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/ring-audio.js', v='call-v1-ring-owner-20260822-silent-arm') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/runtime.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/translation_plugin.js', v='call-v1-ios-auto-read-20260826') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call_audio_ownership_install.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/bootstrap.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/live_translate.js', v='live-translate-v1-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call_audio_ownership.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/session.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/media.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/peer.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/signaling.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/ring-audio.js', v='call-v1-viewport-contract-20260903-silent-arm') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/runtime.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/translation_plugin.js', v='call-v1-translation-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call_audio_ownership_install.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/bootstrap.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/live_translate.js', v='live-translate-v2-keyboard-contract-20260903') }}" defer></script>
   <script src="{{ url_for('static', filename='js/live_translate_hotfix_core.js', v='live-translate-v1-qa-hotfix-20260822') }}" defer></script>
   <script src="{{ url_for('static', filename='js/live_translate_hotfix_media.js', v='live-translate-v1-qa-hotfix-20260822') }}" defer></script>
   <script src="{{ url_for('static', filename='js/live_translate_hotfix_bootstrap.js', v='live-translate-v1-qa-hotfix-20260822') }}" defer></script>
   <script src="{{ url_for('static', filename='js/live_translate_history.js', v='translation-history-v1-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/assistant.js', v='call-v1-ring-owner-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/assistant.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/assistant_pwa_standalone_viewport_v1.js', v='assistant-pwa-standalone-viewport-v1-20260903') }}" defer></script>
   <script id="assistant-mobile-conversation-copy" type="application/json">{{ {
     "title": ("Timeblock AI Cố vấn Chuyên nghiệp" if current_locale == "vi" else ("Timeblock AI 專業顧問" if current_locale == "zh-TW" else "Timeblock AI Professional Advisor")),
     "ready": t('assistant.status.ready'),
@@ -56,7 +59,7 @@
     "video": t('assistant.quota.video'),
     "imageGeneration": t('assistant.image_generation.title')
   } | tojson }}</script>
-  <script src="{{ url_for('static', filename='js/assistant_mobile_conversation_v1.js', v='assistant-mobile-conversation-v1c') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/assistant_mobile_conversation_v1.js', v='assistant-mobile-conversation-v1d-20260903') }}" defer></script>
   <script id="assistant-image-generation-copy" type="application/json">{{ {
     "create": t('assistant.image_generation.create'),
     "title": t('assistant.image_generation.title'),
@@ -98,7 +101,7 @@
     "media_retention": t('assistant.media.retention'),
     "media_expires": t('assistant.media.expires')
   } | tojson }}</script>
-  <script src="{{ url_for('static', filename='js/assistant_image_generation.js', v='assistant-image-generation-v4') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/assistant_image_generation.js', v='assistant-image-generation-v5-20260903') }}" defer></script>
   <script src="{{ url_for('static', filename='js/messaging_core_v2.js', v='startup-20260730') }}" defer></script>
   <script src="{{ url_for('static', filename='js/messaging_mobile_immersive.js', v='mobile-translation-20260809') }}" defer></script>
   <script src="{{ url_for('static', filename='js/messaging_enterprise_workspace.js', v='enterprise-workspace-840-20260824b') }}" defer></script>
