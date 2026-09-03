@@ -95,6 +95,18 @@
       .replaceAll("'", "&#039;");
   }
 
+  function resizeTextEntry(control) {
+    if (!control || control.tagName !== "TEXTAREA") return;
+    control.style.height = "auto";
+    var maxHeight = Math.max(44, Math.min(132, Math.round((window.innerHeight || 640) * 0.28)));
+    control.style.height = Math.min(Math.max(control.scrollHeight, 44), maxHeight) + "px";
+  }
+
+  function isTextEntry(control) {
+    if (!control || !control.matches) return false;
+    return control.matches("textarea[data-group-text-entry], input[data-group-text-entry]");
+  }
+
   function icon(name, size) {
     if (!ICONS[name]) return "";
     size = size || 20;
@@ -376,7 +388,7 @@
         (space.id === (state.space && state.space.id) ? "<b>•</b>" : "") + "</button>";
     }).join("");
     var createForm = state.creatingSpace
-      ? '<form class="space-create-form context-create" data-form="create-space"><input name="title" maxlength="120" required placeholder="' + esc(t("spaceName")) + '"><button class="action-button action-primary" type="submit">' + esc(t("create")) + "</button></form>"
+      ? '<form class="space-create-form context-create" data-form="create-space"><input name="title" data-group-text-entry maxlength="120" required placeholder="' + esc(t("spaceName")) + '"><button class="action-button action-primary" type="submit">' + esc(t("create")) + "</button></form>"
       : action("show-create-space", t("createSpace"), "users", "secondary", 'class="context-create"');
     return '<aside class="context-rail ' + (state.surface === "radio" ? "radio-context" : "") + '">' +
       '<div class="context-heading"><span>' + esc(t("rooms")) + "</span><strong>" + esc(t("workspace")) + "</strong></div>" +
@@ -511,8 +523,8 @@
     return '<div class="chat-content state-thread surface-content"><section class="thread-column"><div class="thread-scroll">' +
       pinnedBlock + '<div class="day-divider">' + esc(t("today")) + '</div><div data-message-list>' + messages +
       '</div></div><form class="composer" data-form="send-message"><span class="composer-file"><input id="group-attachment" type="file" data-change="attachment">' +
-      '<label for="group-attachment" aria-label="' + esc(t("attach")) + '">' + icon("paperclip", 18) + '</label></span><div><input name="content" maxlength="8000" autocomplete="off" placeholder="' +
-      esc(t("composer")) + '" aria-label="' + esc(t("composer")) + '">' + pending + '</div><button type="submit" class="action-button action-primary" aria-label="' +
+      '<label for="group-attachment" aria-label="' + esc(t("attach")) + '">' + icon("paperclip", 18) + '</label></span><div><textarea name="content" data-group-text-entry rows="1" maxlength="8000" autocomplete="off" placeholder="' +
+      esc(t("composer")) + '" aria-label="' + esc(t("composer")) + '"></textarea>' + pending + '</div><button type="submit" class="action-button action-primary" aria-label="' +
       esc(t("send")) + '">' + icon("send", 17) + "<span>" + esc(t("send")) + "</span></button></form></section>" + renderParticipants(false) + "</div>";
   }
 
@@ -764,7 +776,7 @@
     if (!state.groupAuthorized) return handoffRequired();
     if (!state.space) {
       return '<section class="runtime-empty surface-content"><span>' + icon("users", 28) + "</span><h2>" + esc(t("noSpaces")) +
-        "</h2><p>" + esc(t("noSpacesNote")) + '</p><form class="space-create-form" data-form="create-space"><input name="title" maxlength="120" required placeholder="' +
+        "</h2><p>" + esc(t("noSpacesNote")) + '</p><form class="space-create-form" data-form="create-space"><input name="title" data-group-text-entry maxlength="120" required placeholder="' +
         esc(t("spaceName")) + '"><button class="action-button action-primary" type="submit">' + esc(t("create")) + "</button></form></section>";
     }
     if (state.surface === "chat") return renderChat();
@@ -794,6 +806,7 @@
       "</section>" + mobileLanguageBar() + nav.mobile + "</div>";
     root.dataset.runtimeState = "READY";
     syncMediaElements();
+    resizeTextEntry(root.querySelector("textarea[data-group-text-entry]"));
   }
 
   async function refreshAll() {
@@ -1515,6 +1528,21 @@
     var button = event.target.closest("[data-action]");
     if (!button || button.disabled) return;
     handleAction(button.dataset.action, button);
+  });
+
+  root.addEventListener("input", function (event) {
+    if (isTextEntry(event.target)) resizeTextEntry(event.target);
+  });
+
+  root.addEventListener("keydown", function (event) {
+    var editor = event.target;
+    if (!editor || editor.tagName !== "TEXTAREA" || !editor.matches("[data-group-text-entry]")) return;
+    if (event.key !== "Enter" || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;
+    var form = editor.closest('form[data-form="send-message"]');
+    if (!form) return;
+    event.preventDefault();
+    if (typeof form.requestSubmit === "function") form.requestSubmit();
+    else handleForm(form);
   });
 
   root.addEventListener("submit", function (event) {
