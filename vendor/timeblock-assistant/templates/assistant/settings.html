@@ -28,7 +28,7 @@
   data-copy-audio-test="{{ t('assistant.settings.audio_test_started') }}"
 >
   <header class="app-settings-header">
-    <a href="{{ url_for('assistant.workspace', lang=current_locale) }}" class="app-settings-back" aria-label="{{ t('assistant.settings.back') }}">‹</a>
+    <a href="{{ url_for('assistant.workspace', mode='ai', entry='overview', lang=current_locale) }}" class="app-settings-back" aria-label="{{ t('assistant.settings.back') }}">‹</a>
     <div>
       <span class="app-settings-logo" aria-hidden="true">T</span>
       <p>Timeblock</p>
