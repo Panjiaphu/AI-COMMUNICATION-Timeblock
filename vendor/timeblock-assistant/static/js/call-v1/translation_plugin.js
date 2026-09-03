@@ -131,6 +131,9 @@
         event.preventDefault();
         void this.translateText();
       });
+      this._listen(this.ui.text, "focus", () => this._scheduleTextEntryVisibility());
+      this._listen(this.document?.defaultView?.visualViewport, "resize", () => this._scheduleTextEntryVisibility());
+      this._listen(this.document?.defaultView?.visualViewport, "scroll", () => this._scheduleTextEntryVisibility());
       this._listen(this.ui.record, "click", () => {
         if (this._recording) this.stopRecording();
         else this.startRecording();
@@ -194,6 +197,50 @@
       if (open) this.ui.source?.focus?.({ preventScroll: true });
     }
 
+    _callViewportContract() {
+      const view = this.document?.defaultView || root;
+      const style = view.getComputedStyle?.(this.document?.documentElement);
+      const read = (name, fallback) => {
+        const value = Number.parseFloat(style?.getPropertyValue(name) || "");
+        return Number.isFinite(value) ? value : fallback;
+      };
+      const top = read("--timeblock-call-viewport-top", Number(view.visualViewport?.offsetTop || 0));
+      const height = read(
+        "--timeblock-call-viewport-height",
+        Number(view.visualViewport?.height || view.innerHeight || 0),
+      );
+      const publishedBottom = read("--timeblock-call-viewport-bottom", Number.NaN);
+      return {
+        top: Math.max(0, top),
+        bottom: Number.isFinite(publishedBottom) ? publishedBottom : Math.max(0, top + height),
+      };
+    }
+
+    _scheduleTextEntryVisibility() {
+      const view = this.document?.defaultView || root;
+      const sync = () => this._ensureTextEntryVisibility();
+      if (typeof view.requestAnimationFrame === "function") view.requestAnimationFrame(sync);
+      else sync();
+    }
+
+    _ensureTextEntryVisibility() {
+      const panel = this.ui?.panel;
+      const text = this.ui?.text;
+      if (!this.panelOpen || !panel || !text || typeof panel.scrollTop !== "number") return;
+      const viewport = this._callViewportContract();
+      const rect = text.getBoundingClientRect?.();
+      if (!rect) return;
+      const padding = 12;
+      const panelRect = panel.getBoundingClientRect?.();
+      const visibleTop = Math.max(viewport.top + padding, (panelRect?.top || viewport.top) + padding);
+      const visibleBottom = Math.min(viewport.bottom - padding, (panelRect?.bottom || viewport.bottom) - padding);
+      if (rect.top < visibleTop) {
+        panel.scrollTop = Math.max(0, panel.scrollTop - (visibleTop - rect.top));
+      } else if (rect.bottom > visibleBottom) {
+        panel.scrollTop += rect.bottom - visibleBottom;
+      }
+    }
+
     togglePanel() {
       if (!this.isConnected()) return;
       const open = Boolean(this.ui?.panel && this.ui.panel.hidden);
@@ -207,6 +254,7 @@
     async closePanel() {
       if (!this.callId) {
         this._setPanel(false);
+        this.ui?.toggle?.focus?.({ preventScroll: true });
         return;
       }
       const restored = await this._restoreOriginalAudioTrack();
@@ -217,6 +265,7 @@
       this._teardown("panel-closed", { terminating: false, preserveCall: true });
       this._setPanel(false);
       if (this.ui?.toggle) this.ui.toggle.hidden = false;
+      this.ui?.toggle?.focus?.({ preventScroll: true });
       return true;
     }
 

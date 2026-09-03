@@ -220,6 +220,19 @@
     z-index: 1;
     box-shadow: 0 -8px 12px rgba(10, 29, 34, 0.28);
   }
+
+  body.assistant-workspace-page.is-keyboard-open .assistant-image-generation-panel {
+    top: var(--assistant-visual-viewport-offset-top, 0px);
+    right: max(8px, env(safe-area-inset-right));
+    bottom: calc(
+      100vh
+      - var(--assistant-visual-viewport-bottom, 100vh)
+      + 8px
+    );
+    left: max(8px, env(safe-area-inset-left));
+    max-height: calc(var(--assistant-visual-viewport-height, 100dvh) - 16px);
+    padding-bottom: max(11px, env(safe-area-inset-bottom, 0px));
+  }
 }
 
 @media (min-width: 1366px) {

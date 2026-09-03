@@ -6,7 +6,7 @@
   const namespace = root.TimeblockCallV1 || {};
   if (!app || typeof namespace.CallV1Runtime !== "function") return;
   if (root.__TIMEBLOCK_CALL_V1_BOOTSTRAP__) return;
-  const bootstrapOwner = { version: "call-v1-ring-owner-20260822", runtime: null };
+  const bootstrapOwner = { version: "call-v1-viewport-contract-20260903", runtime: null };
   root.__TIMEBLOCK_CALL_V1_BOOTSTRAP__ = bootstrapOwner;
 
   const terminalStatuses = new Set(["ENDED", "TERMINATING"]);
@@ -47,8 +47,8 @@
     document.head.appendChild(element);
   }
 
-  ensureAsset("link", "/static/css/call_workspace.css?v=call-v1-ring-owner-20260822", "timeblock-call-workspace");
-  ensureAsset("link", "/static/css/call_translation_plugin.css?v=call-v1-translation-plugin-20260824-desktop-tablet", "timeblock-translation-plugin");
+  ensureAsset("link", "/static/css/call_workspace.css?v=call-v1-viewport-contract-20260903", "timeblock-call-workspace");
+  ensureAsset("link", "/static/css/call_translation_plugin.css?v=call-v1-translation-viewport-contract-20260903", "timeblock-translation-plugin");
 
   function syncCallGeneration(callId = "") {
     const normalized = String(callId || "");
@@ -102,11 +102,26 @@
   }
 
   function syncViewport() {
+    const viewport = root.visualViewport;
+    const top = Math.max(0, Math.round(viewport?.offsetTop || 0));
     const height = Math.max(
-      320,
-      Math.round(root.visualViewport?.height || root.innerHeight || document.documentElement.clientHeight),
+      0,
+      Math.round(viewport?.height || root.innerHeight || document.documentElement.clientHeight),
     );
+    const bottom = top + height;
+    const pageTop = Math.max(0, Math.round(viewport?.pageTop || 0));
+    const stage = $("[data-call-stage]");
+    const translationText = $("[data-call-translation-text]");
+    const layoutHeight = Math.round(root.innerHeight || document.documentElement.clientHeight || 0);
+    const keyboardOpen = Boolean(
+      stage && !stage.hidden && translationText?.matches(":focus")
+      && layoutHeight - bottom >= 96,
+    );
+    document.documentElement.style.setProperty("--timeblock-call-viewport-top", `${top}px`);
     document.documentElement.style.setProperty("--timeblock-call-viewport-height", `${height}px`);
+    document.documentElement.style.setProperty("--timeblock-call-viewport-bottom", `${bottom}px`);
+    document.documentElement.style.setProperty("--timeblock-call-viewport-page-top", `${pageTop}px`);
+    document.body.classList.toggle("timeblock-call-keyboard-open", keyboardOpen);
   }
 
   function syncStageAccessibility() {
@@ -118,6 +133,7 @@
     document.body.classList.toggle("timeblock-call-active", active);
     document.body.classList.toggle("timeblock-video-call-active", video);
     document.body.classList.toggle("timeblock-call-minimized", minimized);
+    if (!active) document.body.classList.remove("timeblock-call-keyboard-open");
     if (active && !wasActive) {
       previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       root.requestAnimationFrame?.(() => $("[data-call-hangup]")?.focus?.({ preventScroll: true }));
@@ -415,6 +431,9 @@
     root.addEventListener("resize", syncViewport, { passive: true });
     root.addEventListener("orientationchange", syncViewport, { passive: true });
     root.visualViewport?.addEventListener("resize", syncViewport, { passive: true });
+    root.visualViewport?.addEventListener("scroll", syncViewport, { passive: true });
+    document.addEventListener("focusin", syncViewport, { passive: true });
+    document.addEventListener("focusout", syncViewport, { passive: true });
     root.addEventListener("pointerdown", () => { runtime.armRingAudio(); }, { once: true, capture: true, passive: true });
     root.addEventListener("keydown", () => { runtime.armRingAudio(); }, { once: true, capture: true });
     document.addEventListener("fullscreenchange", syncStageAccessibility);

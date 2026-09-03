@@ -6,9 +6,9 @@
    autocapitalize="sentences" autocapitalize="sentences" #}
 
 {% block head %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css', v='call-v1-ring-owner-20260822') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant_image_generation.css', v='assistant-image-generation-v4') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/live_translate.css', v='live-translate-v1-20260822') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css', v='call-v1-viewport-contract-20260903') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/assistant_image_generation.css', v='assistant-image-generation-v5-20260903') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/live_translate.css', v='live-translate-v2-keyboard-contract-20260903') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_core_v2.css', v='uiux-20260729') }}">
   {% if config.MESSAGING_ADVANCED_ATTACHMENTS_ENABLED %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/messaging_composer_attachments_v2.css', v='uiux-20260729') }}" data-messaging-composer-attachments-v2>
@@ -19,18 +19,18 @@
   <script src="{{ url_for('static', filename='vendor/jsqr/1.4.0/jsQR.min.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/qr_friend_scanner.js', v='uiux-20260729') }}" defer></script>
   <script>window.__TIMEBLOCK_CALL_V1_ENABLED__ = true;</script>
-  <script src="{{ url_for('static', filename='js/call_audio_ownership.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/session.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/media.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/peer.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/signaling.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/ring-audio.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/runtime.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/translation_plugin.js', v='call-v1-ios-auto-read-20260826') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call_audio_ownership_install.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/call-v1/bootstrap.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/live_translate.js', v='live-translate-v1-20260822') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/assistant.js', v='call-v1-ring-owner-20260822') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call_audio_ownership.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/session.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/media.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/peer.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/signaling.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/ring-audio.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/runtime.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/translation_plugin.js', v='call-v1-translation-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call_audio_ownership_install.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/call-v1/bootstrap.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/live_translate.js', v='live-translate-v2-keyboard-contract-20260903') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/assistant.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
   <script id="assistant-image-generation-copy" type="application/json">{{ {
     "create": t('assistant.image_generation.create'),
     "title": t('assistant.image_generation.title'),
@@ -72,7 +72,7 @@
     "media_retention": t('assistant.media.retention'),
     "media_expires": t('assistant.media.expires')
   } | tojson }}</script>
-  <script src="{{ url_for('static', filename='js/assistant_image_generation.js', v='assistant-image-generation-v4') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/assistant_image_generation.js', v='assistant-image-generation-v5-20260903') }}" defer></script>
   <script src="{{ url_for('static', filename='js/messaging_core_v2.js', v='uiux-20260729') }}" defer></script>
   {% if config.MESSAGING_ADVANCED_ATTACHMENTS_ENABLED %}
     <script src="{{ url_for('static', filename='js/messaging_composer_attachments_v2.js', v='uiux-20260729') }}" defer></script>

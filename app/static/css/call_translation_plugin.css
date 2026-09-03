@@ -341,6 +341,23 @@
 
   .call-translation-panel.is-expanded { height: min(86dvh, 820px); max-height: 86dvh; }
   .call-translation-history ol { max-height: 100px; }
+
+  body.timeblock-call-active.timeblock-call-keyboard-open .assistant-call-stage.has-call-translation .call-translation-panel {
+    top: calc(52px + var(--timeblock-call-safe-top));
+    right: 0;
+    bottom: calc(72px + var(--timeblock-call-safe-bottom));
+    left: 0;
+    height: auto;
+    max-height: calc(
+      var(--timeblock-call-viewport-height, 100dvh)
+      - 124px
+      - var(--timeblock-call-safe-top)
+      - var(--timeblock-call-safe-bottom)
+    );
+    padding-top: 12px;
+    padding-bottom: calc(16px + var(--timeblock-call-safe-bottom));
+    overflow: hidden auto;
+  }
 }
 
 @media (max-width: 900px) and (max-height: 500px) and (orientation: landscape) {

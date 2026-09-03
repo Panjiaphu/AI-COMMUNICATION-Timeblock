@@ -2332,6 +2332,18 @@
     if (input?.matches("[data-ai-input]")) {
       return { key: "ai", container: $('[data-ai-messages]') };
     }
+    if (input?.matches("[data-live-translate-text]")) {
+      return {
+        key: "translate",
+        container: input.closest("[data-live-translate]") || $("#assistant-panel-translate"),
+      };
+    }
+    if (input?.matches("[data-image-generation-prompt]")) {
+      return {
+        key: "image",
+        container: input.closest(".assistant-image-generation-panel"),
+      };
+    }
     return null;
   }
 
@@ -2351,6 +2363,8 @@
     const viewport = window.visualViewport;
     const visibleHeight = Math.round(viewport?.height || window.innerHeight);
     const offsetTop = Math.max(0, Math.round(viewport?.offsetTop || 0));
+    const pageTop = Math.max(0, Math.round(viewport?.pageTop || 0));
+    const visibleBottom = offsetTop + visibleHeight;
     const currentLayoutHeight = Math.round(window.innerHeight);
     const activeContext = scrollContextForInput(document.activeElement);
     const wasKeyboardOpen = document.body.classList.contains("is-keyboard-open");
@@ -2368,10 +2382,20 @@
 
     document.body.style.setProperty("--assistant-visual-viewport-height", `${visibleHeight}px`);
     document.body.style.setProperty("--assistant-visual-viewport-offset-top", `${offsetTop}px`);
+    document.body.style.setProperty("--assistant-visual-viewport-bottom", `${visibleBottom}px`);
+    document.body.style.setProperty("--assistant-visual-viewport-page-top", `${pageTop}px`);
     document.body.style.setProperty("--assistant-keyboard-height", `${keyboardOpen ? keyboardHeight : 0}px`);
     document.body.classList.toggle("is-keyboard-open", keyboardOpen);
 
-    if (keyboardOpen && activeContext && state.scrollPins[activeContext.key]) {
+    // Direct Chat and AI Advisor intentionally pin to the latest message while
+    // the keyboard opens. Live Translate and Image Prompt own their own form
+    // scroll surfaces, so never force either panel to its bottom here.
+    if (
+      keyboardOpen
+      && activeContext
+      && ["messages", "ai"].includes(activeContext.key)
+      && state.scrollPins[activeContext.key]
+    ) {
       window.requestAnimationFrame(() => {
         activeContext.container.scrollTop = activeContext.container.scrollHeight;
       });
@@ -3841,6 +3865,8 @@
     document.body.classList.remove("is-keyboard-open");
     document.body.style.removeProperty("--assistant-visual-viewport-height");
     document.body.style.removeProperty("--assistant-visual-viewport-offset-top");
+    document.body.style.removeProperty("--assistant-visual-viewport-bottom");
+    document.body.style.removeProperty("--assistant-visual-viewport-page-top");
     document.body.style.removeProperty("--assistant-keyboard-height");
   }
 
