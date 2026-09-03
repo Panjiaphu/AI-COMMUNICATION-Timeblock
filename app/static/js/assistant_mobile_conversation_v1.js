@@ -14,6 +14,7 @@
 
   const mq = window.matchMedia("(max-width: 767px)");
   const standaloneMq = window.matchMedia("(display-mode: standalone)");
+  const overviewEntry = new URL(window.location.href).searchParams.get("entry") === "overview";
   const chat = app.querySelector("#assistant-panel-ai .assistant-chat-column");
   const preview = app.querySelector("#assistant-panel-ai .assistant-conversation-preview");
   const messages = app.querySelector("[data-ai-messages]");
@@ -304,7 +305,8 @@
       return;
     }
     const aiPanel = app.querySelector('[data-mode-panel="ai"]');
-    if (aiPanel?.classList.contains("is-active")) activate();
+    const preserveOverview = overviewEntry && !isStandalone();
+    if (aiPanel?.classList.contains("is-active") && !preserveOverview) activate();
     else syncAiInputMode();
   };
 

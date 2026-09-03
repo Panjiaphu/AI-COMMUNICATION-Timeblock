@@ -135,6 +135,50 @@ def test_assistant_root_and_deep_links_are_public_safe_entrypoints(chromium_brow
         context.close()
 
 
+def test_mobile_overview_entry_waits_for_input_before_opening_immersive_advisor(
+    chromium_browser,
+    base_url: str,
+):
+    assistant_html = _authenticated_vendor_html(
+        "/assistant?lang=vi&mode=ai&entry=overview"
+    )
+    context = chromium_browser.new_context(
+        viewport={"width": 390, "height": 844},
+        base_url=base_url,
+    )
+    page = context.new_page()
+    try:
+        page.goto(f"{base_url}/?lang=vi&mode=ai&entry=overview", wait_until="commit")
+        _set_source_locked_content(page, assistant_html, base_url)
+        expect(page.locator("#assistant-app")).to_be_visible()
+        state = page.locator("[data-ai-input]").evaluate(
+            """element => ({
+              entry: new URL(window.location.href).searchParams.get('entry'),
+              modeAi: document.querySelector('[data-mode-panel="ai"]')?.classList.contains('is-active'),
+              immersive: document.body.classList.contains('assistant-ai-conversation-active'),
+              readOnly: element.readOnly,
+            })"""
+        )
+        assert state == {
+            "entry": "overview",
+            "modeAi": True,
+            "immersive": False,
+            "readOnly": True,
+        }
+
+        page.locator("[data-ai-input]").click()
+        activated = page.locator("[data-ai-input]").evaluate(
+            """element => ({
+              immersive: document.body.classList.contains('assistant-ai-conversation-active'),
+              readOnly: element.readOnly,
+              focused: document.activeElement === element,
+            })"""
+        )
+        assert activated == {"immersive": True, "readOnly": False, "focused": True}
+    finally:
+        context.close()
+
+
 def test_canonical_assistant_and_settings_are_contained_on_mobile_and_desktop(
     chromium_browser,
     base_url: str,
