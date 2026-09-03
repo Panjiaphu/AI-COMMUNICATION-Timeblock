@@ -63,6 +63,59 @@ class GroupMembership(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
 
+class GroupInvitation(Base):
+    __tablename__ = "group_invitations"
+    __table_args__ = (
+        UniqueConstraint("pending_key", name="uq_group_invitation_pending_key"),
+        CheckConstraint("target_type IN ('member','business')", name="ck_group_invitations_target_type"),
+        CheckConstraint(
+            "status IN ('pending','accepted','rejected','cancelled','expired')",
+            name="ck_group_invitations_status",
+        ),
+        Index("ix_group_invitations_space_status", "space_id", "status", "created_at"),
+        Index("ix_group_invitations_status_expiry", "status", "expires_at"),
+        Index(
+            "ix_group_invitations_target_status",
+            "target_type",
+            "target_id",
+            "status",
+            "expires_at",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    space_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("group_spaces.id", ondelete="CASCADE"), nullable=False
+    )
+    target_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    target_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    target_public_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    target_display_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    invited_by_membership_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("group_memberships.id", ondelete="RESTRICT"), nullable=False
+    )
+    role: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="member", server_default="member"
+    )
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="pending", server_default="pending"
+    )
+    pending_key: Mapped[str | None] = mapped_column(String(320))
+    accepted_by_user_id: Mapped[str] = mapped_column(
+        String(128), nullable=False, default="", server_default=""
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+
 class GroupMessage(Base):
     __tablename__ = "group_messages"
     __table_args__ = (

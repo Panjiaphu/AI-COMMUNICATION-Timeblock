@@ -69,6 +69,10 @@ class MembershipUpdate(StrictModel):
         return value
 
 
+class InvitationCreate(StrictModel):
+    contact_ref: str = Field(min_length=3, max_length=128)
+
+
 class MessageCreate(StrictModel):
     content: str = Field(min_length=1, max_length=8000)
     content_type: str = "text"

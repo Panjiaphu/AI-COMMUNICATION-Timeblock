@@ -7,33 +7,12 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from app.group_v3.grant import AI_GROUP_SCOPES, ai_group_entitlement
 from app.handoff.v3 import GroupHandoffV3Error, parse_group_handoff_v3
 from app.integrations.timeblock.client import TimeblockIntegrationError
 
 
 router = APIRouter()
-
-AI_GROUP_SCOPES = (
-    "group.spaces.read",
-    "group.spaces.write",
-    "group.messages.read",
-    "group.messages.write",
-    "group.media.use",
-    "group.translation.use",
-    "group.radio.use",
-)
-
-
-def _ai_group_entitlement(principal: dict[str, str]) -> dict[str, object]:
-    return {
-        "group_communication": True,
-        "authorization_authority": "ai-communication",
-        "billing_subject": (
-            f"{principal.get('type', '')}:{principal.get('id', '')}:"
-            f"{principal.get('user_id', '')}"
-        )[:200],
-    }
-
 
 def _public_origin(request: Request) -> str:
     parsed = urlparse(request.app.state.settings.public_base_url)
@@ -118,7 +97,7 @@ async def consume_group_handoff_v3(request: Request) -> JSONResponse:
         raise HTTPException(status_code=502, detail="group_handoff_redeem_failed") from exc
     except GroupHandoffV3Error as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
-    entitlement = _ai_group_entitlement(handoff.principal)
+    entitlement = ai_group_entitlement(handoff.principal)
     session = request.app.state.bff_session_store.grant_group_authorization(
         request.cookies.get(settings.guilua_session_cookie),
         principal=handoff.principal,

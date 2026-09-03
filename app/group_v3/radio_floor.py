@@ -126,6 +126,33 @@ class DistributedRadioFloor:
             raise GroupServiceError("group_radio_floor_not_owned", 409)
         return {"released": True, "participant_id": payload["participant_id"]}
 
+    async def release_membership(self, session_id: str, membership_id: str) -> bool:
+        """Best-effort administrative release without exposing the floor token."""
+
+        try:
+            value = await self._redis().get(self._key(session_id))
+        except RedisError as exc:
+            raise GroupServiceError("group_radio_floor_unavailable", 503) from exc
+        if not value:
+            return False
+        try:
+            payload = json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise GroupServiceError("group_radio_floor_state_invalid", 503) from exc
+        if not secrets.compare_digest(
+            str(payload.get("membership_id") or ""), str(membership_id or "")
+        ):
+            return False
+        try:
+            released = int(
+                await self._redis().eval(
+                    _RELEASE_SCRIPT, 1, self._key(session_id), value
+                )
+            )
+        except (RedisError, TypeError, ValueError) as exc:
+            raise GroupServiceError("group_radio_floor_unavailable", 503) from exc
+        return released == 1
+
     async def assert_owner(self, session_id: str, token: str, participant_id: str) -> None:
         _value, payload = await self._owned_value(session_id, token)
         if not secrets.compare_digest(str(payload.get("participant_id") or ""), participant_id):

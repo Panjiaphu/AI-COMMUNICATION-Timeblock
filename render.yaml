@@ -96,6 +96,8 @@ services:
         sync: false
       - key: GROUP_ATTACHMENT_MAX_BYTES
         value: "5242880"
+      - key: GROUP_INVITATION_TTL_SECONDS
+        value: "604800"
       - key: GROUP_MEDIA_ENABLED
         value: "true"
       - key: GROUP_LIVEKIT_URL

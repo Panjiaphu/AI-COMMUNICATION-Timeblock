@@ -15,6 +15,7 @@ from app.group_v3.crypto import GroupCrypto
 from app.group_v3.chat_translation_service import GroupChatTranslationService
 from app.group_v3.events import GroupEventBroker
 from app.group_v3.media import LiveKitGroupMediaProvider
+from app.group_v3.invitation_service import GroupInvitationService
 from app.group_v3.radio_floor import DistributedRadioFloor
 from app.group_v3.radio_router import router as group_v3_radio_router
 from app.group_v3.radio_service import GroupRadioService
@@ -80,6 +81,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     livekit_provider = LiveKitGroupMediaProvider(runtime_settings)
     application.state.group_media_provider = livekit_provider
     application.state.group_service = GroupService(application.state.database, group_crypto)
+    application.state.group_invitation_service = GroupInvitationService(
+        application.state.database,
+        runtime_settings.group_invitation_ttl_seconds,
+    )
     application.state.group_event_broker = GroupEventBroker()
     application.state.group_media_session_service = GroupMediaSessionService(
         application.state.database,

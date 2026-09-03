@@ -49,6 +49,10 @@
     spaces: [],
     space: null,
     members: [],
+    directoryCandidates: [],
+    spaceInvitations: [],
+    incomingInvitations: [],
+    memberManagerOpen: false,
     messages: [],
     chatTranslations: {},
     pins: [],
@@ -243,6 +247,10 @@
     return member ? member.display_name : t("member");
   }
 
+  function activeMemberCount() {
+    return state.members.filter(function (item) { return item.status === "active"; }).length;
+  }
+
   function formatTime(value) {
     if (!value) return "";
     var date = new Date(value);
@@ -280,6 +288,30 @@
       state.pins = [];
       state.mediaSession = null;
       state.radioSession = null;
+      await loadMembershipManagement();
+    }
+  }
+
+  async function loadMembershipManagement() {
+    var incoming = await optional("/api/group/invitations", { invitations: [] });
+    state.incomingInvitations = incoming.invitations || [];
+    state.directoryCandidates = [];
+    state.spaceInvitations = [];
+    if (!state.space) return;
+    var membership = myMembership();
+    if (!membership || ["owner", "admin"].indexOf(membership.role) < 0) return;
+    var id = encodeURIComponent(state.space.id);
+    var invitations = await optional(
+      "/api/group/spaces/" + id + "/invitations",
+      { invitations: [] }
+    );
+    state.spaceInvitations = invitations.invitations || [];
+    if (state.directAvailable) {
+      var directory = await optional(
+        "/api/group/spaces/" + id + "/directory/connections",
+        { candidates: [] }
+      );
+      state.directoryCandidates = directory.candidates || [];
     }
   }
 
@@ -311,6 +343,7 @@
     (results[6].translations || []).forEach(function (item) {
       state.chatTranslations[item.message_id] = item;
     });
+    await loadMembershipManagement();
     if (state.surface === "call" || state.surface === "video") await loadMediaSessions();
     if (state.surface === "radio") await loadRadioSession();
     window.setTimeout(translateMissingChatMessages, 0);
@@ -429,9 +462,17 @@
       groupEventRefreshTimer = 0;
       if (!state.space || state.space.id !== spaceId || state.busy) return;
       try {
-        await loadSpace();
+        await loadSpaces(spaceId);
+        if (!state.space || state.space.id !== spaceId) await disconnectMedia(false);
         render();
-      } catch (_error) {}
+      } catch (error) {
+        if (error && error.status === 403) {
+          await disconnectMedia(false);
+          closeGroupEvents();
+          state.error = t("membershipAccessRevoked");
+          render();
+        }
+      }
     }, 120);
   }
 
@@ -481,8 +522,76 @@
         "<span><strong>" + esc(member.display_name) + "</strong><small>" + esc(callMode ? status : member.role) + '</small></span><i class="' + (status === "joined" ? "online" : "") + '"></i></div>';
     }).join("");
     return '<aside class="participant-panel ' + (callMode ? "call-participants" : "") + '"><div class="panel-title"><span>' +
-      icon("users", 18) + esc(t("participants")) + "</span>" + badge(String(state.members.length), "mint") + '</div><p class="panel-subtitle">' +
+      icon("users", 18) + esc(t("participants")) + "</span>" + badge(String(activeMemberCount()), "mint") + '</div><p class="panel-subtitle">' +
       esc(t("roles")) + '</p><div class="participant-list">' + (rows || '<p class="member-empty">' + esc(t("inviteRequired")) + "</p>") + "</div></aside>";
+  }
+
+  function renderMemberManager() {
+    if (!state.memberManagerOpen) return "";
+    var mine = myMembership();
+    var canManage = mine && ["owner", "admin"].indexOf(mine.role) >= 0;
+    var canManageRoles = mine && mine.role === "owner";
+    var incoming = state.incomingInvitations.map(function (item) {
+      var space = state.spaces.find(function (candidate) { return candidate.id === item.space_id; });
+      var decisions = state.directAvailable
+        ? action("accept-invitation", t("accept"), "users", "primary", 'data-id="' + esc(item.id) + '"') +
+          action("reject-invitation", t("reject"), "log-out", "ghost", 'data-id="' + esc(item.id) + '"')
+        : '<a class="action-button action-primary" href="/api/session/start?return_to=' +
+          encodeURIComponent(window.location.pathname + window.location.search) + '">' +
+          icon("users", 17) + "<span>" + esc(t("authorizeDirect")) + "</span></a>";
+      return '<article class="member-manager-row"><div>' + avatar(item.display_name, "mint", "md", false) +
+        '<span><strong>' + esc(item.space_title || (space ? space.title : t("groupSession"))) + '</strong><small>' +
+        esc(t("invitedAsMember")) + '</small></span></div><div class="member-manager-actions">' + decisions + "</div></article>";
+    }).join("");
+    var members = state.members.filter(function (item) { return item.status === "active"; }).map(function (item) {
+      var isSelf = mine && item.id === mine.id;
+      var controls = "";
+      if (!isSelf && item.role !== "owner" && canManage) {
+        if (canManageRoles) {
+          controls += action(
+            "toggle-member-role",
+            item.role === "admin" ? t("makeMember") : t("makeAdmin"),
+            "users",
+            "secondary",
+            'data-id="' + esc(item.id) + '" data-role="' + esc(item.role === "admin" ? "member" : "admin") + '"'
+          );
+        }
+        if (mine.role === "owner" || item.role === "member") {
+          controls += action("remove-member", t("removeMember"), "log-out", "danger", 'data-id="' + esc(item.id) + '"');
+        }
+      }
+      return '<article class="member-manager-row"><div>' + avatar(item.display_name, item.role === "owner" ? "teal" : "mint", "md", true) +
+        '<span><strong>' + esc(item.display_name) + '</strong><small>' + esc(t(item.role === "owner" ? "owner" : item.role === "admin" ? "moderator" : "member")) +
+        '</small></span></div><div class="member-manager-actions">' + controls + "</div></article>";
+    }).join("");
+    var candidates = state.directoryCandidates.map(function (item) {
+      var available = item.membership_status === "available";
+      var label = available ? t("invite") : item.membership_status === "active" ? t("alreadyMember") : t("invited");
+      return '<article class="member-manager-row"><div>' + avatar(item.display_name, item.principal_type === "business" ? "sand" : "mint", "md", false) +
+        '<span><strong>' + esc(item.display_name) + '</strong><small>' + esc(item.principal_type === "business" ? t("businessAccount") : t("memberAccount")) +
+        (item.handle ? " · " + esc(item.handle) : "") + '</small></span></div><div class="member-manager-actions">' +
+        action("invite-contact", label, "users", available ? "primary" : "secondary", 'data-ref="' + esc(item.contact_ref) + '" ' + (available ? "" : "disabled")) +
+        "</div></article>";
+    }).join("");
+    var pending = state.spaceInvitations.filter(function (item) { return item.status === "pending"; }).map(function (item) {
+      return '<article class="member-manager-row"><div>' + avatar(item.display_name, "sand", "md", false) +
+        '<span><strong>' + esc(item.display_name) + '</strong><small>' + esc(t("pendingInvitation")) + '</small></span></div><div class="member-manager-actions">' +
+        action("cancel-invitation", t("cancelInvitation"), "log-out", "ghost", 'data-id="' + esc(item.id) + '"') + "</div></article>";
+    }).join("");
+    var directUpgrade = canManage && !state.directAvailable
+      ? '<div class="member-manager-upgrade"><p>' + esc(t("directRequiredForContacts")) + '</p><a class="action-button action-primary" href="/api/session/start?return_to=' +
+        encodeURIComponent(window.location.pathname + window.location.search) + '">' + icon("users", 17) + "<span>" + esc(t("authorizeDirect")) + "</span></a></div>"
+      : "";
+    return '<div class="member-manager-backdrop" data-action="close-members"><section class="member-manager" role="dialog" aria-modal="true" aria-labelledby="member-manager-title" data-member-manager>' +
+      '<header><div><strong id="member-manager-title">' + esc(t("manageMembers")) + '</strong><small>' + esc(state.space ? state.space.title : t("groupSession")) +
+      '</small></div>' + iconButton("close-members", t("close"), "log-out") + '</header><div class="member-manager-scroll">' +
+      (incoming ? '<section><h3>' + esc(t("incomingInvitations")) + '</h3>' + incoming + '</section>' : "") +
+      (state.space ? '<section><h3>' + esc(t("activeMembers")) + '</h3>' + (members || '<p class="member-empty">' + esc(t("inviteRequired")) + '</p>') + '</section>' : "") +
+      (canManage ? '<section><h3>' + esc(t("addFromContacts")) + '</h3>' + directUpgrade +
+        (state.directAvailable ? candidates || '<p class="member-empty">' + esc(t("noEligibleContacts")) + '</p>' : "") + '</section>' : "") +
+      (pending ? '<section><h3>' + esc(t("pendingInvitations")) + '</h3>' + pending + '</section>' : "") +
+      (!incoming && !state.space ? '<p class="member-empty">' + esc(t("noInvitations")) + '</p>' : "") +
+      '</div></section></div>';
   }
 
   function renderMessage(message) {
@@ -767,9 +876,9 @@
     var status = state.surface === "radio" ? radioState() : state.mediaSession ? state.mediaSession.status.toUpperCase() : "ACTIVE";
     return '<header class="group-header"><div class="group-identity">' +
       (state.surface === "radio" ? '<span class="radio-mark">' + icon("radio-tower", 21) + "</span>" : avatar(title, "teal", "lg", true)) +
-      "<span><strong>" + esc(title) + "</strong><small>" + esc(state.members.length) + " " + esc(t("membersLabel")) +
+      "<span><strong>" + esc(title) + "</strong><small>" + esc(activeMemberCount()) + " " + esc(t("membersLabel")) +
       '</small></span></div><div class="group-header-actions"><span class="surface-status">' + esc(status) + "</span>" +
-      iconButton("refresh", t("refreshData"), "refresh-cw") + iconButton("plugin", t("translationPlugin"), "languages") + "</div></header>";
+      iconButton("members", t("manageMembers"), "users") + iconButton("refresh", t("refreshData"), "refresh-cw") + iconButton("plugin", t("translationPlugin"), "languages") + "</div></header>";
   }
 
   function surface() {
@@ -803,7 +912,7 @@
       esc(t("nativeGroupApp")) + '</small></span></div><span class="mobile-state-dot"></span></header>' + renderRooms() +
       '<section class="native-main ' + (banner ? "has-banner" : "") + '"><div class="session-strip"><span><i></i>' +
       esc(t("signedIn")) + "</span><span>" + esc(state.groupAuthorized ? t("groupSession") : t("handoffRequiredTitle")) + "</span></div>" + banner + (state.groupAuthorized ? header() : "") + mobileLanguageBar() + surface() +
-      "</section>" + nav.mobile + "</div>";
+      "</section>" + nav.mobile + "</div>" + renderMemberManager();
     root.dataset.runtimeState = "READY";
     syncMediaElements();
     resizeTextEntry(root.querySelector("textarea[data-group-text-entry]"));
@@ -971,6 +1080,70 @@
       ]);
       state.messages = results[0].messages || [];
       state.pins = results[1].messages || [];
+      render();
+    } catch (error) {
+      notify(publicError(error));
+    }
+  }
+
+  async function inviteContact(button) {
+    if (!state.space || !button.dataset.ref) return;
+    setBusy(true);
+    try {
+      await api(
+        "/api/group/spaces/" + encodeURIComponent(state.space.id) + "/invitations",
+        json("POST", { contact_ref: button.dataset.ref })
+      );
+      await loadSpace();
+      notify(t("invitationSent"));
+      render();
+    } catch (error) {
+      notify(publicError(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function cancelInvitation(button) {
+    if (!state.space || !button.dataset.id) return;
+    try {
+      await api(
+        "/api/group/spaces/" + encodeURIComponent(state.space.id) + "/invitations/" + encodeURIComponent(button.dataset.id),
+        { method: "DELETE" }
+      );
+      await loadSpace();
+      notify(t("invitationCancelled"));
+      render();
+    } catch (error) {
+      notify(publicError(error));
+    }
+  }
+
+  async function decideInvitation(button, accept) {
+    if (!button.dataset.id) return;
+    try {
+      var payload = await api(
+        "/api/group/invitations/" + encodeURIComponent(button.dataset.id) + "/" + (accept ? "accept" : "reject"),
+        { method: "POST" }
+      );
+      await loadSpaces(accept && payload.invitation ? payload.invitation.space_id : state.space && state.space.id);
+      notify(t(accept ? "invitationAccepted" : "invitationRejected"));
+      render();
+    } catch (error) {
+      notify(publicError(error));
+    }
+  }
+
+  async function updateMember(button, values) {
+    if (!state.space || !button.dataset.id) return;
+    if (values.status === "removed" && !window.confirm(t("removeMemberConfirm"))) return;
+    try {
+      await api(
+        "/api/group/spaces/" + encodeURIComponent(state.space.id) + "/memberships/" + encodeURIComponent(button.dataset.id),
+        json("PATCH", values)
+      );
+      await loadSpace();
+      notify(t("memberUpdated"));
       render();
     } catch (error) {
       notify(publicError(error));
@@ -1255,6 +1428,23 @@
       return;
     }
     if (name === "refresh") return refreshAll();
+    if (name === "members") {
+      state.memberManagerOpen = true;
+      await loadMembershipManagement();
+      render();
+      return;
+    }
+    if (name === "close-members") {
+      state.memberManagerOpen = false;
+      render();
+      return;
+    }
+    if (name === "invite-contact") return inviteContact(button);
+    if (name === "cancel-invitation") return cancelInvitation(button);
+    if (name === "accept-invitation") return decideInvitation(button, true);
+    if (name === "reject-invitation") return decideInvitation(button, false);
+    if (name === "toggle-member-role") return updateMember(button, { role: button.dataset.role });
+    if (name === "remove-member") return updateMember(button, { status: "removed" });
     if (name === "plugin") return updateSurface("chat-translation");
     if (name === "pin-message") return pinMessage(button);
     if (name === "toggle-auto-translate") {
@@ -1527,6 +1717,7 @@
   root.addEventListener("click", function (event) {
     var button = event.target.closest("[data-action]");
     if (!button || button.disabled) return;
+    if (button.classList.contains("member-manager-backdrop") && event.target.closest("[data-member-manager]")) return;
     handleAction(button.dataset.action, button);
   });
 

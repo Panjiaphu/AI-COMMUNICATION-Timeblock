@@ -213,7 +213,7 @@ Object.assign(copy.vi, {
   refreshData: 'Làm mới dữ liệu', statusError: 'Có lỗi khi tải dữ liệu Group.', membersLabel: 'thành viên',
   roomDescription: 'Không gian giao tiếp Group native', currentUser: 'Bạn', start: 'Bắt đầu',
   joining: 'Đang tham gia…', mediaPolicy: 'RINGING không yêu cầu mic hoặc camera.',
-  creatorNeedsInvitee: 'Thêm thành viên bằng API quản trị Group trước khi bắt đầu phiên.',
+  creatorNeedsInvitee: 'Thêm thành viên từ liên hệ Timeblock trước khi bắt đầu phiên.',
 });
 Object.assign(copy.en, {
   directMessages: 'Direct', handoffRequiredTitle: 'Group authorization required',
@@ -241,7 +241,7 @@ Object.assign(copy.en, {
   refreshData: 'Refresh data', statusError: 'Group data could not be loaded.', membersLabel: 'members',
   roomDescription: 'Native Group communication space', currentUser: 'You', start: 'Start',
   joining: 'Joining…', mediaPolicy: 'RINGING does not request microphone or camera permission.',
-  creatorNeedsInvitee: 'Add members through the Group administration API before starting a session.',
+  creatorNeedsInvitee: 'Add members from Timeblock contacts before starting a session.',
 });
 Object.assign(copy['zh-TW'], {
   directMessages: 'Direct', handoffRequiredTitle: '需要群組通訊授權',
@@ -269,7 +269,53 @@ Object.assign(copy['zh-TW'], {
   refreshData: '重新載入資料', statusError: '無法載入群組資料。', membersLabel: '位成員',
   roomDescription: '原生群組通訊空間', currentUser: '你', start: '開始',
   joining: '正在加入…', mediaPolicy: 'RINGING 不會要求麥克風或攝影機權限。',
-  creatorNeedsInvitee: '開始工作階段前，請透過群組管理 API 新增成員。',
+  creatorNeedsInvitee: '開始工作階段前，請從聯絡人新增成員。',
+});
+
+Object.assign(copy.vi, {
+  manageMembers: 'Quản lý thành viên', activeMembers: 'Thành viên đang hoạt động',
+  addFromContacts: 'Thêm từ liên hệ Timeblock', incomingInvitations: 'Lời mời dành cho bạn',
+  pendingInvitations: 'Lời mời đang chờ', pendingInvitation: 'Đang chờ người nhận xác nhận',
+  invitedAsMember: 'Được mời tham gia với vai trò thành viên', authorizeDirect: 'Xác thực Direct',
+  directRequiredForContacts: 'Xác thực Direct bằng Timeblock để xem liên hệ hoặc xác nhận lời mời trong cùng phiên ứng dụng.',
+  memberAccount: 'Tài khoản thành viên', businessAccount: 'Tài khoản doanh nghiệp', invite: 'Mời',
+  alreadyMember: 'Đã là thành viên', noEligibleContacts: 'Không có liên hệ hợp lệ để mời.',
+  noInvitations: 'Không có lời mời mới.', cancelInvitation: 'Hủy lời mời',
+  invitationSent: 'Đã gửi lời mời', invitationCancelled: 'Đã hủy lời mời',
+  invitationAccepted: 'Đã tham gia không gian', invitationRejected: 'Đã từ chối lời mời',
+  makeAdmin: 'Đặt làm quản trị', makeMember: 'Đặt làm thành viên', removeMember: 'Xóa thành viên',
+  removeMemberConfirm: 'Xóa thành viên này khỏi Chat, dịch, Call, Video và Radio?', memberUpdated: 'Đã cập nhật thành viên',
+  accept: 'Chấp nhận', membershipAccessRevoked: 'Quyền thành viên của bạn trong không gian này đã bị thu hồi.',
+});
+Object.assign(copy.en, {
+  manageMembers: 'Manage members', activeMembers: 'Active members',
+  addFromContacts: 'Add from Timeblock contacts', incomingInvitations: 'Invitations for you',
+  pendingInvitations: 'Pending invitations', pendingInvitation: 'Waiting for recipient confirmation',
+  invitedAsMember: 'Invited to join as a member', authorizeDirect: 'Authorize Direct',
+  directRequiredForContacts: 'Authorize Direct with Timeblock to view contacts or confirm an invitation in this same app session.',
+  memberAccount: 'Member account', businessAccount: 'Business account', invite: 'Invite',
+  alreadyMember: 'Already a member', noEligibleContacts: 'No eligible contacts to invite.',
+  noInvitations: 'No new invitations.', cancelInvitation: 'Cancel invitation',
+  invitationSent: 'Invitation sent', invitationCancelled: 'Invitation cancelled',
+  invitationAccepted: 'Space joined', invitationRejected: 'Invitation rejected',
+  makeAdmin: 'Make admin', makeMember: 'Make member', removeMember: 'Remove member',
+  removeMemberConfirm: 'Remove this member from Chat, translation, Call, Video, and Radio?', memberUpdated: 'Member updated',
+  accept: 'Accept', membershipAccessRevoked: 'Your membership access to this space was revoked.',
+});
+Object.assign(copy['zh-TW'], {
+  manageMembers: '管理成員', activeMembers: '使用中的成員',
+  addFromContacts: '從 Timeblock 聯絡人新增', incomingInvitations: '給你的邀請',
+  pendingInvitations: '待確認邀請', pendingInvitation: '等待收件人確認',
+  invitedAsMember: '受邀以成員身分加入', authorizeDirect: '驗證 Direct',
+  directRequiredForContacts: '請在同一個應用程式工作階段中透過 Timeblock 驗證 Direct，以查看聯絡人或確認邀請。',
+  memberAccount: '會員帳號', businessAccount: '企業帳號', invite: '邀請',
+  alreadyMember: '已是成員', noEligibleContacts: '沒有可邀請的有效聯絡人。',
+  noInvitations: '沒有新邀請。', cancelInvitation: '取消邀請',
+  invitationSent: '邀請已傳送', invitationCancelled: '邀請已取消',
+  invitationAccepted: '已加入空間', invitationRejected: '已拒絕邀請',
+  makeAdmin: '設為管理員', makeMember: '設為成員', removeMember: '移除成員',
+  removeMemberConfirm: '要將此成員從聊天、翻譯、語音、視訊與 Radio 中移除嗎？', memberUpdated: '成員已更新',
+  accept: '接受', membershipAccessRevoked: '你在此空間的成員權限已被撤銷。',
 });
 
 window.GroupV3I18n = Object.freeze({ copy, localeOptions, translator });

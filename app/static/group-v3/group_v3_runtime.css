@@ -50,6 +50,26 @@ html, body, .group-native-app { width: 100%; min-width: 0; height: 100%; min-hei
 .privacy-note strong { font-size: 9px; }
 .runtime-banner { grid-column: 1 / -1; min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--teal-strong); background: var(--mint); font-size: 9px; }
 .runtime-banner.is-error { color: var(--danger); background: rgba(212, 71, 53, .08); }
+.member-manager-backdrop { position: absolute; inset: 0; z-index: 160; display: grid; justify-items: end; background: rgba(7, 35, 31, .34); backdrop-filter: blur(2px); }
+.member-manager { width: min(520px, 92vw); height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); color: var(--ink); background: var(--white); box-shadow: -18px 0 46px rgba(10, 49, 43, .22); }
+.member-manager > header { min-height: 70px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.member-manager > header > div { min-width: 0; display: grid; gap: 3px; }
+.member-manager > header strong { font-size: 16px; }
+.member-manager > header small { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.member-manager-scroll { min-height: 0; overflow: auto; padding: 8px 18px calc(20px + env(safe-area-inset-bottom)); }
+.member-manager-scroll > section { padding: 14px 0; border-bottom: 1px solid var(--border); }
+.member-manager-scroll h3 { margin: 0 0 9px; color: var(--muted); font-size: 10px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
+.member-manager-row { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; }
+.member-manager-row > div:first-child { min-width: 0; display: flex; align-items: center; gap: 9px; }
+.member-manager-row > div:first-child > span:last-child { min-width: 0; display: grid; gap: 3px; }
+.member-manager-row strong, .member-manager-row small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.member-manager-row strong { font-size: 11px; }
+.member-manager-row small { color: var(--muted); font-size: 9px; }
+.member-manager-actions { flex: 0 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.member-manager-actions .action-button { min-height: 38px; padding: 0 10px; }
+.member-manager-upgrade { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--canvas); }
+.member-manager-upgrade p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.member-manager-upgrade .action-button { justify-self: start; }
 .native-main.has-banner { grid-template-rows: 28px 44px 76px minmax(0, 1fr); }
 .native-main.has-banner .runtime-banner { grid-row: 2; }
 .native-main.has-banner .group-header { grid-row: 3; }
@@ -70,6 +90,15 @@ html, body, .group-native-app { width: 100%; min-width: 0; height: 100%; min-hei
   .native-mobile .radio-mobile-dock { position: absolute; right: 8px; bottom: 8px; left: 8px; z-index: 5; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; padding: 6px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255, 255, 255, .96); box-shadow: var(--shadow-sm); }
   .native-mobile .radio-mobile-dock .action-button { min-width: 92px; }
   .native-mobile .history-featured { max-height: 180px; overflow: auto; }
+  .member-manager-backdrop { justify-items: stretch; padding-top: max(32px, env(safe-area-inset-top)); }
+  .member-manager { width: 100%; height: 100%; border-radius: 18px 18px 0 0; }
+  .member-manager > header { min-height: 62px; padding: 10px 12px; }
+  .member-manager-scroll { padding-right: 12px; padding-left: 12px; }
+  .member-manager-row { align-items: flex-start; }
+  .member-manager-row > div:first-child { padding-top: 3px; }
+  .member-manager-actions { max-width: 48%; flex-wrap: wrap; }
+  .member-manager-actions .action-button { min-width: 44px; }
+  .member-manager-actions .action-button span { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
