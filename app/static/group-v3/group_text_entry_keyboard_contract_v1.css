@@ -1,0 +1,70 @@
+/* AI-COMMUNICATION Group text-entry contract.
+   Group owns its own keyboard surface; Direct 1:1 remains Timeblock-owned. */
+
+.group-v3-body .thread-column {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.group-v3-body .composer > div {
+  min-width: 0;
+}
+
+.group-v3-body input[data-group-text-entry],
+.group-v3-body textarea[data-group-text-entry],
+.group-v3-body .composer textarea[name="content"] {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  outline: 0;
+  color: inherit;
+  background: var(--canvas);
+  font-size: max(16px, 1em);
+  line-height: 1.35;
+}
+
+.group-v3-body textarea[data-group-text-entry],
+.group-v3-body .composer textarea[name="content"] {
+  min-height: 44px;
+  max-height: 132px;
+  padding: 10px 12px;
+  resize: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.group-v3-body input[data-group-text-entry] {
+  height: 44px;
+  padding: 0 12px;
+}
+
+.group-v3-body input[data-group-text-entry]:focus,
+.group-v3-body textarea[data-group-text-entry]:focus,
+.group-v3-body .composer textarea[name="content"]:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(15, 104, 88, .12);
+}
+
+@media (max-width: 640px) {
+  .native-mobile .thread-column {
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .native-mobile .composer {
+    min-height: 60px;
+    align-items: center;
+  }
+
+  .native-mobile .composer textarea[data-group-text-entry],
+  .native-mobile .composer textarea[name="content"] {
+    min-height: 44px;
+    max-height: min(132px, 28vh);
+    padding: 10px;
+    font-size: 16px;
+  }
+
+  .group-v3-body.group-keyboard-open .thread-scroll {
+    overscroll-behavior: contain;
+  }
+}
