@@ -14,6 +14,7 @@ from starlette.datastructures import QueryParams
 
 from app.core.config import BASE_DIR, Settings
 from app.core.timeblock_i18n import (
+    LOCALE_COOKIE_NAME,
     get_locale_label,
     get_supported_locales,
     normalize_locale,
@@ -330,6 +331,14 @@ def render_timeblock_assistant(
     vendor_html = timeblock_templates.get_template("assistant/index.html").render(context)
     response = HTMLResponse(_inject_assistant_runtime_adapter(vendor_html, settings))
     response.headers["Cache-Control"] = "no-store"
+    response.set_cookie(
+        LOCALE_COOKIE_NAME,
+        locale,
+        max_age=31536000,
+        httponly=True,
+        samesite="lax",
+        secure=settings.is_production,
+    )
     response.headers["Permissions-Policy"] = (
         "camera=(self), microphone=(self), speaker-selection=(self), geolocation=()"
     )
@@ -349,6 +358,14 @@ def render_timeblock_settings(request: Request, session: Any, *, locale: str) ->
         timeblock_templates.get_template("assistant/settings.html").render(context)
     )
     response.headers["Cache-Control"] = "no-store"
+    response.set_cookie(
+        LOCALE_COOKIE_NAME,
+        locale,
+        max_age=31536000,
+        httponly=True,
+        samesite="lax",
+        secure=settings.is_production,
+    )
     response.headers["Permissions-Policy"] = (
         "camera=(self), microphone=(self), geolocation=(), browsing-topics=()"
     )

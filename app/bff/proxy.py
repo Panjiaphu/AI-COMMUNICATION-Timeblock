@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from app.bff.session_store import BffSession
+from app.core.timeblock_i18n import resolve_timeblock_locale
 from app.integrations.timeblock.client import (
     TimeblockIntegrationError,
     TimeblockRequestTooLarge,
@@ -358,6 +359,25 @@ def _content_length(request: Request, maximum: int) -> None:
         raise HTTPException(status_code=413, detail="request_too_large")
 
 
+def _proxy_params(request: Request, spec: ProxyRouteSpec) -> tuple[tuple[str, str], ...]:
+    """Keep dynamic Timeblock copy on the same locale as the Assistant shell.
+
+    The source-locked contact client intentionally calls its i18n endpoint
+    without query parameters. Guilua must provide the locale at the BFF
+    boundary; otherwise Timeblock falls back to its own ``zh-TW`` default.
+    Explicit query parameters remain authoritative, while the locale cookie
+    covers the client-side fetch that follows a localized HTML response.
+    """
+
+    params = tuple(request.query_params.multi_items())
+    if spec.path != "/api/messaging/contact-v1/i18n" or any(
+        key == "lang" for key, _value in params
+    ):
+        return params
+    settings = request.app.state.settings
+    return (*params, ("lang", resolve_timeblock_locale(request, settings.default_locale)))
+
+
 async def _proxy_request(request: Request, spec: ProxyRouteSpec) -> StreamingResponse:
     session = _session(request)
     _require_scopes(session, spec)
@@ -376,7 +396,7 @@ async def _proxy_request(request: Request, spec: ProxyRouteSpec) -> StreamingRes
             request.method,
             _safe_path(request.url.path),
             session.timeblock_token,
-            params=tuple(request.query_params.multi_items()),
+            params=_proxy_params(request, spec),
             body=body,
             content_type=content_type,
             forwarded_headers=_forwarded_headers(request, spec),
