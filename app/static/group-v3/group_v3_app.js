@@ -523,7 +523,7 @@
     return '<div class="chat-content state-thread surface-content"><section class="thread-column"><div class="thread-scroll">' +
       pinnedBlock + '<div class="day-divider">' + esc(t("today")) + '</div><div data-message-list>' + messages +
       '</div></div><form class="composer" data-form="send-message"><span class="composer-file"><input id="group-attachment" type="file" data-change="attachment">' +
-      '<label for="group-attachment" aria-label="' + esc(t("attach")) + '">' + icon("paperclip", 18) + '</label></span><div><textarea name="content" data-group-text-entry rows="1" maxlength="8000" autocomplete="off" placeholder="' +
+      '<label for="group-attachment" aria-label="' + esc(t("attach")) + '">' + icon("paperclip", 18) + '</label></span><div><textarea name="content" data-group-text-entry rows="1" maxlength="8000" enterkeyhint="send" autocapitalize="sentences" spellcheck="true" autocomplete="off" placeholder="' +
       esc(t("composer")) + '" aria-label="' + esc(t("composer")) + '"></textarea>' + pending + '</div><button type="submit" class="action-button action-primary" aria-label="' +
       esc(t("send")) + '">' + icon("send", 17) + "<span>" + esc(t("send")) + "</span></button></form></section>" + renderParticipants(false) + "</div>";
   }
