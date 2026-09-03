@@ -216,7 +216,12 @@ class GroupService:
                     role="owner",
                     status="active",
                 )
-                db.add_all((space, membership))
+                # group_audit_events.space_id has a real FK to group_spaces.
+                # Flush the parent before adding dependent rows so PostgreSQL
+                # cannot order the audit INSERT before the new space.
+                db.add(space)
+                db.flush()
+                db.add(membership)
                 self._audit(db, actor, space.id, "space.created", resource_type="space", resource_id=space.id)
                 db.flush()
                 db.refresh(space)

@@ -5,14 +5,23 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.core.config import Settings
 from app.db import Base
+from app.group_v3.auth import GroupActor
 from app.handoff.v3 import GroupHandoffV3Error, parse_group_handoff_v3
 from app.integrations.timeblock.client import TimeblockIntegrationError
 from app.main import create_app
-from app.models import GroupMessage
+from app.models import (
+    GroupAuditEvent,
+    GroupIdempotencyRecord,
+    GroupMembership,
+    GroupMessage,
+    GroupRadioParticipant,
+    GroupRadioSession,
+    GroupSpace,
+)
 from tests.test_group_radio_floor_v3 import FakeAsyncRedis
 
 
@@ -148,6 +157,45 @@ def _native_app(tmp_path, **overrides):
     return app
 
 
+def test_sqlite_enables_foreign_keys(tmp_path):
+    app = _native_app(tmp_path)
+    with app.state.database.engine.connect() as connection:
+        assert connection.execute(text("PRAGMA foreign_keys")).scalar_one() == 1
+
+
+def test_group_space_create_rolls_back_all_rows_when_audit_fails(tmp_path, monkeypatch):
+    app = _native_app(tmp_path)
+    principal = _handoff_payload()["principal"]
+    actor = GroupActor(
+        principal_type=principal["type"],
+        principal_id=principal["id"],
+        principal_user_id=principal["user_id"],
+        display_name=principal["display_name"],
+        locale=principal["locale"],
+        scope=frozenset(SCOPES),
+        handoff_id="forced-rollback-handoff",
+        surface="chat",
+        entitlement=AI_ENTITLEMENT,
+    )
+
+    def fail_audit(*_args, **_kwargs):
+        raise RuntimeError("forced-audit-failure")
+
+    monkeypatch.setattr(app.state.group_service, "_audit", fail_audit)
+    with pytest.raises(RuntimeError, match="forced-audit-failure"):
+        app.state.group_service.create_space(
+            actor,
+            {"title": "Rollback space", "description": "must not persist"},
+            "rollback-space-0001",
+        )
+
+    with app.state.database.session() as db:
+        assert db.scalar(select(GroupSpace)) is None
+        assert db.scalar(select(GroupMembership)) is None
+        assert db.scalar(select(GroupAuditEvent)) is None
+        assert db.scalar(select(GroupIdempotencyRecord)) is None
+
+
 def test_handoff_consume_is_exact_origin_httponly_and_secret_free(tmp_path):
     app = _native_app(tmp_path)
     app.state.timeblock_client = RedeemStub()
@@ -255,6 +303,13 @@ def test_native_space_and_message_are_idempotent_and_encrypted_at_rest(tmp_path)
         assert repeated.status_code == 200
         assert repeated.json()["idempotent"] is True
         assert repeated.json()["space"]["id"] == space_id
+        mismatch = client.post(
+            "/api/group/spaces",
+            json={"title": "Dieu phoi kho van", "description": "different payload"},
+            headers=headers,
+        )
+        assert mismatch.status_code == 409
+        assert mismatch.json()["detail"] == "idempotency_payload_mismatch"
 
         message_headers = {"Origin": PUBLIC_ORIGIN, "Idempotency-Key": "message-client-0001"}
         body = {
@@ -270,6 +325,32 @@ def test_native_space_and_message_are_idempotent_and_encrypted_at_rest(tmp_path)
         assert duplicate.json()["idempotent"] is True
 
     with app.state.database.session() as db:
+        stored_space = db.get(GroupSpace, space_id)
+        assert stored_space is not None
+        owner = db.scalar(
+            select(GroupMembership).where(
+                GroupMembership.space_id == space_id,
+                GroupMembership.principal_id == "42",
+                GroupMembership.role == "owner",
+                GroupMembership.status == "active",
+            )
+        )
+        assert owner is not None
+        audit = db.scalar(
+            select(GroupAuditEvent).where(
+                GroupAuditEvent.space_id == space_id,
+                GroupAuditEvent.event_type == "space.created",
+            )
+        )
+        assert audit is not None
+        assert audit.resource_id == space_id
+        idempotency = db.scalar(
+            select(GroupIdempotencyRecord).where(
+                GroupIdempotencyRecord.endpoint == "group.spaces.create",
+                GroupIdempotencyRecord.idempotency_key == "create-space-0001",
+            )
+        )
+        assert idempotency is not None
         stored = db.scalar(select(GroupMessage))
         assert stored is not None
         assert body["content"].encode("utf-8") not in stored.content_ciphertext
@@ -328,6 +409,26 @@ def test_native_radio_floor_media_grant_stop_and_leave_are_end_to_end(tmp_path):
         )
         assert created_radio.status_code == 201
         radio_id = created_radio.json()["session"]["id"]
+        with app.state.database.session() as db:
+            radio_row = db.get(GroupRadioSession, radio_id)
+            assert radio_row is not None
+            participants = list(
+                db.scalars(
+                    select(GroupRadioParticipant).where(
+                        GroupRadioParticipant.radio_session_id == radio_id
+                    )
+                )
+            )
+            assert len(participants) == 2
+            assert any(item.membership_id == invitee_id and item.status == "invited" for item in participants)
+            radio_audit = db.scalar(
+                select(GroupAuditEvent).where(
+                    GroupAuditEvent.space_id == space_id,
+                    GroupAuditEvent.event_type == "radio.session_created",
+                    GroupAuditEvent.resource_id == radio_id,
+                )
+            )
+            assert radio_audit is not None
 
         acquired = client.post(
             f"/api/group/spaces/{space_id}/radio/sessions/{radio_id}/floor/acquire",
