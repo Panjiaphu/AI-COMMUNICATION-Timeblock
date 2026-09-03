@@ -125,7 +125,7 @@ def test_assistant_root_and_deep_links_are_public_safe_entrypoints(chromium_brow
             assert "session_token" not in page.content()
         manifest = page.request.get(f"{base_url}/static/manifest.webmanifest")
         assert manifest.ok
-        assert manifest.json()["start_url"] == "/assistant?source=pwa"
+        assert manifest.json()["start_url"] == "/assistant?mode=ai&entry=overview&source=pwa"
         worker = page.request.get(f"{base_url}/service-worker.js")
         assert worker.ok
         assert "localStorage" not in worker.text()

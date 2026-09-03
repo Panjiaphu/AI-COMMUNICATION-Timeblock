@@ -212,7 +212,7 @@ def test_authenticated_settings_renders_canonical_assets_and_local_back_link(run
     assert 'data-locale="en"' in response.text
     assert 'href="/static/css/app_settings.css"' in response.text
     assert 'src="/static/js/app_settings.js"' in response.text
-    assert 'href="/assistant?lang=en"' in response.text
+    assert 'href="/assistant?mode=ai&amp;entry=overview&amp;lang=en"' in response.text
     assert 'href="/logout"' in response.text
     assert "https://timeblock.example/market?lang=en" in response.text
     assert 'href="/static/manifest.webmanifest"' in response.text

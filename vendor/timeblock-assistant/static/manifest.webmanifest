@@ -3,7 +3,7 @@
   "name": "Timeblock",
   "short_name": "Timeblock",
   "description": "Timeblock member and business communication, productivity, market data and AI tools.",
-  "start_url": "/assistant?source=pwa",
+  "start_url": "/assistant?mode=ai&entry=overview&source=pwa",
   "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
