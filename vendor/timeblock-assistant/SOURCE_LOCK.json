@@ -1,7 +1,7 @@
 {
   "source_repo": "Panjiaphu/fumap-bot-life",
-  "source_sha": "948f4119b727d1dd58bdf735e98550437f353026",
-  "source_checkout_head": "948f4119b727d1dd58bdf735e98550437f353026",
+  "source_sha": "340568bbf54528a6a0ae2eb3c06db1d69441f4cd",
+  "source_checkout_head": "340568bbf54528a6a0ae2eb3c06db1d69441f4cd",
   "source_paths": [
     "templates/base.html",
     "templates/partials/nav.html",
@@ -230,7 +230,7 @@
     "templates/partials/market_assistant.html": "d9e832a39b4be320a9db46c288e2a74cbb92aa422d0bbdf6ff22add6a627f435",
     "templates/assistant/index_core_live_translate.html": "cd02795d21324f43abfbe679d9d2b96edcb0683755234be34ed08c014213bc37",
     "templates/assistant/index_core.html": "95e1eb3564dbe760d715af08390180a19cdde319afe6f14ec38cc18588f12e7b",
-    "templates/assistant/index.html": "ed236f37ccec629ba50d25eefb190296fa3fde5d4a0c569dbceb6154c4198606",
+    "templates/assistant/index.html": "1b975a3386a9d928bb2b5cf61dd0ce8294a8ead7f11dc47cfe82be7cfb44c21b",
     "templates/assistant/settings.html": "b5518ee3640e8cc712d51c87e7f0780e5ae96627f257bea714ddfd254bc088d0",
     "static/css/main.css": "a52199f6be5d267c2cf811104002da87166e98c5158c5f93a99e954aae79d34b",
     "static/css/responsive.css": "c4c3f1ea1f20caf8ad340301a056ddeea560cd1b02a68e492603bcb5f6daed34",
@@ -1791,9 +1791,9 @@
     },
     {
       "source_path": "templates/assistant/index.html",
-      "source_sha256": "ed236f37ccec629ba50d25eefb190296fa3fde5d4a0c569dbceb6154c4198606",
+      "source_sha256": "1b975a3386a9d928bb2b5cf61dd0ce8294a8ead7f11dc47cfe82be7cfb44c21b",
       "destination_path": "vendor/timeblock-assistant/templates/assistant/index.html",
-      "destination_sha256": "ed236f37ccec629ba50d25eefb190296fa3fde5d4a0c569dbceb6154c4198606",
+      "destination_sha256": "1b975a3386a9d928bb2b5cf61dd0ce8294a8ead7f11dc47cfe82be7cfb44c21b",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
