@@ -2558,6 +2558,43 @@ button.assistant-conversation-preview {
   .assistant-card-form textarea { min-height: 118px; }
   .assistant-translation-output { min-height: 130px; }
   .assistant-record-button { width: auto; }
+
+  /* Keep the generic AI Advisor workspace aligned to the browser's visible
+     interval [visualViewport.offsetTop, offsetTop + visualViewport.height]
+     while the keyboard is open. Immersive AI owns its separate contract. */
+  body.assistant-workspace-page.is-keyboard-open:not(.assistant-ai-conversation-active):has(#assistant-panel-ai.is-active) {
+    --assistant-ai-workspace-viewport-bottom: calc(
+      var(--assistant-visual-viewport-offset-top, 0px)
+      + var(--assistant-visual-viewport-height, 100dvh)
+    );
+    height: var(--assistant-ai-workspace-viewport-bottom, 100dvh);
+    min-height: 0;
+  }
+
+  body.assistant-workspace-page.is-keyboard-open:not(.assistant-ai-conversation-active):has(#assistant-panel-ai.is-active) #main-content {
+    height: var(--assistant-ai-workspace-viewport-bottom, 100dvh);
+    min-height: 0;
+  }
+
+  body.assistant-workspace-page.is-keyboard-open:not(.assistant-ai-conversation-active):has(#assistant-panel-ai.is-active) .assistant-page {
+    box-sizing: border-box;
+    height: var(--assistant-ai-workspace-viewport-bottom, 100dvh);
+    min-height: 0;
+    margin: 0;
+    padding: var(--assistant-visual-viewport-offset-top, 0px) 0 0;
+  }
+
+  body.assistant-workspace-page.is-keyboard-open:not(.assistant-ai-conversation-active):has(#assistant-panel-ai.is-active) .assistant-shell {
+    height: 100%;
+    min-height: 0;
+  }
+
+  body.assistant-workspace-page.is-keyboard-open:not(.assistant-ai-conversation-active):has(#assistant-panel-ai.is-active) .assistant-panels,
+  body.assistant-workspace-page.is-keyboard-open:not(.assistant-ai-conversation-active):has(#assistant-panel-ai.is-active) #assistant-panel-ai,
+  body.assistant-workspace-page.is-keyboard-open:not(.assistant-ai-conversation-active):has(#assistant-panel-ai.is-active) .assistant-ai-layout,
+  body.assistant-workspace-page.is-keyboard-open:not(.assistant-ai-conversation-active):has(#assistant-panel-ai.is-active) .assistant-chat-column {
+    min-height: 0;
+  }
 }
 
 @media (max-height: 500px) and (max-width: 900px) and (orientation: landscape) {
