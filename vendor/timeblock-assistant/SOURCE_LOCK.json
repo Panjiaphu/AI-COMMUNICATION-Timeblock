@@ -1,7 +1,7 @@
 {
   "source_repo": "Panjiaphu/fumap-bot-life",
-  "source_sha": "3d80947b5fd294607831ce242a937293fbef1852",
-  "source_checkout_head": "3d80947b5fd294607831ce242a937293fbef1852",
+  "source_sha": "948f4119b727d1dd58bdf735e98550437f353026",
+  "source_checkout_head": "948f4119b727d1dd58bdf735e98550437f353026",
   "source_paths": [
     "templates/base.html",
     "templates/partials/nav.html",
@@ -238,7 +238,7 @@
     "static/css/security.css": "8c2351b46acf58231391b4e60d749956433208578d17cfe5a7252b97297c57ad",
     "static/css/i18n_shared_shell.css": "f26885de18208499561fc6bc21f6aecd70a202fd54b2ed99a631aad914f7d4b3",
     "static/css/assistant.css": "081801f191f770c613e2b242f33d2abb24bfd4c0a5c85d3e6333aa35b4d7d889",
-    "static/css/assistant_mobile_conversation_v1.css": "fe96f5731ed465f16506136eb010a45f1f0980de4a21164bc9f88824303bbe1d",
+    "static/css/assistant_mobile_conversation_v1.css": "1ca922ce3e5ea755754829f8caeb361efd85eba29a700598ded17d7ea725861a",
     "static/css/assistant_image_generation.css": "25650abb3f175ced35d6d1b7fb4a1fd47cfffaf6ad4c06edd1ba9729ab80c883",
     "static/css/live_translate.css": "857387792d20319aa01027c8a611a1ad115239d752191ae0f2f9725d2097a3b4",
     "static/css/live_translate_history.css": "4ee0f0e6e6b3e3cb4bfda768dfed331a99121feb1a35f42ad1533b17aa977063",
@@ -1889,16 +1889,16 @@
     },
     {
       "source_path": "static/css/assistant_mobile_conversation_v1.css",
-      "source_sha256": "fe96f5731ed465f16506136eb010a45f1f0980de4a21164bc9f88824303bbe1d",
+      "source_sha256": "1ca922ce3e5ea755754829f8caeb361efd85eba29a700598ded17d7ea725861a",
       "destination_path": "vendor/timeblock-assistant/static/css/assistant_mobile_conversation_v1.css",
-      "destination_sha256": "fe96f5731ed465f16506136eb010a45f1f0980de4a21164bc9f88824303bbe1d",
+      "destination_sha256": "1ca922ce3e5ea755754829f8caeb361efd85eba29a700598ded17d7ea725861a",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "static/css/assistant_mobile_conversation_v1.css",
-      "source_sha256": "fe96f5731ed465f16506136eb010a45f1f0980de4a21164bc9f88824303bbe1d",
+      "source_sha256": "1ca922ce3e5ea755754829f8caeb361efd85eba29a700598ded17d7ea725861a",
       "destination_path": "app/static/css/assistant_mobile_conversation_v1.css",
-      "destination_sha256": "fe96f5731ed465f16506136eb010a45f1f0980de4a21164bc9f88824303bbe1d",
+      "destination_sha256": "1ca922ce3e5ea755754829f8caeb361efd85eba29a700598ded17d7ea725861a",
       "adaptation_class": "EXACT_VENDOR"
     },
     {

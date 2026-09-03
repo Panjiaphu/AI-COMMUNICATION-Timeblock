@@ -1,5 +1,18 @@
 /* Timeblock AI Advisor mobile immersive conversation shell.
    Desktop/tablet landscape intentionally remain untouched. */
+
+/*
+   The companion script creates these mobile-only nodes before its media-query
+   activation check. Keep them inert on desktop/tablet so they can never fall
+   back to unstyled document-flow content after the global footer.
+*/
+.assistant-mobile-ai-header,
+.assistant-mobile-ai-sheet,
+.assistant-mobile-attachment-sheet,
+.assistant-mobile-sheet-backdrop {
+  display: none;
+}
+
 @media (max-width: 767px) {
   body.assistant-ai-conversation-active {
     --assistant-mobile-safe-top: 0px;

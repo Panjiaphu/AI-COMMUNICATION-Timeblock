@@ -9,7 +9,7 @@ end to end by this repository.
 ## Current phase
 
 The canonical Assistant UI snapshot is vendored from
-`Panjiaphu/fumap-bot-life@229ea3f53d12c024eaa6d686fdd47cc9326988cf`.
+`Panjiaphu/fumap-bot-life@948f4119b727d1dd58bdf735e98550437f353026`.
 Its templates, static assets, runtime asset graph and vi / zh-TW / en resources
 are present locally. For this candidate, `UI_PARITY=LOCAL_QA_PASS` means the
 canonical snapshot and its local runtime adapters passed the bounded local
