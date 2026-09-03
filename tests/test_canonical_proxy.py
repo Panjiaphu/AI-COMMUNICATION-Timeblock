@@ -242,6 +242,28 @@ def test_canonical_path_and_duplicate_query_parameters_are_preserved():
     assert call.token == "actor-session-token"
 
 
+@pytest.mark.parametrize("locale", ["vi", "en", "zh-TW"])
+def test_contact_i18n_proxy_adds_the_selected_locale_when_client_fetch_has_no_query(
+    locale: str,
+):
+    with _authenticated_client(["directory.read"]) as (browser, recorder):
+        browser.cookies.set("locale", locale)
+        response = browser.get("/api/messaging/contact-v1/i18n")
+
+    assert response.status_code == 200
+    assert len(recorder.calls) == 1
+    assert recorder.calls[0].params == (("lang", locale),)
+
+
+def test_contact_i18n_proxy_preserves_an_explicit_locale_query():
+    with _authenticated_client(["directory.read"]) as (browser, recorder):
+        browser.cookies.set("locale", "vi")
+        response = browser.get("/api/messaging/contact-v1/i18n?lang=zh-TW")
+
+    assert response.status_code == 200
+    assert recorder.calls[0].params == (("lang", "zh-TW"),)
+
+
 def test_bff_preserves_upstream_binary_status_and_safe_headers():
     upstream = RecordingProxyClient(
         status_code=206,

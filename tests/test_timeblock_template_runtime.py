@@ -114,6 +114,7 @@ def test_authenticated_assistant_renders_canonical_vendor_dom_and_locale(runtime
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
     assert "camera=(self)" in response.headers["permissions-policy"]
+    assert f"locale={locale}" in response.headers["set-cookie"]
     assert f'<html lang="{locale}">' in response.text
     assert 'class="assistant-page"' in response.text
     assert 'id="assistant-app"' in response.text
