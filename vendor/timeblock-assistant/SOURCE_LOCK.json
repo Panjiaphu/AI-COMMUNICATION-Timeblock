@@ -1,7 +1,7 @@
 {
   "source_repo": "Panjiaphu/fumap-bot-life",
-  "source_sha": "6b374c5945c98edc8a1dc52ffca540548b00279c",
-  "source_checkout_head": "6b374c5945c98edc8a1dc52ffca540548b00279c",
+  "source_sha": "20429538958ee12e3caf9ca4eba29680417ff685",
+  "source_checkout_head": "20429538958ee12e3caf9ca4eba29680417ff685",
   "source_paths": [
     "templates/base.html",
     "templates/partials/nav.html",
@@ -291,7 +291,7 @@
     "static/js/main.js": "038d261924d8b2d0c7802dee37af1d8835740c34afb633c424d5c433ebfaf317",
     "static/js/security.js": "358b3cb5782741b29665ce4b3ad5506b4ebe62611d040928255d70cc420f751a",
     "static/js/pwa-install.js": "e159981568867edfdc72e5af616af5c4ea1bc5686fe1593c31ac99161aee01d4",
-    "static/js/assistant_startup_hotfix.js": "6f879950394f0825de5d62c0037a57ee0817c4a30d3d6bdfdbd8942abcb3f598",
+    "static/js/assistant_startup_hotfix.js": "4aaa74e70446291d459c5d77c176fd780d99913e7298ddb05599235174e69775",
     "static/js/call_audio_ownership.js": "abeeeb6653708b73ee420934d3285dfa90da9ecffdf5a1d75a932d6ac2e7a3f3",
     "static/js/call-v1/session.js": "f46a01d28e3c65c61b9c288746a25df11640c1e6d61ee440a7f89398b79ad300",
     "static/js/call-v1/media.js": "ecffdb600220b96777081459974c495bc54256dc6f448dd664afc6dc21351c47",
@@ -307,7 +307,7 @@
     "static/js/live_translate_hotfix_media.js": "62a148374fb3d1fa51787dfd693198c5da5ec9f1f2b51c4b73de5cd0d53ec1e5",
     "static/js/live_translate_hotfix_bootstrap.js": "d41b761ccd0c402fd353df7bc08a445ef049884f7525ef6068bdfc50dc3c0b43",
     "static/js/live_translate_history.js": "610390b893c12e6b0449ba53b322144bfbfac9bd7a2b883f47f5cb7b0399c709",
-    "static/js/assistant.js": "1e6aa88759b2005817cfa5f979c0b176e942fcfcabfa9b40495670cefe7e705e",
+    "static/js/assistant.js": "7c59ad7d539b00d049f6a7844bd5515345b9967b7b1f1f79aea1c861a9fed7c7",
     "static/js/assistant_pwa_standalone_viewport_v1.js": "64acb149ec8a1a842631e89ae096afef652c9cdda662f8f4556d444aaf96ce60",
     "static/js/assistant_mobile_conversation_v1.js": "be5070cffad6b35067c1a135c619eb2d695166611d934354d0caf0b13a0cb9b6",
     "static/js/group_launcher_v3.js": "c29e48e374d358bb9bfa007031c3f1171f4ee9a508d56a510026f1e62e4447e6",
@@ -2613,16 +2613,16 @@
     },
     {
       "source_path": "static/js/assistant_startup_hotfix.js",
-      "source_sha256": "6f879950394f0825de5d62c0037a57ee0817c4a30d3d6bdfdbd8942abcb3f598",
+      "source_sha256": "4aaa74e70446291d459c5d77c176fd780d99913e7298ddb05599235174e69775",
       "destination_path": "vendor/timeblock-assistant/static/js/assistant_startup_hotfix.js",
-      "destination_sha256": "6f879950394f0825de5d62c0037a57ee0817c4a30d3d6bdfdbd8942abcb3f598",
+      "destination_sha256": "4aaa74e70446291d459c5d77c176fd780d99913e7298ddb05599235174e69775",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "static/js/assistant_startup_hotfix.js",
-      "source_sha256": "6f879950394f0825de5d62c0037a57ee0817c4a30d3d6bdfdbd8942abcb3f598",
+      "source_sha256": "4aaa74e70446291d459c5d77c176fd780d99913e7298ddb05599235174e69775",
       "destination_path": "app/static/js/assistant_startup_hotfix.js",
-      "destination_sha256": "6f879950394f0825de5d62c0037a57ee0817c4a30d3d6bdfdbd8942abcb3f598",
+      "destination_sha256": "4aaa74e70446291d459c5d77c176fd780d99913e7298ddb05599235174e69775",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
@@ -2837,16 +2837,16 @@
     },
     {
       "source_path": "static/js/assistant.js",
-      "source_sha256": "1e6aa88759b2005817cfa5f979c0b176e942fcfcabfa9b40495670cefe7e705e",
+      "source_sha256": "7c59ad7d539b00d049f6a7844bd5515345b9967b7b1f1f79aea1c861a9fed7c7",
       "destination_path": "vendor/timeblock-assistant/static/js/assistant.js",
-      "destination_sha256": "1e6aa88759b2005817cfa5f979c0b176e942fcfcabfa9b40495670cefe7e705e",
+      "destination_sha256": "7c59ad7d539b00d049f6a7844bd5515345b9967b7b1f1f79aea1c861a9fed7c7",
       "adaptation_class": "EXACT_VENDOR"
     },
     {
       "source_path": "static/js/assistant.js",
-      "source_sha256": "1e6aa88759b2005817cfa5f979c0b176e942fcfcabfa9b40495670cefe7e705e",
+      "source_sha256": "7c59ad7d539b00d049f6a7844bd5515345b9967b7b1f1f79aea1c861a9fed7c7",
       "destination_path": "app/static/js/assistant.js",
-      "destination_sha256": "1e6aa88759b2005817cfa5f979c0b176e942fcfcabfa9b40495670cefe7e705e",
+      "destination_sha256": "7c59ad7d539b00d049f6a7844bd5515345b9967b7b1f1f79aea1c861a9fed7c7",
       "adaptation_class": "EXACT_VENDOR"
     },
     {

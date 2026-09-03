@@ -1692,6 +1692,30 @@
     $('[data-qr-camera]').focus();
   }
 
+  function ensureQrScannerInstance() {
+    if (state.qrScanner || typeof window.TimeblockQrScanner !== "function") {
+      return state.qrScanner;
+    }
+    const video = $('[data-qr-video]');
+    if (!video) return null;
+    state.qrScanner = new window.TimeblockQrScanner({
+      video,
+      scanIntervalMs: 320,
+      onValue: resolveQrValue,
+    });
+    return state.qrScanner;
+  }
+
+  async function ensureQrScannerReady() {
+    const scanner = ensureQrScannerInstance();
+    if (scanner) return scanner;
+    const pending = window.__TIMEBLOCK_QR_SCANNER_READY__;
+    if (pending && typeof pending.then === "function") {
+      await pending.catch(() => null);
+    }
+    return ensureQrScannerInstance();
+  }
+
   async function startQrCamera(event) {
     const button = event.currentTarget;
     const feedback = $('[data-qr-feedback]');
@@ -1700,9 +1724,10 @@
     clearQrPreview();
     setFeedback(feedback, copy("loading"), false);
     try {
-      if (!state.qrScanner) throw new Error("qr-unsupported");
+      const scanner = await ensureQrScannerReady();
+      if (!scanner) throw new Error("qr-unsupported");
       video.hidden = false;
-      await state.qrScanner.startCamera();
+      await scanner.startCamera();
       setFeedback(feedback, "", false);
     } catch (error) {
       stopQrScanner();
@@ -1720,8 +1745,9 @@
     try {
       clearQrPreview();
       setFeedback(feedback, copy("loading"), false);
-      if (!state.qrScanner) throw new Error("qr-unsupported");
-      const value = await state.qrScanner.decodeFile(file);
+      const scanner = await ensureQrScannerReady();
+      if (!scanner) throw new Error("qr-unsupported");
+      const value = await scanner.decodeFile(file);
       if (!value || !(await resolveQrValue(value))) setFeedback(feedback, copy("qrInvalid"), true);
     } catch (error) {
       setFeedback(
@@ -1840,14 +1866,7 @@
   }
 
   function initQrScanner() {
-    const video = $('[data-qr-video]');
-    if (typeof window.TimeblockQrScanner === "function") {
-      state.qrScanner = new window.TimeblockQrScanner({
-        video,
-        scanIntervalMs: 320,
-        onValue: resolveQrValue,
-      });
-    }
+    ensureQrScannerInstance();
     $('[data-qr-scan]').addEventListener("click", openQrScanner);
     $('[data-qr-camera]').addEventListener("click", startQrCamera);
     $('[data-qr-close]').addEventListener("click", closeQrScanner);
