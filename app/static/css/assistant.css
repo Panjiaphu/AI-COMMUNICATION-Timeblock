@@ -1191,7 +1191,8 @@ button.assistant-conversation-preview {
 }
 
 .assistant-qr-preview {
-  display: flex;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
   align-items: center;
   gap: 11px;
   margin-top: 14px;
@@ -1203,6 +1204,12 @@ button.assistant-conversation-preview {
 
 .assistant-qr-preview .assistant-list-avatar { flex: 0 0 42px; width: 42px; height: 42px; }
 .assistant-qr-preview code { color: #0f6858; font-weight: 850; }
+.assistant-qr-add-friend {
+  min-height: 42px;
+  padding: 0 11px;
+  white-space: nowrap;
+}
+.assistant-qr-add-friend svg { width: 18px; height: 18px; flex: 0 0 auto; }
 
 .assistant-qr-confirm-actions {
   display: flex;
@@ -2519,6 +2526,8 @@ button.assistant-conversation-preview {
   .assistant-qr-dialog video { max-height: 34dvh; }
   .assistant-qr-source-actions,
   .assistant-qr-manual > div { grid-template-columns: 1fr; }
+  .assistant-qr-preview { grid-template-columns: 42px minmax(0, 1fr); }
+  .assistant-qr-add-friend { grid-column: 1 / -1; width: 100%; }
   .assistant-qr-confirm-actions {
     position: sticky;
     bottom: calc(-16px - env(safe-area-inset-bottom));

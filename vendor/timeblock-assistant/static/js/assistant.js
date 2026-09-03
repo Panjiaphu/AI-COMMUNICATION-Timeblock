@@ -1630,6 +1630,8 @@
     state.qrProfile = null;
     $('[data-qr-preview]').hidden = true;
     $('[data-qr-confirm]').disabled = true;
+    $('[data-qr-add-friend]').hidden = true;
+    $('[data-qr-add-friend]').disabled = true;
     $('[data-qr-preview-name]').textContent = "-";
     $('[data-qr-preview-id]').textContent = "-";
     $('[data-qr-preview-type]').textContent = "";
@@ -1670,6 +1672,10 @@
         ? copy("qrBusiness")
         : copy("qrMember");
       $('[data-qr-preview-avatar]').textContent = initials(profile);
+      const addFriendButton = $('[data-qr-add-friend]');
+      const noActionRelationship = new Set(["accepted", "pending_sent", "pending_received"]);
+      addFriendButton.hidden = noActionRelationship.has(profile.relationship);
+      addFriendButton.disabled = addFriendButton.hidden;
       $('[data-qr-preview]').hidden = false;
       $('[data-qr-confirm]').disabled = false;
       setFeedback(feedback, copy("qrReady").replace("{id}", profile.public_id), false);
@@ -1872,6 +1878,7 @@
     $('[data-qr-close]').addEventListener("click", closeQrScanner);
     $('[data-qr-cancel]').addEventListener("click", closeQrScanner);
     $('[data-qr-confirm]').addEventListener("click", confirmQrProfile);
+    $('[data-qr-add-friend]').addEventListener("click", confirmQrProfile);
     $('[data-qr-file]').addEventListener("change", scanQrFile);
     $('[data-qr-manual-form]').addEventListener("submit", async (event) => {
       event.preventDefault();
