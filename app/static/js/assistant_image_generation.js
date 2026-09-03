@@ -50,6 +50,29 @@
     status.classList.toggle("is-error", isError);
   }
 
+  function schedulePromptVisibility(panel, prompt) {
+    const sync = () => {
+      if (!panel || !prompt || panel.hidden) return;
+      const style = getComputedStyle(document.body);
+      const top = Number.parseFloat(style.getPropertyValue("--assistant-visual-viewport-offset-top")) || 0;
+      const height = Number.parseFloat(style.getPropertyValue("--assistant-visual-viewport-height")) || window.innerHeight;
+      const publishedBottom = Number.parseFloat(style.getPropertyValue("--assistant-visual-viewport-bottom"));
+      const bottom = Number.isFinite(publishedBottom) ? publishedBottom : top + height;
+      const rect = prompt.getBoundingClientRect();
+      const padding = 12;
+      const panelRect = panel.getBoundingClientRect();
+      const visibleTop = Math.max(top + padding, panelRect.top + padding);
+      const visibleBottom = Math.min(bottom - padding, panelRect.bottom - padding);
+      if (rect.top < visibleTop) {
+        panel.scrollTop = Math.max(0, panel.scrollTop - (visibleTop - rect.top));
+      } else if (rect.bottom > visibleBottom) {
+        panel.scrollTop += rect.bottom - visibleBottom;
+      }
+    };
+    if (typeof window.requestAnimationFrame === "function") window.requestAnimationFrame(sync);
+    else sync();
+  }
+
   function updateImageQuota(usage) {
     const meter = usage?.buckets?.image;
     if (!meter) return;
@@ -101,8 +124,10 @@
     regenerate.type = "button";
     regenerate.addEventListener("click", () => {
       panel.hidden = false;
-      panel.querySelector("[data-image-generation-prompt]").value = prompt || "";
-      panel.querySelector("[data-image-generation-prompt]").focus();
+      const promptInput = panel.querySelector("[data-image-generation-prompt]");
+      promptInput.value = prompt || "";
+      promptInput.focus();
+      schedulePromptVisibility(panel, promptInput);
     });
     actions.appendChild(regenerate);
     figure.appendChild(actions);
@@ -283,9 +308,20 @@
       toggle.setAttribute("aria-pressed", String(open));
       if (open) {
         prompt.focus();
-        requestAnimationFrame(() => panel.scrollIntoView({ block: "nearest", inline: "nearest" }));
+        schedulePromptVisibility(panel, prompt);
+      } else {
+        const mobileTrigger = root.querySelector(".assistant-mobile-add-trigger");
+        const focusTarget = mobileTrigger && getComputedStyle(mobileTrigger).display !== "none"
+          ? mobileTrigger
+          : toggle;
+        focusTarget.focus({ preventScroll: true });
       }
     };
+    prompt.addEventListener("focus", () => schedulePromptVisibility(panel, prompt));
+    // assistant.js owns viewport publication; this listener only adjusts the
+    // Image Prompt panel's own scroll surface after resize.
+    window.visualViewport?.addEventListener("resize", () => schedulePromptVisibility(panel, prompt));
+    window.visualViewport?.addEventListener("scroll", () => schedulePromptVisibility(panel, prompt));
     toggle.addEventListener("click", () => setOpen(panel.hidden));
     close.addEventListener("click", () => setOpen(false));
 
@@ -326,7 +362,6 @@
         const generatedImage = rendered?.querySelector(".assistant-message-image img");
         if (generatedImage) {
           setOpen(false);
-          requestAnimationFrame(() => generatedImage.scrollIntoView({ block: "nearest", inline: "nearest" }));
         }
         setStatus(status, text("completed"));
       } catch (error) {

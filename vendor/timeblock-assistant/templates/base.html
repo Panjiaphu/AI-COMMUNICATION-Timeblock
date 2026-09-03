@@ -101,8 +101,8 @@
     <script src="{{ url_for('static', filename='js/timeblock_v2.js', v='timeblock-v2-pr1-5') }}" defer></script>
     {% block scripts %}{% endblock %}
     {% if active_user and active_user.role in ['member', 'business'] and not is_call_v3_page and not request.path.startswith('/assistant') %}
-      <script src="{{ url_for('static', filename='js/call_audio_ownership.js', v='call-v1-ring-owner-20260822') }}" defer></script>
-      <script src="{{ url_for('static', filename='js/timeblock_call_runtime.js', v='call-v1-ring-owner-20260822') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/call_audio_ownership.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
+      <script src="{{ url_for('static', filename='js/timeblock_call_runtime.js', v='call-v1-viewport-contract-20260903') }}" defer></script>
     {% endif %}
   </body>
 </html>

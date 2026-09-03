@@ -41,6 +41,7 @@
   };
 
   attachLabel?.classList.add("assistant-mobile-add-trigger");
+  attachLabel?.setAttribute("tabindex", "0");
 
   const create = (tag, className, text = "") => {
     const element = document.createElement(tag);
