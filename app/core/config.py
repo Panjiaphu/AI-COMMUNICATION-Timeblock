@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     database_max_overflow: int = Field(default=5, ge=0, le=40)
     group_message_encryption_key: str | None = None
     group_attachment_max_bytes: int = Field(default=5 * 1024 * 1024, ge=1024, le=25 * 1024 * 1024)
+    group_invitation_ttl_seconds: int = Field(default=7 * 24 * 60 * 60, ge=300, le=30 * 24 * 60 * 60)
     group_media_enabled: bool = False
     group_livekit_url: str | None = None
     group_livekit_api_key: str | None = None

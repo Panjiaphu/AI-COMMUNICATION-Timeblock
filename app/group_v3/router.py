@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.group_v3.auth import require_app_session, require_group_actor, require_write_origin
 from app.group_v3.schemas import (
+    InvitationCreate,
     MembershipCreate,
     MembershipUpdate,
     MessageCreate,
@@ -17,6 +18,8 @@ from app.group_v3.schemas import (
     SpaceCreate,
     SpaceUpdate,
 )
+from app.group_v3.service import GroupServiceError
+from app.integrations.timeblock.client import TimeblockIntegrationError
 
 
 router = APIRouter(prefix="/api/group", tags=["group-v3"])
@@ -24,6 +27,10 @@ router = APIRouter(prefix="/api/group", tags=["group-v3"])
 
 def _service(request: Request):
     return request.app.state.group_service
+
+
+def _invitation_service(request: Request):
+    return request.app.state.group_invitation_service
 
 
 def _event_broker(request: Request):
@@ -53,6 +60,51 @@ def _bounded_id(value: str, name: str) -> str:
     return normalized
 
 
+def _direct_session(request: Request, *required_scopes: str):
+    session = require_app_session(request)
+    if not session.direct_authorized:
+        raise HTTPException(status_code=409, detail="direct_authorization_required")
+    if not set(required_scopes).issubset(set(session.scope)):
+        raise HTTPException(status_code=403, detail="direct_scope_denied")
+    return session
+
+
+async def _timeblock_get(request: Request, path: str, token: str) -> dict:
+    try:
+        result = await request.app.state.timeblock_client.client_get(path, token)
+    except TimeblockIntegrationError as exc:
+        raise HTTPException(status_code=502, detail="timeblock_directory_unavailable") from exc
+    if not isinstance(result, dict):
+        raise HTTPException(status_code=502, detail="invalid_timeblock_directory")
+    return result
+
+
+def _directory_identity(payload: dict) -> tuple[str, str] | None:
+    candidates = [
+        payload,
+        payload.get("directory"),
+        payload.get("directory_entry"),
+        payload.get("entry"),
+        payload.get("profile"),
+    ]
+    for item in candidates:
+        if not isinstance(item, dict):
+            continue
+        principal_type = str(item.get("owner_type") or item.get("type") or "")
+        principal_id = str(item.get("owner_id") or item.get("id") or "")
+        if principal_type in {"member", "business"} and principal_id:
+            return principal_type, principal_id
+    return None
+
+
+async def _revalidate_timeblock_identity(request: Request, actor):
+    session = _direct_session(request, "directory.read")
+    payload = await _timeblock_get(request, "/api/guilua/v2/directory/me", session.timeblock_token)
+    if _directory_identity(payload) != (actor.principal_type, actor.principal_id):
+        raise HTTPException(status_code=403, detail="timeblock_identity_mismatch")
+    return session
+
+
 @router.get("/session")
 async def group_session(request: Request) -> JSONResponse:
     """Return non-secret context for the authenticated application session."""
@@ -64,7 +116,7 @@ async def group_session(request: Request) -> JSONResponse:
         {
             "contract_version": "3",
             "authority": "ai-communication",
-            "direct_available": bool(session.timeblock_token),
+            "direct_available": session.direct_authorized,
             "group_authorized": group_authorized,
             "surface": session.group_surface if group_authorized else "chat",
             "handoff_id": session.group_handoff_id if group_authorized else "",
@@ -160,11 +212,100 @@ async def list_members(request: Request, space_id: str) -> JSONResponse:
 @router.post("/spaces/{space_id}/memberships")
 async def add_member(request: Request, space_id: str, body: MembershipCreate) -> JSONResponse:
     require_write_origin(request)
+    if request.app.state.settings.is_production:
+        raise HTTPException(status_code=410, detail="group_membership_direct_write_disabled")
     actor = require_group_actor(request, "group.spaces.write")
     normalized_space_id = _bounded_id(space_id, "space_id")
     membership = _service(request).add_member(actor, normalized_space_id, body.model_dump())
     await _publish(request, normalized_space_id, "membership.created", membership["id"])
     return _json({"membership": membership}, status_code=201)
+
+
+@router.get("/spaces/{space_id}/directory/connections")
+async def list_directory_candidates(request: Request, space_id: str) -> JSONResponse:
+    actor = require_group_actor(request, "group.spaces.read")
+    normalized_space_id = _bounded_id(space_id, "space_id")
+    _invitation_service(request).require_manager(actor, normalized_space_id)
+    session = _direct_session(request, "connections.read")
+    payload = await _timeblock_get(request, "/api/guilua/v2/connections", session.timeblock_token)
+    candidates = _invitation_service(request).list_candidates(actor, normalized_space_id, payload)
+    return _json({"candidates": candidates})
+
+
+@router.get("/spaces/{space_id}/invitations")
+async def list_space_invitations(request: Request, space_id: str) -> JSONResponse:
+    actor = require_group_actor(request, "group.spaces.read")
+    normalized_space_id = _bounded_id(space_id, "space_id")
+    return _json(
+        {"invitations": _invitation_service(request).list_space_invitations(actor, normalized_space_id)}
+    )
+
+
+@router.post("/spaces/{space_id}/invitations")
+async def create_invitation(request: Request, space_id: str, body: InvitationCreate) -> JSONResponse:
+    require_write_origin(request)
+    actor = require_group_actor(request, "group.spaces.write")
+    normalized_space_id = _bounded_id(space_id, "space_id")
+    _invitation_service(request).require_manager(actor, normalized_space_id)
+    session = _direct_session(request, "connections.read")
+    payload = await _timeblock_get(request, "/api/guilua/v2/connections", session.timeblock_token)
+    result = _invitation_service(request).create_invitation(
+        actor,
+        normalized_space_id,
+        body.contact_ref,
+        payload,
+    )
+    invitation = result["invitation"]
+    await _publish(request, normalized_space_id, "invitation.created", invitation["id"])
+    return _json(result, status_code=200 if result.get("idempotent") else 201)
+
+
+@router.delete("/spaces/{space_id}/invitations/{invitation_id}")
+async def cancel_invitation(request: Request, space_id: str, invitation_id: str) -> JSONResponse:
+    require_write_origin(request)
+    actor = require_group_actor(request, "group.spaces.write")
+    normalized_space_id = _bounded_id(space_id, "space_id")
+    invitation = _invitation_service(request).cancel(
+        actor,
+        normalized_space_id,
+        _bounded_id(invitation_id, "invitation_id"),
+    )
+    await _publish(request, normalized_space_id, "invitation.cancelled", invitation["id"])
+    return _json({"invitation": invitation})
+
+
+@router.get("/invitations")
+async def list_incoming_invitations(request: Request) -> JSONResponse:
+    actor = require_group_actor(request, "group.spaces.read")
+    return _json({"invitations": _invitation_service(request).list_incoming(actor)})
+
+
+@router.post("/invitations/{invitation_id}/accept")
+async def accept_invitation(request: Request, invitation_id: str) -> JSONResponse:
+    require_write_origin(request)
+    actor = require_group_actor(request, "group.spaces.read")
+    await _revalidate_timeblock_identity(request, actor)
+    result = _invitation_service(request).decide(
+        actor,
+        _bounded_id(invitation_id, "invitation_id"),
+        accept=True,
+    )
+    await _publish(request, result["invitation"]["space_id"], "invitation.accepted", invitation_id)
+    return _json(result)
+
+
+@router.post("/invitations/{invitation_id}/reject")
+async def reject_invitation(request: Request, invitation_id: str) -> JSONResponse:
+    require_write_origin(request)
+    actor = require_group_actor(request, "group.spaces.read")
+    await _revalidate_timeblock_identity(request, actor)
+    result = _invitation_service(request).decide(
+        actor,
+        _bounded_id(invitation_id, "invitation_id"),
+        accept=False,
+    )
+    await _publish(request, result["invitation"]["space_id"], "invitation.rejected", invitation_id)
+    return _json(result)
 
 
 @router.patch("/spaces/{space_id}/memberships/{membership_id}")
@@ -180,12 +321,27 @@ async def update_member(
     if not values:
         raise HTTPException(status_code=400, detail="membership_update_required")
     normalized_space_id = _bounded_id(space_id, "space_id")
+    normalized_membership_id = _bounded_id(membership_id, "membership_id")
+    radio_session_ids = (
+        _service(request).radio_session_ids_for_membership(normalized_membership_id)
+        if values.get("status") == "removed"
+        else []
+    )
     membership = _service(request).update_member(
         actor,
         normalized_space_id,
-        _bounded_id(membership_id, "membership_id"),
+        normalized_membership_id,
         values,
     )
+    for radio_session_id in radio_session_ids:
+        try:
+            await request.app.state.group_radio_floor.release_membership(
+                radio_session_id, normalized_membership_id
+            )
+        except GroupServiceError:
+            # Membership guards and the short lease remain authoritative even
+            # when the distributed floor is temporarily unavailable.
+            pass
     await _publish(request, normalized_space_id, "membership.updated", membership["id"])
     return _json({"membership": membership})
 

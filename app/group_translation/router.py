@@ -28,6 +28,8 @@ def _session(request: Request) -> BffSession:
     )
     if not session:
         raise HTTPException(status_code=401, detail="session_required")
+    if not session.direct_authorized:
+        raise HTTPException(status_code=403, detail="direct_session_required")
     if not set(session.scope).intersection({"calls.read", "calls.answer", "calls.start"}):
         raise HTTPException(status_code=403, detail="scope_denied")
     return session

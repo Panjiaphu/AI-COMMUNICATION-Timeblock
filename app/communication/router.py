@@ -85,7 +85,7 @@ async def _assistant_page(
     session = request.app.state.bff_session_store.get(
         request.cookies.get(settings.guilua_session_cookie)
     )
-    if session and session.timeblock_token:
+    if session and session.direct_authorized:
         usage = None
         try:
             usage_result = await request.app.state.timeblock_client.client_get(
@@ -288,7 +288,7 @@ async def _communication_page(
         'timeblock_entry_url': settings.primary_timeblock_handoff_origin,
         'locale': locale,
         'initial_surface': initial_surface,
-        'direct_available': bool(session and session.timeblock_token),
+        'direct_available': bool(session and session.direct_authorized),
         'group_authorized': bool(session and session.group_authorized),
         'group_translation_policy_version': settings.group_translation_policy_version,
         'initial_qa_state': initial_qa_state,

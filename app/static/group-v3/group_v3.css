@@ -61,7 +61,7 @@ img, svg { display: block; }
 .preview-mobile .preview-canvas { justify-self: center; width: 390px; height: min(844px, calc(100vh - 154px)); border-radius: 24px; }
 
 .native-app { width: 100%; height: 100%; min-width: 0; min-height: 0; display: grid; grid-template-columns: 78px 264px minmax(0, 1fr); background: var(--canvas); overflow: hidden; }
-.global-nav { grid-column: 1; min-height: 0; display: grid; grid-template-rows: 76px 1fr 72px; align-items: start; padding: 14px 10px; color: var(--white); background: var(--teal-strong); }
+.global-nav { grid-column: 1; min-height: 0; display: grid; grid-template-rows: 76px 1fr auto; align-items: start; padding: 14px 10px; color: var(--white); background: var(--teal-strong); }
 .app-logo { min-width: 0; display: flex; align-items: center; gap: 10px; }
 .app-logo-mark { flex: 0 0 auto; width: 42px; height: 42px; display: grid; place-items: center; padding: 8px; border-radius: 13px; background: var(--white); box-shadow: 0 8px 22px rgba(23, 33, 30, 0.12); }
 .app-logo-mark img { width: 100%; height: 100%; object-fit: contain; }
@@ -74,8 +74,12 @@ img, svg { display: block; }
 .global-nav nav button span, .global-nav nav a span { max-width: 62px; display: -webkit-box; overflow: hidden; font-size: 8px; font-weight: 800; line-height: 1.15; text-align: center; white-space: normal; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .global-nav nav button:hover, .global-nav nav button.is-active, .global-nav nav a:hover { color: var(--teal-strong); background: var(--white); }
 .global-nav nav button:disabled { opacity: 0.46; cursor: not-allowed; }
-.identity-chip { align-self: end; justify-self: center; position: relative; width: 42px; height: 42px; display: grid; place-items: center; border: 2px solid rgba(255, 255, 255, 0.26); border-radius: 50%; background: var(--teal); font-size: 11px; font-weight: 900; }
+.identity-actions { align-self: end; justify-self: center; display: grid; justify-items: center; gap: 8px; }
+.identity-chip { position: relative; width: 42px; height: 42px; display: grid; place-items: center; border: 2px solid rgba(255, 255, 255, 0.26); border-radius: 50%; background: var(--teal); font-size: 11px; font-weight: 900; }
 .identity-chip i { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border: 2px solid var(--teal-strong); border-radius: 50%; background: var(--success); }
+.logout-navigation { width: 42px; min-height: 42px; display: grid; place-items: center; align-content: center; gap: 3px; padding: 4px 2px; border: 1px solid rgba(255, 255, 255, .2); border-radius: 11px; color: var(--mint); background: transparent; text-decoration: none; }
+.logout-navigation span { max-width: 60px; overflow: hidden; font-size: 7px; font-weight: 800; line-height: 1.1; text-align: center; white-space: normal; overflow-wrap: anywhere; }
+.logout-navigation:hover { color: var(--teal-strong); background: var(--white); }
 .mobile-app-header, .mobile-language-bar, .mobile-bottom-nav { display: none; }
 
 .context-rail { grid-column: 2; min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: 24px 14px 16px; background: var(--white); border-right: 1px solid var(--border); overflow: hidden; }
@@ -353,6 +357,10 @@ img, svg { display: block; }
 .native-mobile .mobile-app-header .app-logo-mark { width: 36px; height: 36px; padding: 7px; border-radius: 11px; }
 .native-mobile .mobile-app-header .app-logo strong { font-size: 11px; }
 .native-mobile .mobile-app-header .app-logo small { font-size: 7px; }
+.mobile-header-actions { display: flex; align-items: center; gap: 12px; }
+.mobile-header-actions .logout-navigation { width: 40px; min-height: 40px; padding: 0; border-color: var(--border); color: var(--teal); background: var(--canvas); }
+.mobile-header-actions .logout-navigation span { display: none; }
+.mobile-header-actions .logout-navigation:hover { color: var(--teal-strong); background: var(--mint); }
 .mobile-state-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 5px var(--mint); }
 .native-mobile .native-main { grid-column: 1; grid-row: 2; min-height: 0; grid-template-rows: 24px 62px minmax(0, 1fr); }
 .native-mobile .session-strip { padding: 0 12px; font-size: 7px; }

@@ -16,11 +16,16 @@ class BffSession:
     principal: dict[str, Any]
     scope: tuple[str, ...]
     expires_at: float
+    direct_expires_at: float = 0.0
     group_scope: tuple[str, ...] = ()
     group_expires_at: float = 0.0
     group_handoff_id: str = ""
     group_surface: str = ""
     entitlement: dict[str, Any] | None = None
+
+    @property
+    def direct_authorized(self) -> bool:
+        return bool(self.timeblock_token) and self.direct_expires_at > time.time()
 
     @property
     def group_authorized(self) -> bool:
@@ -37,6 +42,8 @@ class PendingAuthorization:
     redirect_uri: str
     browser_nonce_hash: str
     expires_at: float
+    return_to: str = "/"
+    existing_session_id: str = ""
 
 
 class PendingAuthorizationRateLimited(RuntimeError):
@@ -134,6 +141,8 @@ class SessionStore:
         *,
         browser_nonce: str | None = None,
         client_key: str = "unknown",
+        return_to: str = "/",
+        existing_session_id: str | None = None,
     ) -> tuple[PendingAuthorization, str]:
         with self._lock:
             self._purge()
@@ -158,6 +167,8 @@ class SessionStore:
                 redirect_uri=redirect_uri,
                 browser_nonce_hash=self._nonce_hash(supplied_nonce),
                 expires_at=now + self.pending_ttl_seconds,
+                return_to=str(return_to or "/"),
+                existing_session_id=str(existing_session_id or ""),
             )
             self._pending[state] = pending
             self._enforce_bounds()
@@ -183,16 +194,56 @@ class SessionStore:
         with self._lock:
             self._purge()
             session_id = secrets.token_urlsafe(32)
+            direct_expiry = self._session_expiry(expires_at)
             session = BffSession(
                 session_id=session_id,
                 timeblock_token=timeblock_token,
                 principal=dict(principal),
                 scope=tuple(scope),
-                expires_at=self._session_expiry(expires_at),
+                expires_at=direct_expiry,
+                direct_expires_at=direct_expiry,
             )
             self._sessions[session_id] = session
             self._enforce_bounds()
             return session
+
+    def grant_direct_authorization(
+        self,
+        session_id: str | None,
+        *,
+        timeblock_token: str,
+        principal: dict[str, Any],
+        scope: list[str],
+        expires_at: str,
+    ) -> BffSession:
+        """Attach Direct authorization without discarding a same-principal Group grant."""
+
+        with self._lock:
+            self._purge()
+            current = self._sessions.get(str(session_id or ""))
+            if not current or not self._same_principal(current.principal, principal):
+                return self.create_session(
+                    timeblock_token=timeblock_token,
+                    principal=principal,
+                    scope=scope,
+                    expires_at=expires_at,
+                )
+            direct_expiry = self._session_expiry(expires_at)
+            updated = BffSession(
+                session_id=current.session_id,
+                timeblock_token=timeblock_token,
+                principal=dict(principal),
+                scope=tuple(scope),
+                expires_at=max(direct_expiry, current.group_expires_at),
+                direct_expires_at=direct_expiry,
+                group_scope=tuple(current.group_scope),
+                group_expires_at=current.group_expires_at,
+                group_handoff_id=current.group_handoff_id,
+                group_surface=current.group_surface,
+                entitlement=dict(current.entitlement or {}),
+            )
+            self._sessions[updated.session_id] = updated
+            return updated
 
     def create_group_session(
         self,
@@ -219,6 +270,7 @@ class SessionStore:
                 principal=dict(principal),
                 scope=(),
                 expires_at=group_expiry,
+                direct_expires_at=0.0,
                 group_scope=tuple(scope),
                 group_expires_at=group_expiry,
                 group_handoff_id=str(handoff_id),
@@ -236,7 +288,9 @@ class SessionStore:
                 return False
         left_user = str(left.get("user_id") or "")
         right_user = str(right.get("user_id") or "")
-        return not left_user or not right_user or secrets.compare_digest(left_user, right_user)
+        if bool(left_user) != bool(right_user):
+            return False
+        return not left_user or secrets.compare_digest(left_user, right_user)
 
     def grant_group_authorization(
         self,
@@ -270,6 +324,7 @@ class SessionStore:
                 principal=dict(principal),
                 scope=tuple(current.scope),
                 expires_at=max(current.expires_at, group_expiry),
+                direct_expires_at=current.direct_expires_at,
                 group_scope=tuple(scope),
                 group_expires_at=group_expiry,
                 group_handoff_id=str(handoff_id),
@@ -292,12 +347,15 @@ class SessionStore:
             current = self._sessions.get(session_id)
             if not current:
                 return None
+            if not self._same_principal(current.principal, principal):
+                return None
             updated = BffSession(
                 session_id=current.session_id,
                 timeblock_token=timeblock_token,
                 principal=dict(principal),
                 scope=tuple(scope),
                 expires_at=max(self._session_expiry(expires_at), current.group_expires_at),
+                direct_expires_at=self._session_expiry(expires_at),
                 group_scope=tuple(current.group_scope),
                 group_expires_at=current.group_expires_at,
                 group_handoff_id=current.group_handoff_id,

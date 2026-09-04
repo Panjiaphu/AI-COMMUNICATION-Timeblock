@@ -11,6 +11,7 @@ Last owner correction: `2026-09-01 Asia/Taipei`
 `Panjiaphu/AI-COMMUNICATION-Timeblock` exclusively owns and operates:
 
 - Group spaces, memberships, roles and room-scoped authorization;
+- durable member/business invitations and membership acceptance state;
 - Group Chat UI, messages, reactions, pins, attachments and history;
 - Group Call and Group Video UI, LiveKit grants and media lifecycle;
 - Group Radio/PTT UI, durable session/history and Valkey floor lifecycle;
@@ -31,6 +32,9 @@ permission, provider execution, history, audit, retention or usage.
 The AI service may consume the authenticated identity handoff, but all
 Group-specific authorization and records are enforced here. Timeblock legacy
 Group tables are frozen/read-only and never override AI PostgreSQL.
+Timeblock remains the canonical source for login identity and accepted Direct
+connections. AI reads those contracts server-to-server; the browser never
+chooses canonical principal fields or the initial Group role.
 
 ## UI and handoff
 

@@ -181,6 +181,7 @@ class GroupMediaSessionService:
                 )
                 participants = [actor_membership, *invitees]
                 db.add(session)
+                db.flush()
                 for membership in participants:
                     is_actor = membership.id == actor_membership.id
                     db.add(

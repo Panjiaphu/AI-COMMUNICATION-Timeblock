@@ -14,6 +14,12 @@ from app.bff.session_store import (
     SessionStore,
 )
 from app.core.config import Settings
+from app.group_v3.grant import (
+    AI_GROUP_SCOPES,
+    ai_group_entitlement,
+    canonical_group_principal,
+    direct_group_grant_id,
+)
 from app.integrations.timeblock.client import TimeblockIntegrationError
 
 
@@ -69,6 +75,21 @@ def _require_browser_origin(request: Request) -> None:
     raise HTTPException(status_code=403, detail="origin_not_allowed")
 
 
+def _safe_return_to(value: str) -> str:
+    normalized = str(value or "/").strip()
+    parsed = urlparse(normalized)
+    if (
+        not normalized.startswith("/")
+        or normalized.startswith("//")
+        or parsed.scheme
+        or parsed.netloc
+        or "\\" in normalized
+        or any(ord(character) < 32 or ord(character) == 127 for character in normalized)
+    ):
+        return "/"
+    return normalized[:500]
+
+
 @router.get("/api/session")
 async def session_status(request: Request) -> JSONResponse:
     session = _store(request).get(request.cookies.get(_settings(request).guilua_session_cookie))
@@ -88,8 +109,8 @@ async def session_status(request: Request) -> JSONResponse:
                 "ai-communication" if session.group_authorized else None
             ),
             "principal": session.principal,
-            "scope": list(session.scope),
-            "direct_available": bool(session.timeblock_token),
+            "scope": list(session.scope) if session.direct_authorized else [],
+            "direct_available": session.direct_authorized,
             "group_authorized": session.group_authorized,
             "group_scope": list(session.group_scope) if session.group_authorized else [],
             "surface": session.group_surface if session.group_authorized else "",
@@ -105,11 +126,14 @@ async def session_start(request: Request) -> Response:
     redirect_uri = f"{settings.public_base_url.rstrip('/')}/api/session/callback"
     browser_nonce = request.cookies.get(settings.guilua_pending_authorization_cookie)
     client_key = request.client.host if request.client else "unknown"
+    return_to = _safe_return_to(str(request.query_params.get("return_to") or "/"))
     try:
         pending, browser_nonce = _store(request).create_pending(
             redirect_uri,
             browser_nonce=browser_nonce,
             client_key=client_key,
+            return_to=return_to,
+            existing_session_id=request.cookies.get(settings.guilua_session_cookie),
         )
     except PendingAuthorizationRateLimited as exc:
         return JSONResponse(
@@ -156,13 +180,26 @@ async def session_callback(request: Request, code: str = "", state: str = "") ->
     scope = result.get("scope") if isinstance(result.get("scope"), list) else []
     if not token or not principal:
         raise HTTPException(status_code=502, detail="invalid_timeblock_session")
-    session = _store(request).create_session(
+    session = _store(request).grant_direct_authorization(
+        pending.existing_session_id
+        or request.cookies.get(settings.guilua_session_cookie),
         timeblock_token=token,
         principal=principal,
         scope=[str(item) for item in scope],
         expires_at=str(result.get("expires_at") or ""),
     )
-    response = RedirectResponse("/", status_code=303)
+    group_principal = canonical_group_principal(principal)
+    if settings.group_v3_enabled and group_principal and not session.group_authorized:
+        session = _store(request).grant_group_authorization(
+            session.session_id,
+            principal=group_principal,
+            scope=list(AI_GROUP_SCOPES),
+            expires_at=str(result.get("expires_at") or ""),
+            handoff_id=direct_group_grant_id(),
+            surface="chat",
+            entitlement=ai_group_entitlement(group_principal),
+        )
+    response = RedirectResponse(_safe_return_to(pending.return_to), status_code=303)
     response.set_cookie(value=session.session_id, **_cookie_options(settings))
     return response
 
@@ -171,7 +208,7 @@ async def session_callback(request: Request, code: str = "", state: str = "") ->
 async def session_refresh(request: Request) -> JSONResponse:
     _require_browser_origin(request)
     session = _session(request)
-    if not session.timeblock_token:
+    if not session.direct_authorized:
         raise HTTPException(status_code=409, detail="direct_authorization_required")
     try:
         result = await request.app.state.timeblock_client.refresh_guilua_session(session.timeblock_token)
@@ -182,13 +219,15 @@ async def session_refresh(request: Request) -> JSONResponse:
     principal = result.get("principal") if isinstance(result.get("principal"), dict) else session.principal
     if not token:
         raise HTTPException(status_code=502, detail="invalid_timeblock_session")
-    _store(request).replace_token(
+    updated = _store(request).replace_token(
         session.session_id,
         timeblock_token=token,
         principal=principal,
         scope=scope,
         expires_at=str(result.get("expires_at") or ""),
     )
+    if not updated:
+        raise HTTPException(status_code=403, detail="timeblock_identity_mismatch")
     return JSONResponse({"ok": True, "principal": principal, "expires_at": result.get("expires_at")})
 
 

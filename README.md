@@ -86,6 +86,13 @@ server-side OpenAI resources. It does not add a new paid service. PostgreSQL is
 the canonical Group store; Valkey is ephemeral Radio floor coordination and
 LiveKit is ephemeral media state.
 
+Native Group membership is created through durable invitations. The browser
+sends only a Timeblock public contact reference; AI-COMMUNICATION resolves the
+accepted, unblocked Timeblock connection server-side, stores the invitation in
+PostgreSQL, and binds the membership to the recipient's revalidated Direct
+identity when accepted. The legacy raw membership endpoint is unavailable in
+production.
+
 ## Local run
 
 ```bash

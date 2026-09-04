@@ -16,11 +16,16 @@ from app.models import (
     GroupAttachment,
     GroupAuditEvent,
     GroupIdempotencyRecord,
+    GroupMediaParticipant,
     GroupMembership,
     GroupMessage,
     GroupMessagePin,
     GroupMessageReaction,
+    GroupRadioBurst,
+    GroupRadioParticipant,
+    GroupRadioProcessingJob,
     GroupSpace,
+    GroupTtsJob,
 )
 
 
@@ -305,20 +310,101 @@ class GroupService:
     def update_member(self, actor: GroupActor, space_id: str, membership_id: str, values: dict) -> dict:
         with self.database.session() as db:
             with db.begin():
-                self._require_membership(db, space_id, actor, roles={"owner", "admin"})
+                actor_membership = self._require_membership(
+                    db, space_id, actor, roles={"owner", "admin"}
+                )
                 item = db.get(GroupMembership, membership_id)
                 if not item or item.space_id != space_id:
                     raise GroupServiceError("group_membership_not_found", 404)
                 if item.role == "owner":
                     raise GroupServiceError("group_owner_immutable", 409)
+                if actor_membership.role == "admin" and (
+                    item.role != "member" or values.get("role") is not None
+                ):
+                    raise GroupServiceError("group_admin_member_only", 403)
                 if values.get("role") is not None:
+                    if actor_membership.role != "owner":
+                        raise GroupServiceError("group_role_update_denied", 403)
                     item.role = values["role"]
                 if values.get("status") is not None:
+                    if values["status"] == "active" and item.status != "active":
+                        raise GroupServiceError("group_reinvite_required", 409)
                     item.status = values["status"]
                     item.left_at = _now() if item.status != "active" else None
+                    if item.status == "removed":
+                        now = _now()
+                        db.execute(
+                            update(GroupMediaParticipant)
+                            .where(
+                                GroupMediaParticipant.membership_id == item.id,
+                                GroupMediaParticipant.invite_status.in_({"invited", "joined"}),
+                            )
+                            .values(invite_status="left", left_at=now, updated_at=now)
+                        )
+                        db.execute(
+                            update(GroupRadioParticipant)
+                            .where(
+                                GroupRadioParticipant.membership_id == item.id,
+                                GroupRadioParticipant.status.in_({"invited", "joined"}),
+                            )
+                            .values(
+                                status="removed",
+                                device_state="lost",
+                                left_at=now,
+                                device_lost_at=now,
+                                updated_at=now,
+                            )
+                        )
+                        active_bursts = select(GroupRadioBurst.id).where(
+                            GroupRadioBurst.speaker_membership_id == item.id,
+                            GroupRadioBurst.state.in_({"talking", "finalizing"}),
+                        )
+                        db.execute(
+                            update(GroupRadioProcessingJob)
+                            .where(
+                                GroupRadioProcessingJob.burst_id.in_(active_bursts),
+                                GroupRadioProcessingJob.status.in_({"ready", "processing"}),
+                            )
+                            .values(
+                                status="suppressed",
+                                failure_code="membership_removed",
+                                updated_at=now,
+                            )
+                        )
+                        db.execute(
+                            update(GroupRadioBurst)
+                            .where(
+                                GroupRadioBurst.speaker_membership_id == item.id,
+                                GroupRadioBurst.state.in_({"talking", "finalizing"}),
+                            )
+                            .values(
+                                state="device_lost",
+                                stop_reason="membership_removed",
+                                stopped_at=now,
+                                updated_at=now,
+                            )
+                        )
+                        db.execute(
+                            update(GroupTtsJob)
+                            .where(
+                                GroupTtsJob.recipient_membership_id == item.id,
+                                GroupTtsJob.status.in_({"pending", "claimed"}),
+                            )
+                            .values(status="suppressed", failure_code="membership_removed")
+                        )
                 item.updated_at = _now()
                 self._audit(db, actor, space_id, "membership.updated", resource_type="membership", resource_id=item.id, metadata={"role": item.role, "status": item.status})
                 return self._membership_payload(item)
+
+    def radio_session_ids_for_membership(self, membership_id: str) -> list[str]:
+        with self.database.session() as db:
+            return list(
+                db.scalars(
+                    select(GroupRadioParticipant.radio_session_id).where(
+                        GroupRadioParticipant.membership_id == membership_id
+                    )
+                ).all()
+            )
 
     def _message_payloads(self, db, actor: GroupActor, messages: list[GroupMessage]) -> list[dict]:
         if not messages:

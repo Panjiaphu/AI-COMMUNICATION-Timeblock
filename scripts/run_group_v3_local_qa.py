@@ -64,6 +64,57 @@ class LocalQaRedis:
         return 1
 
 
+class LocalQaTimeblock:
+    async def client_get(self, path, token, *, params=None):
+        principal_id = "84" if token == "local-direct-84" else "42"
+        if path == "/api/guilua/v2/directory/me":
+            return {
+                "entry": {
+                    "owner_type": "member",
+                    "owner_id": principal_id,
+                    "public_id": f"qa-member-{principal_id}",
+                    "display_name": "Trần An" if principal_id == "84" else "Nguyễn Minh",
+                    "status": "active",
+                }
+            }
+        if path == "/api/guilua/v2/connections":
+            peer_id = "42" if principal_id == "84" else "84"
+            connections = [
+                {
+                        "status": "accepted",
+                        "block_state": "none",
+                        "peer": {
+                            "owner_type": "member",
+                            "owner_id": peer_id,
+                            "public_id": f"qa-member-{peer_id}",
+                            "display_name": "Nguyễn Minh" if peer_id == "42" else "Trần An",
+                            "handle": f"@qa-{peer_id}",
+                            "status": "active",
+                        },
+                }
+            ]
+            if principal_id == "42":
+                connections.append(
+                    {
+                        "status": "accepted",
+                        "block_state": "none",
+                        "peer": {
+                            "owner_type": "business",
+                            "owner_id": "qa-business-7",
+                            "public_id": "qa-business-public-7",
+                            "display_name": "Kho QA Đài Bắc",
+                            "handle": "@qa-business-7",
+                            "status": "active",
+                        },
+                    }
+                )
+            return {"connections": connections}
+        raise RuntimeError("unsupported_local_qa_timeblock_path")
+
+    async def aclose(self):
+        return None
+
+
 settings = Settings(
     _env_file=None,
     app_env="test",
@@ -89,6 +140,7 @@ settings = Settings(
 app = create_app(settings)
 Base.metadata.create_all(app.state.database.engine)
 app.state.group_radio_floor._client = LocalQaRedis()
+app.state.timeblock_client = LocalQaTimeblock()
 
 entitlement = {
     "group_communication": True,
@@ -166,6 +218,13 @@ async def enter_local_group_qa(
         handoff_id="local-browser-qa",
         surface=surface,
         entitlement=session_entitlement,
+    )
+    group_session = app.state.bff_session_store.grant_direct_authorization(
+        group_session.session_id,
+        timeblock_token=f"local-direct-{principal_id}",
+        principal=group_session.principal,
+        scope=["identity.read", "directory.read", "connections.read"],
+        expires_at=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
     )
     response = RedirectResponse(
         f"/group/{surface}?lang={lang}", status_code=303

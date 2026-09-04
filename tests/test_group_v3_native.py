@@ -514,7 +514,13 @@ def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     assert "AI-COMMUNICATION 會持久保存成員資格" in i18n_js
     assert "Timeblock durably stores" not in i18n_js
     assert "Timeblock lưu bền" not in i18n_js
-    assert 'group_v3_i18n.js?v=20260902-ownership-copy-1' in template
+    assert 'group_v3_i18n.js?v=20260904-logout-1' in template
+    assert 'group_v3_app.js?v=20260904-logout-1' in template
+    assert 'class="logout-navigation"' in app_js
+    assert 'mobileLogout: logout' in app_js
+    assert "logout: 'Đăng xuất'" in i18n_js
+    assert "logout: 'Log out'" in i18n_js
+    assert "logout: '登出'" in i18n_js
 
 
 def test_generic_handoff_receiver_has_no_capability_selector_or_browser_secret_storage():
@@ -571,3 +577,13 @@ def test_group_chat_translation_migration_is_single_head_and_reversible_source()
     assert 'op.add_column(\n        "group_messages"' in migration
     assert 'op.drop_table("group_chat_translations")' in migration
     assert 'op.drop_column("group_messages", "source_language")' in migration
+
+
+def test_group_invitation_migration_advances_single_head_and_is_reversible_source():
+    migration = (
+        ROOT / "alembic/versions/20260903_0019_group_v3_invitations.py"
+    ).read_text(encoding="utf-8")
+    assert 'revision = "20260903_0019"' in migration
+    assert 'down_revision = "20260902_0018"' in migration
+    assert '"group_invitations"' in migration
+    assert 'op.drop_table("group_invitations")' in migration
