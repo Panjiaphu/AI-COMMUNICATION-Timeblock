@@ -586,6 +586,7 @@ def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     template = (ROOT / "app/templates/group_communication_v3.html").read_text(encoding="utf-8")
     direct_template = (ROOT / "app/templates/communication.html").read_text(encoding="utf-8")
     app_js = (ROOT / "app/static/group-v3/group_v3_app.js").read_text(encoding="utf-8")
+    device_manager_js = (ROOT / "app/static/group-v3/group_device_manager.js").read_text(encoding="utf-8")
     runtime_css = (ROOT / "app/static/group-v3/group_v3_runtime.css").read_text(encoding="utf-8")
     group_css = (ROOT / "app/static/group-v3/group_v3.css").read_text(encoding="utf-8")
     translation_js = (ROOT / "app/static/group-v3/group_v3_translation.js").read_text(encoding="utf-8")
@@ -605,7 +606,8 @@ def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     ]
     assert "state.mediaSession.status !== \"active\" && state.mediaSession.status !== \"ringing\"" in connect_media
     assert connect_media.index("updateMediaConnectionState(\"connecting\")") < connect_media.index("connectWithGrant")
-    assert "if (publish)" in app_js and "getUserMedia" in app_js
+    assert "if (publish)" in app_js and "getUserMedia" in device_manager_js
+    assert "group_device_manager.js?v=20260904-prejoin-1" in template
     assert "data-media-member-search" in app_js and "data-media-no-results" in app_js
     assert "data-media-member-search" in app_js[app_js.index("function inviteForm"):app_js.index("function callDock")]
     assert "width: min(760px, calc(100% - 48px))" in runtime_css
@@ -627,7 +629,7 @@ def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     assert "Timeblock durably stores" not in i18n_js
     assert "Timeblock lưu bền" not in i18n_js
     assert 'group_v3_i18n.js?v=20260904-media-picker-1' in template
-    assert 'group_v3_app.js?v=20260904-media-picker-1' in template
+    assert 'group_v3_app.js?v=20260904-prejoin-1' in template
     assert 'class="logout-navigation"' in app_js
     assert 'mobileLogout: logout' in app_js
     assert "logout: 'Đăng xuất'" in i18n_js

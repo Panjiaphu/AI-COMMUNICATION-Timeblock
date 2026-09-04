@@ -318,5 +318,36 @@ Object.assign(copy['zh-TW'], {
   accept: '接受', membershipAccessRevoked: '你在此空間的成員權限已被撤銷。',
 });
 
+Object.assign(copy.vi, {
+  prejoinTitle: 'Kiểm tra thiết bị trước khi tham gia', prejoinNote: 'Chọn mic, camera và loa. Hệ thống chỉ kết nối media sau khi bạn xác nhận.',
+  preview: 'Xem trước', startPreview: 'Bật xem trước', confirmJoin: 'Xác nhận và tham gia', cancel: 'Hủy', microphone: 'Mic', camera: 'Camera', speaker: 'Loa',
+  noMicrophone: 'Không tìm thấy mic', noCamera: 'Không tìm thấy camera', noSpeaker: 'Không tìm thấy loa', deviceDefault: 'Thiết bị mặc định',
+  permissionDenied: 'Bạn đã từ chối quyền mic hoặc camera. Hãy cấp quyền trong cài đặt trình duyệt rồi thử lại.',
+  deviceNotFound: 'Thiết bị đã chọn không còn khả dụng. Hãy chọn thiết bị khác.', deviceBusy: 'Thiết bị đang được ứng dụng khác sử dụng.',
+  browserUnsupported: 'Trình duyệt này không hỗ trợ cuộc gọi media.', deviceError: 'Không thể chuẩn bị thiết bị media.',
+  permissionRequired: 'Bấm Bật xem trước để cấp quyền và kiểm tra thiết bị.', prejoinReady: 'Thiết bị sẵn sàng', prejoinChecking: 'Đang kiểm tra thiết bị…',
+  audioLevel: 'Mức mic', connectionPreparing: 'Đang chuẩn bị kết nối…', retryDevice: 'Thử lại thiết bị', reconnectingMedia: 'Đang kết nối lại media…',
+});
+Object.assign(copy.en, {
+  prejoinTitle: 'Check devices before joining', prejoinNote: 'Choose your microphone, camera and speaker. Media connects only after you confirm.',
+  preview: 'Preview', startPreview: 'Start preview', confirmJoin: 'Confirm and join', cancel: 'Cancel', microphone: 'Microphone', camera: 'Camera', speaker: 'Speaker',
+  noMicrophone: 'No microphone found', noCamera: 'No camera found', noSpeaker: 'No speaker found', deviceDefault: 'Default device',
+  permissionDenied: 'Microphone or camera permission was denied. Allow it in browser settings and try again.',
+  deviceNotFound: 'The selected device is no longer available. Choose another device.', deviceBusy: 'The device is being used by another application.',
+  browserUnsupported: 'This browser does not support media calls.', deviceError: 'Media devices could not be prepared.',
+  permissionRequired: 'Select Start preview to grant permission and check devices.', prejoinReady: 'Devices ready', prejoinChecking: 'Checking devices…',
+  audioLevel: 'Microphone level', connectionPreparing: 'Preparing connection…', retryDevice: 'Retry device', reconnectingMedia: 'Reconnecting media…',
+});
+Object.assign(copy['zh-TW'], {
+  prejoinTitle: '加入前檢查裝置', prejoinNote: '選擇麥克風、攝影機與喇叭。確認後才會連接媒體。',
+  preview: '預覽', startPreview: '開始預覽', confirmJoin: '確認並加入', cancel: '取消', microphone: '麥克風', camera: '攝影機', speaker: '喇叭',
+  noMicrophone: '找不到麥克風', noCamera: '找不到攝影機', noSpeaker: '找不到喇叭', deviceDefault: '預設裝置',
+  permissionDenied: '麥克風或攝影機權限被拒絕。請在瀏覽器設定允許後重試。',
+  deviceNotFound: '選擇的裝置已無法使用，請選擇其他裝置。', deviceBusy: '裝置正被其他應用程式使用。',
+  browserUnsupported: '此瀏覽器不支援媒體通話。', deviceError: '無法準備媒體裝置。',
+  permissionRequired: '按下開始預覽以授權並檢查裝置。', prejoinReady: '裝置就緒', prejoinChecking: '正在檢查裝置…',
+  audioLevel: '麥克風音量', connectionPreparing: '正在準備連線…', retryDevice: '重試裝置', reconnectingMedia: '正在重新連接媒體…',
+});
+
 window.GroupV3I18n = Object.freeze({ copy, localeOptions, translator });
 }(window));

@@ -35,6 +35,7 @@
     "log-out": '<path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>',
     "refresh-cw": '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
     history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>'
+    ,search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>'
   };
 
   var state = {
@@ -72,7 +73,18 @@
     mediaConnected: false,
     micEnabled: true,
     videoEnabled: true,
-    deviceLost: false
+    deviceLost: false,
+    prejoinOpen: false,
+    prejoinMediaKind: "video",
+    prejoinBusy: false,
+    prejoinError: "",
+    prejoinDevices: { audioInputs: [], videoInputs: [], audioOutputs: [] },
+    prejoinAudioEnabled: true,
+    prejoinVideoEnabled: true,
+    prejoinAudioDeviceId: "",
+    prejoinVideoDeviceId: "",
+    prejoinOutputDeviceId: "",
+    prejoinConfirmed: false
   };
 
   var mediaRoom = null;
@@ -87,6 +99,7 @@
   var chatTranslationSweep = false;
   var chatTranslationInflight = new Set();
   var chatTranslationFailures = new Map();
+  var prejoinMeterStop = null;
 
   function t(key) {
     return window.GroupV3I18n.translator(state.locale)(key);
@@ -902,6 +915,44 @@
     return renderPlugin();
   }
 
+  function deviceErrorText(code) {
+    if (code === "permission_denied") return t("permissionDenied");
+    if (code === "device_not_found") return t("deviceNotFound");
+    if (code === "device_busy") return t("deviceBusy");
+    if (code === "browser_unsupported") return t("browserUnsupported");
+    return t("deviceError");
+  }
+
+  function deviceOptions(items, selected) {
+    var options = (items || []).map(function (item) {
+      var label = item.label || t("deviceDefault");
+      return '<option value="' + esc(item.deviceId) + '" ' + (item.deviceId === selected ? "selected" : "") + ">" + esc(label) + "</option>";
+    }).join("");
+    return '<option value="">' + esc(t("deviceDefault")) + "</option>" + options;
+  }
+
+  function renderPrejoin() {
+    if (!state.prejoinOpen) return "";
+    var kind = state.prejoinMediaKind === "video" ? "video" : "audio";
+    var devices = state.prejoinDevices || {};
+    var error = state.prejoinError ? '<div class="prejoin-error" role="alert">' + icon("refresh-cw", 16) + "<span>" + esc(deviceErrorText(state.prejoinError)) + "</span></div>" : "";
+    var preview = localStream
+      ? '<video class="prejoin-preview-media" data-prejoin-video autoplay playsinline muted></video>'
+      : '<div class="prejoin-preview-placeholder">' + icon(kind === "video" ? "video" : "mic", 42) + "<span>" + esc(t("permissionRequired")) + "</span></div>";
+    return '<div class="prejoin-backdrop"><section class="prejoin-dialog" role="dialog" aria-modal="true" aria-labelledby="prejoin-title">' +
+      '<header><div><span class="prejoin-kicker">' + esc(t("preview")) + '</span><h2 id="prejoin-title">' + esc(t("prejoinTitle")) + '</h2></div>' +
+      iconButton("cancel-prejoin", t("cancel"), "log-out") + '</header><p class="prejoin-note">' + esc(t("prejoinNote")) + '</p>' +
+      '<div class="prejoin-layout"><div class="prejoin-preview">' + preview + '<div class="prejoin-meter"><span>' + esc(t("audioLevel")) + '</span><i data-prejoin-meter></i></div></div>' +
+      '<div class="prejoin-controls"><label><span>' + icon("mic", 16) + esc(t("microphone")) + '</span><select data-change="prejoin-audio-device">' + deviceOptions(devices.audioInputs, state.prejoinAudioDeviceId) + '</select></label>' +
+      (kind === "video" ? '<label><span>' + icon("video", 16) + esc(t("camera")) + '</span><select data-change="prejoin-video-device">' + deviceOptions(devices.videoInputs, state.prejoinVideoDeviceId) + '</select></label>' : '') +
+      '<label><span>' + icon("headphones", 16) + esc(t("speaker")) + '</span><select data-change="prejoin-output-device">' + deviceOptions(devices.audioOutputs, state.prejoinOutputDeviceId) + '</select></label>' +
+      '<button type="button" class="prejoin-toggle ' + (state.prejoinAudioEnabled ? "is-on" : "") + '" data-action="toggle-prejoin-mic" aria-pressed="' + Boolean(state.prejoinAudioEnabled) + '">' + icon("mic", 16) + '<span>' + esc(state.prejoinAudioEnabled ? t("micOn") : t("micOff")) + '</span></button>' +
+      (kind === "video" ? '<button type="button" class="prejoin-toggle ' + (state.prejoinVideoEnabled ? "is-on" : "") + '" data-action="toggle-prejoin-video" aria-pressed="' + Boolean(state.prejoinVideoEnabled) + '">' + icon("video", 16) + '<span>' + esc(state.prejoinVideoEnabled ? t("videoOn") : t("videoOff")) + '</span></button>' : '') +
+      error + '<div class="prejoin-actions">' + action("prepare-prejoin", localStream ? t("retryDevice") : t("startPreview"), "refresh-cw", "secondary", state.prejoinBusy ? "disabled" : "") +
+      action("confirm-prejoin", t("confirmJoin"), kind === "video" ? "video" : "phone-call", "primary", (!localStream || state.prejoinBusy) ? "disabled" : "") + '</div></div></div>' +
+      '<small class="prejoin-status">' + esc(state.prejoinBusy ? t("prejoinChecking") : localStream ? t("prejoinReady") : t("permissionRequired")) + '</small></section></div>';
+  }
+
   function render() {
     if (state.status !== "READY" && state.status !== "HANDOFF_REQUIRED") {
       var failed = state.status === "FAILED";
@@ -912,6 +963,8 @@
         "</section>";
       return;
     }
+    if (prejoinMeterStop) prejoinMeterStop();
+    prejoinMeterStop = null;
     var nav = navigation();
     var banner = state.error ? '<div class="runtime-banner is-error">' + icon("refresh-cw", 15) + "<span>" + esc(state.error) + "</span></div>" : "";
     root.innerHTML = '<div class="native-app native-' + (state.mobile ? "mobile" : "desktop") + '" data-state="' + esc(state.surface) +
@@ -920,9 +973,19 @@
       esc(t("nativeGroupApp")) + '</small></span></div><div class="mobile-header-actions">' + nav.mobileLogout + '<span class="mobile-state-dot"></span></div></header>' + renderRooms() +
       '<section class="native-main ' + (banner ? "has-banner" : "") + '"><div class="session-strip"><span><i></i>' +
       esc(t("signedIn")) + "</span><span>" + esc(state.groupAuthorized ? t("groupSession") : t("handoffRequiredTitle")) + "</span></div>" + banner + (state.groupAuthorized ? header() : "") + mobileLanguageBar() + surface() +
-      "</section>" + nav.mobile + "</div>" + renderMemberManager();
+      "</section>" + nav.mobile + "</div>" + renderMemberManager() + renderPrejoin();
     root.dataset.runtimeState = "READY";
     syncMediaElements();
+    if (state.prejoinOpen && localStream) {
+      var preview = root.querySelector("[data-prejoin-video]");
+      if (preview) preview.srcObject = localStream;
+      var meter = root.querySelector("[data-prejoin-meter]");
+      if (meter && !prejoinMeterStop && window.GroupV3DeviceManager && window.GroupV3DeviceManager.startMeter) {
+        prejoinMeterStop = window.GroupV3DeviceManager.startMeter(localStream, function (level) {
+          meter.style.setProperty("--meter-level", String(Math.round(level * 100)) + "%");
+        });
+      }
+    }
     resizeTextEntry(root.querySelector("textarea[data-group-text-entry]"));
   }
 
@@ -963,6 +1026,7 @@
       return;
     }
     if (next === "chat-translation" || next === "radio-translation") state.previousSurface = state.surface;
+    closePrejoin(true);
     disconnectMedia(false);
     state.surface = next;
     state.mediaSession = null;
@@ -993,6 +1057,7 @@
     setBusy(true);
     state.error = "";
     try {
+      closePrejoin(true);
       await disconnectMedia(false);
       await loadSpaces(id);
       render();
@@ -1206,6 +1271,85 @@
     });
   }
 
+  async function openPrejoin(kind) {
+    if (!state.mediaSession) return;
+    state.prejoinMediaKind = kind === "video" ? "video" : "audio";
+    state.prejoinOpen = true;
+    state.prejoinConfirmed = false;
+    state.prejoinError = "";
+    state.prejoinBusy = true;
+    render();
+    try {
+      if (!window.GroupV3DeviceManager) throw Object.assign(new Error("device_manager_unavailable"), { code: "browser_unsupported" });
+      state.prejoinDevices = await window.GroupV3DeviceManager.enumerate();
+      state.prejoinAudioDeviceId = window.GroupV3DeviceManager.remembered("audioInput") || state.prejoinAudioDeviceId;
+      state.prejoinVideoDeviceId = window.GroupV3DeviceManager.remembered("videoInput") || state.prejoinVideoDeviceId;
+      state.prejoinOutputDeviceId = window.GroupV3DeviceManager.remembered("audioOutput") || state.prejoinOutputDeviceId;
+    } catch (error) {
+      state.prejoinError = error.code || "browser_unsupported";
+    } finally {
+      state.prejoinBusy = false;
+      render();
+    }
+  }
+
+  function closePrejoin(releaseStream) {
+    state.prejoinOpen = false;
+    state.prejoinBusy = false;
+    state.prejoinError = "";
+    state.prejoinConfirmed = false;
+    if (prejoinMeterStop) prejoinMeterStop();
+    prejoinMeterStop = null;
+    if (releaseStream && window.GroupV3DeviceManager) window.GroupV3DeviceManager.stop();
+    if (releaseStream) localStream = null;
+  }
+
+  async function preparePrejoin() {
+    if (!state.mediaSession || !window.GroupV3DeviceManager) return;
+    state.prejoinBusy = true;
+    state.prejoinError = "";
+    render();
+    try {
+      localStream = await window.GroupV3DeviceManager.acquire({
+        mediaKind: state.prejoinMediaKind,
+        audioEnabled: state.prejoinAudioEnabled,
+        videoEnabled: state.prejoinVideoEnabled,
+        audioDeviceId: state.prejoinAudioDeviceId,
+        videoDeviceId: state.prejoinVideoDeviceId
+      });
+      state.prejoinDevices = await window.GroupV3DeviceManager.enumerate();
+      var audio = localStream.getAudioTracks()[0];
+      var video = localStream.getVideoTracks()[0];
+      state.prejoinAudioDeviceId = audio && audio.getSettings().deviceId || state.prejoinAudioDeviceId;
+      state.prejoinVideoDeviceId = video && video.getSettings().deviceId || state.prejoinVideoDeviceId;
+      state.micEnabled = state.prejoinAudioEnabled;
+      state.videoEnabled = state.prejoinVideoEnabled;
+    } catch (error) {
+      localStream = null;
+      state.prejoinError = error.code || error.deviceError && error.deviceError.code || "device_error";
+    } finally {
+      state.prejoinBusy = false;
+      render();
+    }
+  }
+
+  async function confirmPrejoin() {
+    if (!localStream || state.prejoinBusy) return preparePrejoin();
+    state.prejoinConfirmed = true;
+    state.prejoinOpen = false;
+    if (prejoinMeterStop) prejoinMeterStop();
+    prejoinMeterStop = null;
+    render();
+    try {
+      await connectMedia();
+    } catch (error) {
+      state.prejoinOpen = true;
+      state.prejoinConfirmed = false;
+      state.prejoinError = error.code || "device_error";
+      render();
+    }
+  }
+
   async function createMedia(form) {
     var participants = selectedParticipants(form);
     if (!participants.length) {
@@ -1221,6 +1365,7 @@
       }));
       state.mediaSession = payload.session;
       render();
+      await openPrejoin(kind);
     } catch (error) {
       notify(publicError(error));
     }
@@ -1235,12 +1380,13 @@
         var joined = await api(base + "/join", { method: "POST" });
         state.mediaSession = joined.session;
         render();
-        await connectMedia();
+        await openPrejoin(state.mediaSession.media_kind);
       } else if (name === "reject-media") {
         var rejected = await api(base + "/reject", { method: "POST" });
         state.mediaSession = rejected.session.status === "ended" ? null : rejected.session;
         render();
       } else if (name === "leave-media") {
+        closePrejoin(true);
         await disconnectMedia(false);
         var left = await api(base + "/leave", { method: "POST" });
         state.mediaSession = left.session.status === "ended" ? null : left.session;
@@ -1248,13 +1394,15 @@
         render();
       } else if (name === "end-media") {
         if (!window.confirm(t("endForAllConfirm"))) return;
+        closePrejoin(true);
         await disconnectMedia(false);
         await api(base + "/end-for-all", { method: "POST" });
         state.mediaSession = null;
         notify(t("endedForAll"));
         render();
       } else if (name === "connect-media") {
-        await connectMedia();
+        if (!state.prejoinOpen && !state.prejoinConfirmed) await openPrejoin(state.mediaSession.media_kind);
+        else await connectMedia();
       }
     } catch (error) {
       notify(publicError(error));
@@ -1469,6 +1617,25 @@
       return saveProfile();
     }
     if (name === "toggle-consent") return toggleConsent();
+    if (name === "prepare-prejoin" || name === "retry-prejoin") return preparePrejoin();
+    if (name === "confirm-prejoin") return confirmPrejoin();
+    if (name === "cancel-prejoin") {
+      closePrejoin(true);
+      render();
+      return;
+    }
+    if (name === "toggle-prejoin-mic") {
+      state.prejoinAudioEnabled = !state.prejoinAudioEnabled;
+      if (localStream) localStream.getAudioTracks().forEach(function (track) { track.enabled = state.prejoinAudioEnabled; });
+      render();
+      return;
+    }
+    if (name === "toggle-prejoin-video") {
+      state.prejoinVideoEnabled = !state.prejoinVideoEnabled;
+      if (localStream) localStream.getVideoTracks().forEach(function (track) { track.enabled = state.prejoinVideoEnabled; });
+      render();
+      return;
+    }
     if (["join-media", "reject-media", "leave-media", "end-media", "connect-media"].indexOf(name) >= 0) return mediaAction(name);
     if (name === "toggle-mic") {
       state.micEnabled = !state.micEnabled;
@@ -1512,6 +1679,21 @@
       return;
     }
     if (control.dataset.change === "attachment") return uploadAttachment(control.files && control.files[0]);
+    if (control.dataset.change === "prejoin-audio-device") {
+      state.prejoinAudioDeviceId = control.value;
+      return preparePrejoin();
+    }
+    if (control.dataset.change === "prejoin-video-device") {
+      state.prejoinVideoDeviceId = control.value;
+      return preparePrejoin();
+    }
+    if (control.dataset.change === "prejoin-output-device") {
+      state.prejoinOutputDeviceId = control.value;
+      var outputs = root.querySelectorAll("[data-group-v3-media], [data-prejoin-video]");
+      return Promise.all(Array.from(outputs).map(function (element) {
+        return window.GroupV3DeviceManager && window.GroupV3DeviceManager.setOutput(element, control.value);
+      }));
+    }
   }
 
   var disconnecting = false;
@@ -1568,12 +1750,13 @@
     });
   }
 
-  async function connectWithGrant(grant, publish) {
+  async function connectWithGrant(grant, publish, options) {
+    options = options || {};
     var library = window.LivekitClient;
     if (!library || !library.Room || !grant || grant.provider !== "livekit-cloud" || !grant.url || !grant.token) {
       throw new Error("group_media_client_unavailable");
     }
-    await disconnectMedia(false);
+    await disconnectMedia(false, { preserveStream: Boolean(options.preserveStream && localStream) });
     var generation = mediaGeneration;
     disconnecting = false;
     currentGrantIdentity = String(grant.participant_identity || "");
@@ -1624,11 +1807,16 @@
     });
     try {
       if (publish) {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("group_media_unavailable");
-        localStream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-          video: grant.media_kind === "video" ? { facingMode: "user" } : false
-        });
+        if (!localStream) {
+          if (!window.GroupV3DeviceManager) throw new Error("group_media_client_unavailable");
+          localStream = await window.GroupV3DeviceManager.acquire({
+            mediaKind: grant.media_kind,
+            audioEnabled: state.micEnabled,
+            videoEnabled: state.videoEnabled,
+            audioDeviceId: state.prejoinAudioDeviceId,
+            videoDeviceId: state.prejoinVideoDeviceId
+          });
+        }
         if (generation !== mediaGeneration) throw new Error("group_media_stale_attempt");
       }
       await room.connect(grant.url, grant.token);
@@ -1637,6 +1825,11 @@
         for (var mediaTrack of localStream.getTracks()) {
           mediaTrack.addEventListener("ended", function () {
             if (state.surface === "radio" && state.floorToken) radioDeviceLost();
+            else if (state.surface !== "radio" && mediaRoom === room && !disconnecting) {
+              state.deviceLost = true;
+              state.error = t("deviceLost");
+              render();
+            }
           }, { once: true });
           await room.localParticipant.publishTrack(mediaTrack, {
             source: mediaTrack.kind === "video" ? library.Track.Source.Camera : library.Track.Source.Microphone
@@ -1692,12 +1885,16 @@
       notify(t("mediaPolicy"));
       return;
     }
+    if (!state.prejoinConfirmed && !localStream) {
+      await openPrejoin(state.mediaSession.media_kind);
+      return;
+    }
     var path = "/api/group/spaces/" + encodeURIComponent(state.space.id) + "/sessions/" +
       encodeURIComponent(state.mediaSession.id) + "/media-grant";
     await updateMediaConnectionState("connecting");
     try {
       var payload = await api(path, { method: "POST" });
-      await connectWithGrant(payload.grant, true);
+      await connectWithGrant(payload.grant, true, { preserveStream: Boolean(localStream) });
       await updateMediaConnectionState("connected");
       render();
     } catch (error) {
@@ -1713,16 +1910,20 @@
     await connectWithGrant(payload.grant, mode === "talk");
   }
 
-  async function disconnectMedia(emitEvent) {
+  async function disconnectMedia(emitEvent, options) {
+    options = options || {};
     mediaGeneration += 1;
     disconnecting = true;
     var room = mediaRoom;
     mediaRoom = null;
     var stream = localStream;
-    localStream = null;
+    if (!options.preserveStream) localStream = null;
     state.mediaConnected = false;
     currentGrantIdentity = "";
-    if (stream) stream.getTracks().forEach(function (track) { track.stop(); });
+    if (stream && !options.preserveStream) {
+      if (window.GroupV3DeviceManager) window.GroupV3DeviceManager.stop();
+      else stream.getTracks().forEach(function (track) { track.stop(); });
+    }
     root.querySelectorAll("[data-group-v3-media], .local-media, .remote-media").forEach(function (element) {
       try {
         element.pause();
@@ -1842,7 +2043,17 @@
 
   if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
     navigator.mediaDevices.addEventListener("devicechange", function () {
-      if (state.surface === "radio" && state.radioSession) radioDeviceLost();
+      if (state.prejoinOpen) {
+        if (window.GroupV3DeviceManager) window.GroupV3DeviceManager.enumerate().then(function (devices) {
+          state.prejoinDevices = devices;
+          render();
+        }).catch(function () {});
+      } else if (state.surface === "radio" && state.radioSession) radioDeviceLost();
+      else if (state.mediaSession && state.mediaConnected) {
+        state.deviceLost = true;
+        state.error = t("deviceLost");
+        render();
+      }
     });
   }
 
@@ -1858,6 +2069,7 @@
         body: JSON.stringify({ floor_token: state.floorToken })
       }).catch(function () {});
     }
+    closePrejoin(false);
     disconnectMedia(false);
   });
 
