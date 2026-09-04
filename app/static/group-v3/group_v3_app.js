@@ -84,7 +84,9 @@
     prejoinAudioDeviceId: "",
     prejoinVideoDeviceId: "",
     prejoinOutputDeviceId: "",
-    prejoinConfirmed: false
+    prejoinConfirmed: false,
+    mediaReconnectState: "idle",
+    mediaReconnectAttempts: 0
   };
 
   var mediaRoom = null;
@@ -100,6 +102,9 @@
   var chatTranslationInflight = new Set();
   var chatTranslationFailures = new Map();
   var prejoinMeterStop = null;
+  var mediaReconnectTimer = 0;
+  var mediaReconnectGeneration = 0;
+  var lifecycleCleanupStarted = false;
 
   function t(key) {
     return window.GroupV3I18n.translator(state.locale)(key);
@@ -680,7 +685,7 @@
     return '<div class="call-control-dock">' +
       (state.mediaConnected
         ? action("toggle-mic", state.micEnabled ? t("micOn") : t("micOff"), "mic", state.micEnabled ? "secondary" : "danger")
-        : action("connect-media", t("join"), kind === "video" ? "video" : "phone-call", "primary")) +
+        : action("connect-media", state.deviceLost ? t("reconnect") : state.mediaReconnectState === "reconnecting" ? t("reconnectingMedia") : t("join"), kind === "video" ? "video" : "phone-call", "primary")) +
       (kind === "video" && state.mediaConnected
         ? action("toggle-video", state.videoEnabled ? t("videoOn") : t("videoOff"), "video", state.videoEnabled ? "secondary" : "danger")
         : "") +
@@ -1750,13 +1755,50 @@
     });
   }
 
+  function clearMediaReconnect() {
+    window.clearTimeout(mediaReconnectTimer);
+    mediaReconnectTimer = 0;
+    mediaReconnectGeneration += 1;
+    state.mediaReconnectAttempts = 0;
+    if (state.mediaReconnectState === "reconnecting") state.mediaReconnectState = "idle";
+  }
+
+  function scheduleMediaReconnect() {
+    if (state.surface === "radio" || !state.mediaSession || state.mediaConnected || state.deviceLost || mediaReconnectTimer) return;
+    if (state.mediaReconnectAttempts >= 3) {
+      if (state.mediaReconnectState !== "reconnecting") state.mediaReconnectState = "failed";
+      state.error = t("mediaReconnectFailed");
+      render();
+      return;
+    }
+    var generation = mediaReconnectGeneration;
+    var attempt = state.mediaReconnectAttempts;
+    var delay = Math.min(4000, 750 * Math.pow(2, attempt));
+    state.mediaReconnectAttempts += 1;
+    state.mediaReconnectState = "reconnecting";
+    mediaReconnectTimer = window.setTimeout(function () {
+      mediaReconnectTimer = 0;
+      if (generation !== mediaReconnectGeneration || !state.mediaSession || state.mediaConnected || state.deviceLost) return;
+      connectMedia().then(function () {
+        state.mediaReconnectAttempts = 0;
+        state.mediaReconnectState = "idle";
+      }).catch(function () {
+        scheduleMediaReconnect();
+      });
+    }, delay);
+    render();
+  }
+
   async function connectWithGrant(grant, publish, options) {
     options = options || {};
     var library = window.LivekitClient;
     if (!library || !library.Room || !grant || grant.provider !== "livekit-cloud" || !grant.url || !grant.token) {
       throw new Error("group_media_client_unavailable");
     }
-    await disconnectMedia(false, { preserveStream: Boolean(options.preserveStream && localStream) });
+    await disconnectMedia(false, {
+      preserveStream: Boolean(options.preserveStream && localStream),
+      keepReconnect: state.mediaReconnectState === "reconnecting"
+    });
     var generation = mediaGeneration;
     disconnecting = false;
     currentGrantIdentity = String(grant.participant_identity || "");
@@ -1777,9 +1819,11 @@
       room.on(library.RoomEvent.Reconnecting, function () {
         if (room !== mediaRoom || generation !== mediaGeneration) return;
         state.mediaConnected = false;
+        state.mediaReconnectState = "reconnecting";
         render();
         if (state.surface !== "radio") {
           updateMediaConnectionState("reconnecting").catch(function () {});
+          scheduleMediaReconnect();
         }
       });
     }
@@ -1787,6 +1831,8 @@
       room.on(library.RoomEvent.Reconnected, function () {
         if (room !== mediaRoom || generation !== mediaGeneration) return;
         state.mediaConnected = true;
+        clearMediaReconnect();
+        state.mediaReconnectState = "idle";
         render();
         if (state.surface !== "radio") {
           updateMediaConnectionState("connected").catch(function () {});
@@ -1796,6 +1842,7 @@
     room.on(library.RoomEvent.Disconnected, function () {
       if (room !== mediaRoom || disconnecting) return;
       state.mediaConnected = false;
+      clearMediaReconnect();
       if (state.surface === "radio") radioDeviceLost();
       else {
         updateMediaConnectionState("failed", "provider_disconnected").catch(function () {}).finally(function () {
@@ -1827,7 +1874,10 @@
             if (state.surface === "radio" && state.floorToken) radioDeviceLost();
             else if (state.surface !== "radio" && mediaRoom === room && !disconnecting) {
               state.deviceLost = true;
+              state.prejoinConfirmed = false;
               state.error = t("deviceLost");
+              clearMediaReconnect();
+              disconnectMedia(false).catch(function () {});
               render();
             }
           }, { once: true });
@@ -1851,7 +1901,9 @@
         }
       }
     } catch (error) {
-      if (generation === mediaGeneration && mediaRoom === room) await disconnectMedia(false);
+      if (generation === mediaGeneration && mediaRoom === room) {
+        await disconnectMedia(false, { keepReconnect: state.mediaReconnectState === "reconnecting" });
+      }
       else if (localStream && generation !== mediaGeneration) {
         localStream.getTracks().forEach(function (track) { track.stop(); });
       }
@@ -1885,6 +1937,13 @@
       notify(t("mediaPolicy"));
       return;
     }
+    if (state.deviceLost) {
+      state.deviceLost = false;
+      state.mediaReconnectState = "idle";
+      state.prejoinConfirmed = false;
+      await openPrejoin(state.mediaSession.media_kind);
+      return;
+    }
     if (!state.prejoinConfirmed && !localStream) {
       await openPrejoin(state.mediaSession.media_kind);
       return;
@@ -1896,8 +1955,11 @@
       var payload = await api(path, { method: "POST" });
       await connectWithGrant(payload.grant, true, { preserveStream: Boolean(localStream) });
       await updateMediaConnectionState("connected");
+      clearMediaReconnect();
+      state.mediaReconnectState = "idle";
       render();
     } catch (error) {
+      state.mediaReconnectState = "failed";
       await updateMediaConnectionState("failed", String(error && error.message || "media_connect_failed").slice(0, 80)).catch(function () {});
       throw error;
     }
@@ -1912,6 +1974,7 @@
 
   async function disconnectMedia(emitEvent, options) {
     options = options || {};
+    if (!options.keepReconnect) clearMediaReconnect();
     mediaGeneration += 1;
     disconnecting = true;
     var room = mediaRoom;
@@ -2057,7 +2120,9 @@
     });
   }
 
-  window.addEventListener("pagehide", function () {
+  function cleanupOnExit() {
+    if (lifecycleCleanupStarted) return;
+    lifecycleCleanupStarted = true;
     window.clearInterval(heartbeatTimer);
     closeGroupEvents();
     if (state.floorToken && state.radioSession && state.space) {
@@ -2071,7 +2136,10 @@
     }
     closePrejoin(false);
     disconnectMedia(false);
-  });
+  }
+
+  window.addEventListener("pagehide", cleanupOnExit);
+  window.addEventListener("beforeunload", cleanupOnExit);
 
   window.GroupV3Runtime = Object.freeze({
     snapshot: function () {

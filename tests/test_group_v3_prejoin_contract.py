@@ -30,3 +30,14 @@ def test_group_v3_prejoin_never_persists_handoff_or_media_secrets():
     assert "localStorage" not in manager_js
     assert "sessionStorage" not in manager_js
     assert "token" not in manager_js.lower()
+
+
+def test_group_v3_media_reconnect_is_bounded_and_cleanup_cancels_stale_work():
+    app_js = (ROOT / "app/static/group-v3/group_v3_app.js").read_text(encoding="utf-8")
+    assert "mediaReconnectAttempts >= 3" in app_js
+    assert "Math.pow(2, attempt)" in app_js
+    assert "clearMediaReconnect" in app_js
+    assert "keepReconnect" in app_js
+    assert "devicechange" in app_js
+    assert "beforeunload" in app_js or "pagehide" in app_js
+    assert "group_media_stale_attempt" in app_js

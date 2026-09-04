@@ -327,6 +327,7 @@ Object.assign(copy.vi, {
   browserUnsupported: 'Trình duyệt này không hỗ trợ cuộc gọi media.', deviceError: 'Không thể chuẩn bị thiết bị media.',
   permissionRequired: 'Bấm Bật xem trước để cấp quyền và kiểm tra thiết bị.', prejoinReady: 'Thiết bị sẵn sàng', prejoinChecking: 'Đang kiểm tra thiết bị…',
   audioLevel: 'Mức mic', connectionPreparing: 'Đang chuẩn bị kết nối…', retryDevice: 'Thử lại thiết bị', reconnectingMedia: 'Đang kết nối lại media…',
+  mediaReconnectFailed: 'Không thể kết nối lại media sau 3 lần. Hãy kiểm tra mạng hoặc thiết bị rồi thử lại.',
 });
 Object.assign(copy.en, {
   prejoinTitle: 'Check devices before joining', prejoinNote: 'Choose your microphone, camera and speaker. Media connects only after you confirm.',
@@ -337,6 +338,7 @@ Object.assign(copy.en, {
   browserUnsupported: 'This browser does not support media calls.', deviceError: 'Media devices could not be prepared.',
   permissionRequired: 'Select Start preview to grant permission and check devices.', prejoinReady: 'Devices ready', prejoinChecking: 'Checking devices…',
   audioLevel: 'Microphone level', connectionPreparing: 'Preparing connection…', retryDevice: 'Retry device', reconnectingMedia: 'Reconnecting media…',
+  mediaReconnectFailed: 'Media could not reconnect after 3 attempts. Check the network or devices and try again.',
 });
 Object.assign(copy['zh-TW'], {
   prejoinTitle: '加入前檢查裝置', prejoinNote: '選擇麥克風、攝影機與喇叭。確認後才會連接媒體。',
@@ -347,6 +349,7 @@ Object.assign(copy['zh-TW'], {
   browserUnsupported: '此瀏覽器不支援媒體通話。', deviceError: '無法準備媒體裝置。',
   permissionRequired: '按下開始預覽以授權並檢查裝置。', prejoinReady: '裝置就緒', prejoinChecking: '正在檢查裝置…',
   audioLevel: '麥克風音量', connectionPreparing: '正在準備連線…', retryDevice: '重試裝置', reconnectingMedia: '正在重新連接媒體…',
+  mediaReconnectFailed: '媒體連線 3 次後仍失敗，請檢查網路或裝置再重試。',
 });
 
 window.GroupV3I18n = Object.freeze({ copy, localeOptions, translator });
