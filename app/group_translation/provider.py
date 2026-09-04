@@ -28,11 +28,19 @@ class TextTranslationResult:
     request_id: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class SpeechTranscriptionResult:
+    text: str
+    model: str
+    request_id: str | None = None
+
+
 class OpenAIGroupTranslationProvider:
     """Issue short-lived OpenAI translation secrets without exposing API keys."""
 
     endpoint = "https://api.openai.com/v1/realtime/translations/client_secrets"
     text_endpoint = "https://api.openai.com/v1/responses"
+    transcription_endpoint = "https://api.openai.com/v1/audio/transcriptions"
 
     def __init__(self, settings: Settings):
         self.settings = settings
@@ -213,5 +221,64 @@ class OpenAIGroupTranslationProvider:
         return TextTranslationResult(
             text=translated,
             model=str(model or self.settings.openai_text_translation_model)[:80],
+            request_id=str(request_id or "")[:128] or None,
+        )
+
+    async def transcribe_audio(
+        self,
+        *,
+        audio: bytes,
+        filename: str,
+        content_type: str,
+        source_language: str,
+        principal_id: str,
+        idempotency_key: str,
+    ) -> SpeechTranscriptionResult:
+        """Transcribe one manually-recorded clip using the server-side API key."""
+        if not self.settings.group_translation_enabled:
+            raise GroupTranslationProviderError("group_translation_disabled")
+        api_key = str(self.settings.openai_api_key or "").strip()
+        if not api_key:
+            raise GroupTranslationProviderError("group_translation_provider_not_configured")
+        if source_language not in {"vi", "en", "zh-TW"}:
+            raise GroupTranslationProviderError("group_translation_language_invalid")
+        if not audio or len(audio) > self.settings.group_translation_max_audio_bytes:
+            raise GroupTranslationProviderError("group_translation_audio_invalid")
+        # OpenAI accepts a multipart upload; the API key never reaches a browser.
+        data = {
+            "model": self.settings.openai_group_transcription_model,
+            "language": "zh" if source_language == "zh-TW" else source_language,
+            "response_format": "json",
+        }
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "OpenAI-Safety-Identifier": self._safety_identifier(principal_id),
+            "Idempotency-Key": str(idempotency_key)[:128],
+        }
+        safe_name = str(filename or "voice.webm").replace("/", "_").replace("\\", "_")[:120] or "voice.webm"
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
+                    self.transcription_endpoint,
+                    headers=headers,
+                    data=data,
+                    files={"file": (safe_name, audio, content_type or "application/octet-stream")},
+                )
+        except httpx.HTTPError as exc:
+            raise GroupTranslationProviderError("group_translation_provider_unavailable") from exc
+        if response.status_code >= 400:
+            raise GroupTranslationProviderError("group_translation_provider_rejected")
+        try:
+            payload: Any = response.json()
+        except ValueError as exc:
+            raise GroupTranslationProviderError("group_translation_provider_invalid_response") from exc
+        text = payload.get("text") if isinstance(payload, dict) else None
+        text = str(text or "").strip()
+        if not text or len(text) > 12000:
+            raise GroupTranslationProviderError("group_translation_provider_invalid_response")
+        request_id = response.headers.get("x-request-id") or response.headers.get("x-openai-request-id")
+        return SpeechTranscriptionResult(
+            text=text,
+            model=str((payload or {}).get("model") or self.settings.openai_group_transcription_model)[:80],
             request_id=str(request_id or "")[:128] or None,
         )

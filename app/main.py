@@ -109,13 +109,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         livekit_provider,
         application.state.group_event_broker,
     )
+    openai_translation_provider = OpenAIGroupTranslationProvider(runtime_settings)
+    application.state.openai_group_translation_provider = openai_translation_provider
     application.state.group_translation_service = GroupTranslationService(
         application.state.database,
         runtime_settings,
         group_crypto,
+        openai_translation_provider,
+        application.state.group_event_broker,
     )
-    openai_translation_provider = OpenAIGroupTranslationProvider(runtime_settings)
-    application.state.openai_group_translation_provider = openai_translation_provider
     application.state.group_chat_translation_service = GroupChatTranslationService(
         application.state.database,
         runtime_settings,

@@ -724,18 +724,7 @@
   }
 
   function translationDock() {
-    var item = state.translations[0];
-    var content = item
-      ? "<div>" + avatar(memberName(item.speaker_membership_id), "teal", "sm", true) + "<span><strong>" +
-        esc(memberName(item.speaker_membership_id)) + "</strong><small>" + esc(item.source_language) + " · " + esc(formatTime(item.final_at)) +
-        "</small></span>" + badge(t("final"), "success") + "</div><p>" + esc(item.original_text) + "</p><strong>" +
-        esc(item.translated_text) + "</strong><small>" + icon("headphones", 13) + esc(t("textBeforeAudio")) + "</small>"
-      : "<p>" + esc(t("historyEmpty")) + "</p>";
-    return '<aside class="translation-dock"><div class="panel-title"><span>' + icon("languages", 18) + esc(t("translationPlugin")) +
-      "</span>" + badge(item ? t("final") : "READY", "success") + '</div><label class="language-select is-compact"><span>' +
-      icon("languages", 14) + esc(t("targetLanguage")) + '</span><select data-change="target-language">' +
-      languageOptions(state.profile && state.profile.preferred_output_language || "zh-TW") + '</select></label><div class="live-caption-card">' +
-      content + "</div>" + toggle("toggle-auto-read", t("autoRead"), t("autoReadRecipient"), Boolean(state.profile && state.profile.auto_read_enabled)) + "</aside>";
+    return '<aside class="translation-dock" data-group-translation-v2></aside>';
   }
 
   function renderMedia() {
@@ -764,10 +753,10 @@
           esc(person.livekit_identity) + '">' + avatar(person.display_name, index === 0 ? "teal" : "mint", index === 0 ? "xl" : "lg", true) +
           "<div><strong>" + esc(person.display_name) + "</strong>" + (index === 0 ? wave(true) : "") + "</div></article>";
       }).join("");
-      return '<div class="video-call-layout ' + (state.profile && state.profile.auto_translate_enabled ? "with-translation" : "") +
+      return '<div class="video-call-layout with-translation' +
         ' surface-content"><div class="video-stage"><div class="call-status-line">' + badge("LIVE", "success") + "<span>" +
         esc(t("activeVideo")) + '</span><small class="media-participant-count">' + esc(String(people.length)) + " " + esc(t("participantsShort")) + '</small></div><div class="video-grid count-' + Math.min(people.length, 8) + '" data-video-grid>' + tiles + "</div>" + callDock(kind) +
-        '<div class="audio-host" data-audio-host></div></div>' + (state.profile && state.profile.auto_translate_enabled ? translationDock() : "") + "</div>";
+        '<div class="audio-host" data-audio-host></div></div>' + translationDock() + "</div>";
     }
     var speaker = (session.participants || []).find(function (person) { return person.invite_status === "joined"; }) || me;
     var peopleRow = (session.participants || []).filter(function (person) { return person.invite_status === "joined"; }).slice(0, 4).map(function (person) {
@@ -801,19 +790,10 @@
         "<span><strong>" + esc(person.display_name) + "</strong><small>" + esc(person.status) + "</small></span>" +
         (speaking ? wave(true) : "<i></i>") + "</div>";
     }).join("");
-    var latest = state.translations.find(function (item) { return item.runtime_kind === "radio"; }) || state.translations[0];
-    var translation = latest
-      ? '<article class="radio-final-card"><div>' + avatar(memberName(latest.speaker_membership_id), "teal", "sm", true) +
-        "<span><strong>" + esc(memberName(latest.speaker_membership_id)) + "</strong><small>" + esc(latest.source_language) + " · " +
-        esc(formatTime(latest.final_at)) + "</small></span></div><p>" + esc(latest.original_text) + "</p><strong>" +
-        esc(latest.translated_text) + "</strong><small>" + icon("headphones", 13) + esc(t("textBeforeAudio")) + "</small></article>"
-      : '<p class="member-empty">' + esc(t("historyEmpty")) + "</p>";
     return '<aside class="radio-inspector"><section class="radio-members-card"><div class="panel-title"><span>' +
       icon("users", 18) + esc(t("participants")) + "</span>" + badge(String(participants.length), "mint") +
-      '</div><div class="radio-members">' + rows + '</div></section><section class="radio-translation-card"><div class="panel-title"><span>' +
-      icon("languages", 18) + esc(t("translationPlugin")) + "</span>" + badge(latest ? t("final") : "READY", "success") +
-      "</div>" + translation + toggle("toggle-auto-read", t("autoRead"), t("autoReadRecipient"), Boolean(state.profile && state.profile.auto_read_enabled)) +
-      "</section>" + action("leave-radio", t("leaveRadio"), "log-out", "secondary", 'class="desktop-leave"') + "</aside>";
+      '</div><div class="radio-members">' + rows + '</div></section><section class="radio-translation-card"><div data-group-translation-v2></div></section>' +
+      action("leave-radio", t("leaveRadio"), "log-out", "secondary", 'class="desktop-leave"') + "</aside>";
   }
 
   function radioStage() {
@@ -1064,6 +1044,7 @@
       }
     }
     resizeTextEntry(root.querySelector("textarea[data-group-text-entry]"));
+    window.dispatchEvent(new CustomEvent("group-v3:rendered"));
   }
 
   async function refreshAll() {
@@ -1081,7 +1062,6 @@
       }
       await loadSpaces(state.space && state.space.id || "");
       render();
-      if (state.profile && state.profile.auto_read_enabled) processTtsJobs();
     } catch (error) {
       if (error.status === 401) state.status = window.opener ? "WAITING" : "FAILED";
       else state.error = publicError(error);
@@ -1319,7 +1299,6 @@
       notify(t("profileSavedReal"));
       await loadSpace();
       render();
-      if (state.profile.auto_read_enabled) processTtsJobs();
     } catch (error) {
       notify(publicError(error));
     }
@@ -1604,10 +1583,9 @@
     if (!state.radioSession || state.floorToken) return;
     try {
       var source = state.profile.spoken_language;
-      var target = state.profile.preferred_output_language;
       var result = await api(radioBase() + "/floor/acquire", json("POST", {
         source_language: source,
-        target_languages: state.profile.auto_translate_enabled && target !== source ? [target] : []
+        target_languages: []
       }));
       state.floorToken = result.floor_token;
       state.burst = result.burst;
@@ -1635,7 +1613,6 @@
           window.clearInterval(heartbeatTimer);
           await disconnectMedia(false);
           render();
-          window.dispatchEvent(new CustomEvent("group-v3:radio-stopped", { detail: { burst_id: state.burst.id } }));
           await connectRadio("listen").catch(function () {});
         }
       } catch (_error) {
@@ -1659,7 +1636,6 @@
       state.burst = payload.burst;
       await disconnectMedia(false);
       render();
-      window.dispatchEvent(new CustomEvent("group-v3:radio-stopped", { detail: { burst_id: state.burst.id } }));
       await connectRadio("listen");
       notify(t("floorReleasedFirst"));
     } catch (error) {
@@ -1686,7 +1662,6 @@
       state.burst = { state: "device_lost" };
     }
     state.deviceLost = true;
-    window.dispatchEvent(new CustomEvent("group-v3:radio-device-lost", { detail: { burst_id: state.burst && state.burst.id || "" } }));
     await disconnectMedia(false);
     render();
   }
@@ -1886,15 +1861,6 @@
     } else {
       var host = root.querySelector("[data-audio-host]");
       if (host) host.appendChild(element);
-      var mediaTrack = track.mediaStreamTrack || track;
-      if (state.profile && state.profile.auto_translate_enabled && state.consent && state.consent.status === "granted") {
-        window.dispatchEvent(new CustomEvent("group-v3:remote-audio", {
-          detail: {
-            track: mediaTrack,
-            participant_identity: String(participantIdentity || "")
-          }
-        }));
-      }
     }
   }
 
@@ -2056,14 +2022,6 @@
       state.videoEnabled = true;
       render();
       syncMediaElements();
-      if (state.surface === "radio" && publish && localStream) {
-        var audioTrack = localStream.getAudioTracks()[0];
-        if (audioTrack) {
-          window.dispatchEvent(new CustomEvent("group-v3:local-radio-audio", {
-            detail: { track: audioTrack, burst_id: state.burst && state.burst.id || "" }
-          }));
-        }
-      }
     } catch (error) {
       if (generation === mediaGeneration && mediaRoom === room) {
         await disconnectMedia(false, { keepReconnect: state.mediaReconnectState === "reconnecting" });
@@ -2166,27 +2124,6 @@
     } catch (_error) {}
     if (emitEvent !== false) window.dispatchEvent(new CustomEvent("group-v3:media-disconnected"));
     disconnecting = false;
-  }
-
-  async function processTtsJobs() {
-    if (!state.space || !state.profile || !state.profile.auto_read_enabled || state.deviceLost) return;
-    if (!window.GroupV3SafeAudio || typeof window.GroupV3SafeAudio.playTtsJob !== "function") return;
-    try {
-      var claim = await api("/api/group/spaces/" + encodeURIComponent(state.space.id) + "/translation/tts-jobs/claim", { method: "POST" });
-      if (!claim.job) return;
-      var visible = state.translations.some(function (item) { return item.id === claim.job.final_visible_event_id; });
-      if (!visible) {
-        var history = await api("/api/group/spaces/" + encodeURIComponent(state.space.id) + "/translation/history?limit=50");
-        state.translations = history.events || [];
-        render();
-      }
-      var status = await window.GroupV3SafeAudio.playTtsJob(claim.job);
-      await api("/api/group/spaces/" + encodeURIComponent(state.space.id) + "/translation/tts-jobs/" +
-        encodeURIComponent(claim.job.id) + "/ack", json("POST", {
-          status: status === "completed" ? "completed" : status === "suppressed" ? "suppressed" : "failed",
-          failure_code: status === "completed" ? "" : String(status || "safe_audio_unavailable").slice(0, 80)
-        }));
-    } catch (_error) {}
   }
 
   window.addEventListener("group:handoff-ready", function () {
@@ -2325,8 +2262,9 @@
         space_id: state.space && state.space.id || "",
         runtime_kind: state.surface === "video" ? "video" : state.surface === "radio" ? "radio" : "call",
         runtime_id: state.surface === "radio"
-          ? state.burst && state.burst.id || ""
+          ? state.radioSession && state.radioSession.id || ""
           : state.mediaSession && state.mediaSession.id || "",
+        locale: state.locale,
         spoken_language: state.profile && state.profile.spoken_language || state.locale,
         target_language: state.profile && state.profile.preferred_output_language || "",
         auto_translate: Boolean(state.profile && state.profile.auto_translate_enabled),
@@ -2348,12 +2286,15 @@
         device_lost: state.deviceLost
       };
     },
+    getLocalAudioTrack: function () {
+      if (!localStream) return null;
+      return localStream.getAudioTracks()[0] || null;
+    },
     translationFinal: async function () {
       if (!state.space) return;
       var payload = await optional("/api/group/spaces/" + encodeURIComponent(state.space.id) + "/translation/history?limit=50", { events: [] });
       state.translations = payload.events || [];
       render();
-      if (state.profile && state.profile.auto_read_enabled) processTtsJobs();
     }
   });
 

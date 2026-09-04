@@ -367,5 +367,21 @@ Object.assign(copy['zh-TW'], {
   downloadAttachment: '下載',
 });
 
+Object.assign(copy.vi, {
+  translationTextFirst: 'Văn bản trước, âm thanh tùy chọn', translationTextPlaceholder: 'Nhập nội dung cần dịch…', translationSend: 'Gửi văn bản', translationRecord: 'Ghi âm thủ công',
+  translationReadyState: 'Sẵn sàng', translationRecording: 'Đang ghi âm', translationStopping: 'Đang dừng ghi âm', translationProcessing: 'Đang xử lý', translationResultReady: 'Đã có bản dịch', translationError: 'Lỗi dịch',
+  translationPending: 'Đang chờ bản dịch…', translationRetry: 'Thử lại', translationPlay: 'Phát trên thiết bị này', translationMicUnavailable: 'Hãy tham gia cuộc gọi và bật mic trước khi ghi âm.',
+});
+Object.assign(copy.en, {
+  translationTextFirst: 'Text first, optional voice', translationTextPlaceholder: 'Type text to translate…', translationSend: 'Send text', translationRecord: 'Record manually',
+  translationReadyState: 'Ready', translationRecording: 'Recording', translationStopping: 'Stopping recording', translationProcessing: 'Processing', translationResultReady: 'Translation ready', translationError: 'Translation error',
+  translationPending: 'Translation pending…', translationRetry: 'Retry', translationPlay: 'Play on this device', translationMicUnavailable: 'Join the call and enable your microphone before recording.',
+});
+Object.assign(copy['zh-TW'], {
+  translationTextFirst: '文字優先，可選語音', translationTextPlaceholder: '輸入要翻譯的文字…', translationSend: '傳送文字', translationRecord: '手動錄音',
+  translationReadyState: '就緒', translationRecording: '正在錄音', translationStopping: '正在停止錄音', translationProcessing: '處理中', translationResultReady: '翻譯完成', translationError: '翻譯錯誤',
+  translationPending: '翻譯處理中…', translationRetry: '重試', translationPlay: '在此裝置播放', translationMicUnavailable: '加入通話並開啟麥克風後才能錄音。',
+});
+
 window.GroupV3I18n = Object.freeze({ copy, localeOptions, translator });
 }(window));

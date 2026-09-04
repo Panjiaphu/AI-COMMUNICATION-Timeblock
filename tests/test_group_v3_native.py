@@ -599,8 +599,10 @@ def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     assert "localStorage" not in app_js + translation_js
     assert "sessionStorage" not in app_js + translation_js
     assert "OPENAI_API_KEY" not in app_js + translation_js + template
-    assert "https://api.openai.com/v1/realtime/calls" in translation_js
-    assert "/v1/realtime/translations/calls" not in translation_js
+    assert "https://api.openai.com/v1/realtime/calls" not in translation_js
+    assert "RTCPeerConnection" not in translation_js
+    assert "MediaStream([track])" in translation_js
+    assert "data-group-translation-v2" in app_js
     connect_media = app_js[
         app_js.index("async function connectMedia") : app_js.index("async function connectRadio")
     ]
@@ -613,7 +615,7 @@ def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     assert "width: min(760px, calc(100% - 48px))" in runtime_css
     assert "max-height: min(38dvh, 300px)" in runtime_css
     assert ".chat-content.state-active_video { grid-template-rows: minmax(0, 1fr) auto; }" in group_css
-    assert "selectAudioOutput" in translation_js
+    assert "speechSynthesis" in translation_js
     assert "private_audio_playback\": \"suppressed" in radio_router
     assert radio_router.index("group_radio_floor.release") < radio_router.index("stop_burst_after_floor_release")
     assert 'data-surface="chat-translation"' in app_js
@@ -728,3 +730,12 @@ def test_group_owner_invariant_migration_is_present_and_reversible_source():
     assert "uq_group_memberships_active_owner" in migration
     assert "sqlite_where" in migration and "postgresql_where" in migration
     assert 'op.drop_index("uq_group_memberships_active_owner"' in migration
+
+
+def test_group_translation_v2_migration_is_single_head_and_encrypted_source_only():
+    migration = (ROOT / "alembic/versions/20260904_0023_group_translation_v2.py").read_text(encoding="utf-8")
+    assert 'revision = "20260904_0023"' in migration
+    assert 'down_revision = "20260904_0022"' in migration
+    assert "group_translation_segments" in migration
+    assert "group_translation_variants" in migration
+    assert "source_ciphertext" in migration and "translated_ciphertext" in migration

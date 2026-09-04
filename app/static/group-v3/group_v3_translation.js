@@ -1,345 +1,135 @@
-(function nativeGroupTranslationV3(window, document) {
+(function installGroupTranslationV2(window, document) {
   "use strict";
 
-  var runtime = window.GroupV3Runtime;
-  if (!runtime || !window.RTCPeerConnection) return;
+  var LANGUAGES = ["vi", "en", "zh-TW"];
+  var mounted = new WeakMap();
+  var recorder = null;
+  var recorderGeneration = 0;
+  var tts = window.speechSynthesis || null;
 
-  var sidecars = new Map();
-  var radioRecordings = new Map();
-  var safeOutputDeviceId = "";
-
-  function text(value, maximum) {
-    if (typeof value !== "string") return "";
-    var normalized = value.trim();
-    return normalized && normalized.length <= (maximum || 12000) ? normalized : "";
-  }
-
-  function uuid() {
-    return window.crypto && window.crypto.randomUUID
-      ? window.crypto.randomUUID()
-      : "segment-" + Date.now() + "-" + Math.random().toString(36).slice(2);
-  }
-
-  async function responseJson(response) {
-    var payload = await response.json().catch(function () { return {}; });
-    if (!response.ok) {
-      var error = new Error(String(payload.detail || payload.error || "translation_request_failed"));
-      error.status = response.status;
-      throw error;
-    }
-    return payload;
-  }
-
-  async function chooseSafeOutput() {
-    if (!navigator.mediaDevices || typeof navigator.mediaDevices.selectAudioOutput !== "function") {
-      safeOutputDeviceId = "";
-      return false;
-    }
+  function translate(key) {
     try {
-      var device = await navigator.mediaDevices.selectAudioOutput();
-      safeOutputDeviceId = text(device && device.deviceId, 512);
-      return Boolean(safeOutputDeviceId);
-    } catch (_error) {
-      safeOutputDeviceId = "";
-      return false;
-    }
+      var runtime = window.GroupV3Runtime;
+      var locale = runtime && runtime.snapshot ? runtime.snapshot().locale : "vi";
+      return window.GroupV3I18n.translator(locale)(key);
+    } catch (_error) { return key; }
   }
-
-  async function playRemoteAudio(audio) {
-    var snapshot = runtime.snapshot();
-    if (!audio || snapshot.device_lost || !snapshot.auto_read || !safeOutputDeviceId) return "suppressed";
-    if (typeof audio.setSinkId !== "function") return "suppressed";
-    try {
-      await audio.setSinkId(safeOutputDeviceId);
-      await audio.play();
-      return "completed";
-    } catch (_error) {
-      return "safe_audio_unavailable";
-    }
+  function escapeHtml(value) {
+    return String(value == null ? "" : value).replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
   }
-
-  window.GroupV3SafeAudio = Object.freeze({
-    chooseOutput: chooseSafeOutput,
-    hasPrivateOutput: function () { return Boolean(safeOutputDeviceId); }
-  });
-
-  function membershipForIdentity(snapshot, identity) {
-    var participant = (snapshot.media_participants || []).find(function (item) {
-      return item.livekit_identity === identity;
+  function snapshot() {
+    return window.GroupV3Runtime && window.GroupV3Runtime.snapshot ? window.GroupV3Runtime.snapshot() : null;
+  }
+  function api(path, options) {
+    return fetch(path, Object.assign({ credentials: "same-origin", headers: { "Accept": "application/json" } }, options || {}))
+      .then(function (response) { return response.json().catch(function () { return {}; }).then(function (payload) {
+        if (!response.ok) throw new Error(payload.detail || "translation_request_failed"); return payload;
+      }); });
+  }
+  function endpoint(runtime, suffix) {
+    return "/api/group/spaces/" + encodeURIComponent(runtime.space_id) + "/translation/" + suffix;
+  }
+  function clientId() {
+    if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+    return "segment-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+  }
+  function languageOptions(selected) {
+    var labels = { vi: translate("vietnamese"), en: translate("english"), "zh-TW": translate("traditionalChinese") };
+    return LANGUAGES.map(function (language) {
+      return '<option value="' + language + '" ' + (language === selected ? "selected" : "") + ">" + escapeHtml(labels[language]) + "</option>";
+    }).join("");
+  }
+  function statusText(status) {
+    var map = { READY: "translationReadyState", RECORDING: "translationRecording", STOPPING: "translationStopping",
+      PROCESSING: "translationProcessing", RESULT_READY: "translationResultReady", ERROR: "translationError" };
+    return translate(map[status] || status);
+  }
+  function panelTemplate() {
+    var runtime = snapshot() || {}, source = runtime.spoken_language || "vi", target = runtime.target_language || "en";
+    return '<section class="group-translation-v2" aria-labelledby="group-translation-v2-title"><div class="group-translation-v2__header"><div><span class="group-translation-v2__eyebrow">' +
+      escapeHtml(translate("translationPlugin")) + '</span><h2 id="group-translation-v2-title">' + escapeHtml(translate("translationTextFirst")) +
+      '</h2></div><span data-v2-status class="group-translation-v2__status">' + escapeHtml(statusText("READY")) + '</span></div><div class="group-translation-v2__languages"><label><span>' +
+      escapeHtml(translate("sourceLanguage")) + '</span><select data-v2-source>' + languageOptions(source) + '</select></label><label><span>' + escapeHtml(translate("targetLanguage")) +
+      '</span><select data-v2-target>' + languageOptions(target) + '</select></label></div><div class="group-translation-v2__composer"><textarea data-v2-text rows="2" maxlength="12000" placeholder="' +
+      escapeHtml(translate("translationTextPlaceholder")) + '"></textarea><div class="group-translation-v2__actions"><button type="button" class="action-button action-primary" data-v2-action="send">' +
+      escapeHtml(translate("translationSend")) + '</button><button type="button" class="action-button action-secondary" data-v2-action="record">' + escapeHtml(translate("translationRecord")) +
+      '</button></div></div><label class="group-translation-v2__auto-read"><input type="checkbox" data-v2-auto-read ' + ((snapshot() || {}).auto_read ? "checked" : "") + '> ' + escapeHtml(translate("autoRead")) +
+      '</label><div data-v2-error class="group-translation-v2__error" role="alert" hidden></div><div class="group-translation-v2__history" data-v2-history><p class="group-translation-v2__empty">' +
+      escapeHtml(translate("historyEmpty")) + '</p></div></section>';
+  }
+  function setStatus(panel, status) { var node = panel.querySelector("[data-v2-status]"); if (node) node.textContent = statusText(status); panel.dataset.translationState = status; }
+  function setError(panel, error) { var node = panel.querySelector("[data-v2-error]"); if (!node) return; node.hidden = !error; node.textContent = error || ""; }
+  function renderHistory(panel, segments) {
+    var host = panel.querySelector("[data-v2-history]"); if (!host) return;
+    if (!segments || !segments.length) { host.innerHTML = '<p class="group-translation-v2__empty">' + escapeHtml(translate("historyEmpty")) + "</p>"; return; }
+    host.innerHTML = segments.map(function (item) {
+      var translated = item.translated_text == null ? translate("translationPending") : item.translated_text;
+      var failed = item.state === "FAILED";
+      var retry = failed ? '<button type="button" class="group-translation-v2__retry" data-v2-retry="' + escapeHtml(item.id) + '" data-v2-target-language="' + escapeHtml(item.target_language) + '">' + escapeHtml(translate("translationRetry")) + "</button>" : "";
+      return '<article class="group-translation-v2__item ' + (failed ? "is-failed" : "") + '"><div class="group-translation-v2__item-meta"><span>' + escapeHtml(item.source_language) + " → " + escapeHtml(item.target_language) + '</span><span>' + escapeHtml(item.state) +
+        '</span></div><p class="group-translation-v2__source">' + escapeHtml(item.source_text) + '</p><p class="group-translation-v2__result">' + escapeHtml(translated) + '</p><div class="group-translation-v2__item-actions"><button type="button" class="group-translation-v2__play" data-v2-play="' + escapeHtml(item.translated_text || "") + '" data-v2-language="' + escapeHtml(item.target_language) + '">' + escapeHtml(translate("translationPlay")) + '</button>' + retry + "</div></article>";
+    }).join("");
+  }
+  function loadHistory(panel) {
+    var runtime = snapshot(); if (!runtime || !runtime.space_id || !runtime.runtime_id) return Promise.resolve();
+    var query = "v2-history?runtime_kind=" + encodeURIComponent(runtime.runtime_kind) + "&runtime_id=" + encodeURIComponent(runtime.runtime_id) + "&limit=30";
+    return api(endpoint(runtime, query)).then(function (payload) { renderHistory(panel, payload.segments || []); }).catch(function () {});
+  }
+  function saveTarget(panel) {
+    var runtime = snapshot(); if (!runtime || !runtime.space_id) return Promise.resolve();
+    var source = panel.querySelector("[data-v2-source]").value, target = panel.querySelector("[data-v2-target]").value;
+    return api(endpoint(runtime, "profile"), { method: "GET" }).then(function (payload) { var profile = payload.profile || {};
+      return api(endpoint(runtime, "profile"), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+        spoken_language: source, preferred_output_language: target, auto_translate_enabled: Boolean(profile.auto_translate_enabled),
+        auto_read_enabled: Boolean(panel.querySelector("[data-v2-auto-read]").checked), show_original_enabled: profile.show_original_enabled !== false }) });
     });
-    return participant && participant.membership_id || "";
   }
-
-  class TranslationSidecar {
-    constructor(options) {
-      this.track = options.track;
-      this.snapshot = options.snapshot;
-      this.speakerMembershipId = options.speakerMembershipId;
-      this.segmentId = options.segmentId;
-      this.startPlayback = options.startPlayback || null;
-      this.cleanupPlayback = options.cleanupPlayback || null;
-      this.pc = null;
-      this.events = null;
-      this.clonedTrack = null;
-      this.audio = null;
-      this.inputText = "";
-      this.outputText = "";
-      this.reservationId = "";
-      this.closed = false;
-      this.persisted = false;
-      this.startedAt = Date.now();
-    }
-
-    async start() {
-      var snapshot = this.snapshot;
-      if (!snapshot.space_id || !snapshot.runtime_id || !this.speakerMembershipId) return;
-      if (!snapshot.auto_translate || snapshot.consent_status !== "granted") return;
-      if (!snapshot.spoken_language || !snapshot.target_language || snapshot.spoken_language === snapshot.target_language) return;
-      var response = await window.fetch("/api/group/spaces/" + encodeURIComponent(snapshot.space_id) + "/translation/client-secret", {
-        method: "POST",
-        credentials: "same-origin",
-        cache: "no-store",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          "Idempotency-Key": uuid()
-        },
-        body: JSON.stringify({
-          runtime_kind: snapshot.runtime_kind,
-          runtime_id: snapshot.runtime_id,
-          segment_id: this.segmentId,
-          source_language: snapshot.spoken_language,
-          target_language: snapshot.target_language,
-          estimated_target_seconds: 300
-        })
-      });
-      var payload = await responseJson(response);
-      var clientSecret = text(payload.client_secret, 4096);
-      this.reservationId = text(payload.translation && payload.translation.reservation_id, 128);
-      if (!clientSecret || !this.reservationId) throw new Error("translation_client_secret_invalid");
-
-      this.clonedTrack = typeof this.track.clone === "function" ? this.track.clone() : this.track;
-      this.pc = new RTCPeerConnection();
-      this.pc.ontrack = this.receiveProviderAudio.bind(this);
-      this.events = this.pc.createDataChannel("oai-events");
-      this.events.onmessage = this.providerEvent.bind(this);
-      this.events.onerror = this.release.bind(this);
-      this.pc.addTrack(this.clonedTrack, new MediaStream([this.clonedTrack]));
-      var offer = await this.pc.createOffer();
-      await this.pc.setLocalDescription(offer);
-      var sdpResponse;
-      try {
-        sdpResponse = await window.fetch("https://api.openai.com/v1/realtime/calls", {
-          method: "POST",
-          mode: "cors",
-          credentials: "omit",
-          cache: "no-store",
-          headers: {
-            Authorization: "Bearer " + clientSecret,
-            "Content-Type": "application/sdp",
-            Accept: "application/sdp"
-          },
-          body: String(offer && offer.sdp || "")
-        });
-      } finally {
-        clientSecret = "";
-      }
-      if (!sdpResponse.ok) throw new Error("translation_sdp_failed");
-      await this.pc.setRemoteDescription({ type: "answer", sdp: await sdpResponse.text() });
-      if (this.startPlayback) this.startPlayback();
-    }
-
-    receiveProviderAudio(event) {
-      var stream = event.streams && event.streams[0];
-      if (!stream || this.closed) return;
-      this.audio = document.createElement("audio");
-      this.audio.autoplay = false;
-      this.audio.playsInline = true;
-      this.audio.srcObject = stream;
-    }
-
-    providerEvent(message) {
-      var event;
-      try {
-        event = JSON.parse(message.data);
-      } catch (_error) {
-        return;
-      }
-      if (event.type === "session.input_transcript.delta") {
-        this.inputText += text(event.delta, 1024);
-      } else if (event.type === "session.input_transcript.done") {
-        this.inputText = text(event.transcript || this.inputText);
-      } else if (event.type === "session.output_transcript.delta") {
-        this.outputText += text(event.delta, 1024);
-      } else if (event.type === "session.output_transcript.done") {
-        this.outputText = text(event.transcript || this.outputText);
-        this.persistFinal();
-      } else if (event.type === "error") {
-        this.release();
-      }
-    }
-
-    async persistFinal() {
-      if (this.persisted || this.closed || !this.inputText || !this.outputText) return;
-      this.persisted = true;
-      var seconds = Math.max(1, Math.min(300, Math.ceil((Date.now() - this.startedAt) / 1000)));
-      try {
-        var response = await window.fetch("/api/group/spaces/" + encodeURIComponent(this.snapshot.space_id) + "/translation/final", {
-          method: "POST",
-          credentials: "same-origin",
-          cache: "no-store",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({
-            reservation_id: this.reservationId,
-            state: "FINAL",
-            speaker_membership_id: this.speakerMembershipId,
-            original_text: this.inputText,
-            translated_text: this.outputText,
-            actual_target_seconds: seconds,
-            confidence: null
-          })
-        });
-        await responseJson(response);
-        await runtime.translationFinal();
-        await playRemoteAudio(this.audio);
-      } catch (_error) {
-        this.persisted = false;
-        await this.release();
-      }
-    }
-
-    async release() {
-      if (!this.reservationId || this.persisted) return;
-      var reservationId = this.reservationId;
-      this.reservationId = "";
-      await window.fetch("/api/group/spaces/" + encodeURIComponent(this.snapshot.space_id) + "/translation/reservations/release", {
-        method: "POST",
-        credentials: "same-origin",
-        cache: "no-store",
-        keepalive: true,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reservation_id: reservationId })
-      }).catch(function () {});
-    }
-
-    async stop() {
-      if (this.closed) return;
-      this.closed = true;
-      await this.release();
-      try { if (this.events) this.events.close(); } catch (_error) {}
-      try { if (this.pc) this.pc.close(); } catch (_error) {}
-      if (this.clonedTrack && this.clonedTrack !== this.track) this.clonedTrack.stop();
-      if (this.audio) {
-        this.audio.pause();
-        this.audio.srcObject = null;
-      }
-      if (this.cleanupPlayback) this.cleanupPlayback();
-    }
+  function submitText(panel) {
+    var runtime = snapshot(), control = panel.querySelector("[data-v2-text]"), sourceText = control && control.value.trim();
+    if (!runtime || !runtime.space_id || !runtime.runtime_id || !sourceText) return;
+    setError(panel, ""); setStatus(panel, "PROCESSING");
+    api(endpoint(runtime, "segments/text"), { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": clientId() }, body: JSON.stringify({
+      runtime_kind: runtime.runtime_kind, runtime_id: runtime.runtime_id, client_segment_id: clientId(), source_language: panel.querySelector("[data-v2-source]").value, source_text: sourceText })
+    }).then(function (payload) { control.value = ""; setStatus(panel, payload.segment && payload.segment.state === "FINAL" ? "RESULT_READY" : "PROCESSING"); if (payload.segment && payload.segment.translated_text && panel.querySelector("[data-v2-auto-read]").checked) play(payload.segment.translated_text, payload.segment.target_language); return loadHistory(panel); })
+      .catch(function (error) { setStatus(panel, "ERROR"); setError(panel, error.message); });
   }
-
-  async function startSidecar(options) {
-    var key = options.segmentId + ":" + options.snapshot.target_language;
-    if (sidecars.has(key)) return;
-    var sidecar = new TranslationSidecar(options);
-    sidecars.set(key, sidecar);
-    try {
-      await sidecar.start();
-    } catch (_error) {
-      await sidecar.release();
-      sidecars.delete(key);
-    }
+  function stopRecording(panel) { if (!recorder) return; setStatus(panel, "STOPPING"); recorder.stop(); }
+  function startRecording(panel) {
+    var runtime = snapshot(), track = window.GroupV3Runtime && window.GroupV3Runtime.getLocalAudioTrack && window.GroupV3Runtime.getLocalAudioTrack();
+    if (!runtime || !runtime.space_id || !runtime.runtime_id || !track || !window.MediaRecorder) { setError(panel, translate("translationMicUnavailable")); return; }
+    if (recorder) return;
+    var stream; try { stream = new MediaStream([track]); recorder = new MediaRecorder(stream); } catch (error) { setError(panel, error.message); return; }
+    var generation = ++recorderGeneration, chunks = [], segmentId = clientId();
+    recorder.addEventListener("dataavailable", function (event) { if (event.data && event.data.size) chunks.push(event.data); });
+    recorder.addEventListener("stop", function () {
+      var current = recorder; recorder = null;
+      if (generation !== recorderGeneration || !chunks.length) { setStatus(panel, "READY"); return; }
+      var form = new FormData(); form.append("audio", new Blob(chunks, { type: current.mimeType || "audio/webm" }), "group-translation.webm");
+      form.append("runtime_kind", runtime.runtime_kind); form.append("runtime_id", runtime.runtime_id); form.append("client_segment_id", segmentId); form.append("source_language", panel.querySelector("[data-v2-source]").value);
+      setStatus(panel, "PROCESSING"); api(endpoint(runtime, "segments/voice"), { method: "POST", body: form }).then(function () { return loadHistory(panel); }).then(function () { setStatus(panel, "RESULT_READY"); }).catch(function (error) { setStatus(panel, "ERROR"); setError(panel, error.message); });
+    }, { once: true });
+    setError(panel, ""); setStatus(panel, "RECORDING"); recorder.start();
   }
-
-  window.addEventListener("group-v3:remote-audio", function (event) {
-    var snapshot = runtime.snapshot();
-    var identity = text(event.detail && event.detail.participant_identity, 160);
-    var membershipId = membershipForIdentity(snapshot, identity);
-    var track = event.detail && event.detail.track;
-    if (!track || !membershipId) return;
-    startSidecar({
-      track: track,
-      snapshot: snapshot,
-      speakerMembershipId: membershipId,
-      segmentId: "segment-" + uuid()
+  function play(text, language) { if (!tts || !text) return; if (tts.speaking) { tts.cancel(); return; } var utterance = new SpeechSynthesisUtterance(text); utterance.lang = language === "zh-TW" ? "zh-TW" : language; tts.speak(utterance); }
+  function bind(panel) {
+    if (mounted.has(panel)) return; mounted.set(panel, true); panel.innerHTML = panelTemplate();
+    panel.querySelector('[data-v2-action="send"]').addEventListener("click", function () { saveTarget(panel).then(function () { submitText(panel); }); });
+    panel.querySelector('[data-v2-action="record"]').addEventListener("click", function () { if (recorder) stopRecording(panel); else saveTarget(panel).then(function () { startRecording(panel); }); });
+    panel.querySelector("[data-v2-target]").addEventListener("change", function () { saveTarget(panel).catch(function (error) { setError(panel, error.message); }); });
+    panel.querySelector("[data-v2-source]").addEventListener("change", function () { saveTarget(panel).catch(function (error) { setError(panel, error.message); }); });
+    panel.querySelector("[data-v2-auto-read]").addEventListener("change", function () { saveTarget(panel).catch(function (error) { setError(panel, error.message); }); });
+    panel.addEventListener("click", function (event) {
+      var playButton = event.target.closest("[data-v2-play]"); if (playButton) play(playButton.dataset.v2Play, playButton.dataset.v2Language);
+      var retry = event.target.closest("[data-v2-retry]"); if (!retry) return; var runtime = snapshot(); if (!runtime) return;
+      setStatus(panel, "PROCESSING"); api(endpoint(runtime, "segments/" + encodeURIComponent(retry.dataset.v2Retry) + "/variants/" + encodeURIComponent(retry.dataset.v2TargetLanguage) + "/retry"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ target_language: retry.dataset.v2TargetLanguage }) }).then(function () { return loadHistory(panel); }).then(function () { setStatus(panel, "RESULT_READY"); }).catch(function (error) { setStatus(panel, "ERROR"); setError(panel, error.message); });
     });
-  });
-
-  window.addEventListener("group-v3:local-radio-audio", function (event) {
-    var snapshot = runtime.snapshot();
-    var burstId = text(event.detail && event.detail.burst_id, 128);
-    var track = event.detail && event.detail.track;
-    if (!track || !burstId || !snapshot.auto_translate || snapshot.consent_status !== "granted") return;
-    if (!window.MediaRecorder) return;
-    var mime = ["audio/webm;codecs=opus", "audio/webm"].find(function (value) {
-      return !MediaRecorder.isTypeSupported || MediaRecorder.isTypeSupported(value);
-    }) || "";
-    var clone = track.clone();
-    var recorder = new MediaRecorder(new MediaStream([clone]), mime ? { mimeType: mime } : undefined);
-    var recording = { recorder: recorder, chunks: [], clone: clone, mime: mime, snapshot: snapshot };
-    recorder.ondataavailable = function (chunk) {
-      if (chunk.data && chunk.data.size) recording.chunks.push(chunk.data);
-    };
-    radioRecordings.set(burstId, recording);
-    recorder.start(250);
-  });
-
-  async function translateRadioRecording(burstId, recording) {
-    var blob = new Blob(recording.chunks, { type: recording.mime || "audio/webm" });
-    if (!blob.size) return;
-    var snapshot = runtime.snapshot();
-    var targets = snapshot.radio_target_languages || [];
-    await Promise.all(targets.map(async function (targetLanguage) {
-      var AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContextClass) return;
-      var context = new AudioContextClass();
-      var buffer = await context.decodeAudioData(await blob.arrayBuffer());
-      var source = context.createBufferSource();
-      var destination = context.createMediaStreamDestination();
-      source.buffer = buffer;
-      source.connect(destination);
-      var targetSnapshot = Object.assign({}, snapshot, {
-        runtime_kind: "radio",
-        runtime_id: burstId,
-        target_language: targetLanguage
-      });
-      await startSidecar({
-        track: destination.stream.getAudioTracks()[0],
-        snapshot: targetSnapshot,
-        speakerMembershipId: snapshot.membership_id,
-        segmentId: burstId,
-        startPlayback: function () { source.start(); },
-        cleanupPlayback: function () {
-          try { source.stop(); } catch (_error) {}
-          context.close();
-        }
-      });
-    }));
+    loadHistory(panel);
   }
-
-  window.addEventListener("group-v3:radio-stopped", function (event) {
-    var burstId = text(event.detail && event.detail.burst_id, 128);
-    var recording = radioRecordings.get(burstId);
-    if (!recording) return;
-    radioRecordings.delete(burstId);
-    recording.recorder.onstop = function () {
-      recording.clone.stop();
-      translateRadioRecording(burstId, recording).catch(function () {});
-    };
-    if (recording.recorder.state !== "inactive") recording.recorder.stop();
-  });
-
-  window.addEventListener("group-v3:radio-device-lost", function (event) {
-    var burstId = text(event.detail && event.detail.burst_id, 128);
-    var recording = radioRecordings.get(burstId);
-    if (!recording) return;
-    radioRecordings.delete(burstId);
-    recording.recorder.ondataavailable = null;
-    if (recording.recorder.state !== "inactive") recording.recorder.stop();
-    recording.clone.stop();
-  });
-
-  window.addEventListener("group-v3:media-disconnected", function () {
-    sidecars.forEach(function (sidecar) { sidecar.stop(); });
-    sidecars.clear();
-  });
+  function mountAll() { document.querySelectorAll("[data-group-translation-v2]").forEach(bind); }
+  new MutationObserver(mountAll).observe(document.documentElement, { childList: true, subtree: true });
+  window.addEventListener("group-v3:rendered", mountAll);
+  function cleanup() { ++recorderGeneration; if (recorder) { try { recorder.stop(); } catch (_error) {} recorder = null; } if (tts) tts.cancel(); }
+  window.addEventListener("pagehide", cleanup, { once: true }); window.addEventListener("beforeunload", cleanup, { once: true });
+  mountAll();
 }(window, document));

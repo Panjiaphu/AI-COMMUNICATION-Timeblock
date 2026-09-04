@@ -515,6 +515,62 @@ class GroupTranslationEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
+class GroupTranslationSegment(Base):
+    """Canonical source unit for the V2 text-first translation pipeline."""
+
+    __tablename__ = "group_translation_segments"
+    __table_args__ = (
+        UniqueConstraint(
+            "space_id", "runtime_kind", "runtime_id", "speaker_membership_id", "client_segment_id",
+            name="uq_group_translation_segment_client",
+        ),
+        CheckConstraint("runtime_kind IN ('call','video','radio')", name="ck_group_translation_segments_runtime"),
+        CheckConstraint("input_kind IN ('text','voice')", name="ck_group_translation_segments_input"),
+        CheckConstraint("state IN ('PROCESSING','FINAL','PARTIAL','FAILED')", name="ck_group_translation_segments_state"),
+        Index("ix_group_translation_segments_runtime", "space_id", "runtime_kind", "runtime_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    client_segment_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    space_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_spaces.id", ondelete="CASCADE"), nullable=False)
+    runtime_kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    runtime_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    speaker_membership_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_memberships.id", ondelete="RESTRICT"), nullable=False)
+    input_kind: Mapped[str] = mapped_column(String(8), nullable=False)
+    source_language: Mapped[str] = mapped_column(String(8), nullable=False)
+    source_ciphertext: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    source_nonce: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    encryption_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False, default="PROCESSING", server_default="PROCESSING")
+    failure_code: Mapped[str] = mapped_column(String(80), nullable=False, default="", server_default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class GroupTranslationVariant(Base):
+    """One encrypted translated variant per target language."""
+
+    __tablename__ = "group_translation_variants"
+    __table_args__ = (
+        UniqueConstraint("segment_id", "target_language", name="uq_group_translation_variant_target"),
+        CheckConstraint("state IN ('PROCESSING','FINAL','FAILED')", name="ck_group_translation_variants_state"),
+        Index("ix_group_translation_variants_segment_state", "segment_id", "state"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    segment_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_translation_segments.id", ondelete="CASCADE"), nullable=False)
+    target_language: Mapped[str] = mapped_column(String(8), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False, default="PROCESSING", server_default="PROCESSING")
+    translated_ciphertext: Mapped[bytes | None] = mapped_column(LargeBinary)
+    translated_nonce: Mapped[bytes | None] = mapped_column(LargeBinary)
+    encryption_version: Mapped[str | None] = mapped_column(String(32))
+    provider_model: Mapped[str] = mapped_column(String(80), nullable=False, default="", server_default="")
+    provider_request_id: Mapped[str] = mapped_column(String(128), nullable=False, default="", server_default="")
+    failure_code: Mapped[str] = mapped_column(String(80), nullable=False, default="", server_default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
 class GroupTtsJob(Base):
     __tablename__ = "group_tts_jobs"
     __table_args__ = (

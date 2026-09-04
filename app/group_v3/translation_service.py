@@ -26,6 +26,8 @@ from app.models import (
     GroupTranslationEvent,
     GroupTranslationQuotaLedger,
     GroupTranslationReservation,
+    GroupTranslationSegment,
+    GroupTranslationVariant,
     GroupTtsJob,
 )
 
@@ -43,10 +45,19 @@ def _iso(value: datetime | None) -> str | None:
 
 
 class GroupTranslationService:
-    def __init__(self, database: Database, settings: Settings, crypto: GroupCrypto):
+    def __init__(self, database: Database, settings: Settings, crypto: GroupCrypto, provider=None, event_broker=None):
         self.database = database
         self.settings = settings
         self.crypto = crypto
+        self.provider = provider
+        self.event_broker = event_broker
+
+    def set_runtime_dependencies(self, provider=None, event_broker=None) -> None:
+        """Allow application startup to wire the provider after construction."""
+        if provider is not None:
+            self.provider = provider
+        if event_broker is not None:
+            self.event_broker = event_broker
 
     @staticmethod
     def _membership(db, space_id: str, actor: GroupActor) -> GroupMembership:
@@ -566,6 +577,299 @@ class GroupTranslationService:
                 query = query.where(GroupTranslationEvent.runtime_id == runtime_id)
             events = list(db.scalars(query.order_by(GroupTranslationEvent.final_at.desc()).limit(limit)).all())
             return [self._event_payload(item) for item in events]
+
+    # ------------------------------------------------------------------
+    # Translation V2: canonical source segments and recipient projections.
+    # These methods deliberately do not touch LiveKit media or the legacy
+    # realtime sidecar/reservation tables above.
+
+    def _require_v2_runtime(self, db, actor: GroupActor, space_id: str, runtime_kind: str, runtime_id: str):
+        membership = self._membership(db, space_id, actor)
+        if runtime_kind in {"call", "video"}:
+            session = db.get(GroupMediaSession, runtime_id)
+            expected = "video" if runtime_kind == "video" else "audio"
+            if not session or session.space_id != space_id or session.media_kind != expected or session.status != "active":
+                raise GroupServiceError("group_translation_runtime_not_active", 409)
+            participant = db.scalar(select(GroupMediaParticipant).where(
+                GroupMediaParticipant.session_id == session.id,
+                GroupMediaParticipant.membership_id == membership.id,
+                GroupMediaParticipant.invite_status == "joined",
+            ))
+            if not participant:
+                raise GroupServiceError("group_translation_participant_required", 403)
+            joined_ids = list(db.scalars(select(GroupMediaParticipant.membership_id).where(
+                GroupMediaParticipant.session_id == session.id,
+                GroupMediaParticipant.invite_status == "joined",
+            )).all())
+            return membership, joined_ids
+        if runtime_kind == "radio":
+            session = db.get(GroupRadioSession, runtime_id)
+            if not session or session.space_id != space_id or session.status != "ready":
+                raise GroupServiceError("group_translation_runtime_not_active", 409)
+            participant = db.scalar(select(GroupRadioParticipant).where(
+                GroupRadioParticipant.radio_session_id == session.id,
+                GroupRadioParticipant.membership_id == membership.id,
+                GroupRadioParticipant.status == "joined",
+            ))
+            if not participant:
+                raise GroupServiceError("group_translation_participant_required", 403)
+            joined_ids = list(db.scalars(select(GroupRadioParticipant.membership_id).where(
+                GroupRadioParticipant.radio_session_id == session.id,
+                GroupRadioParticipant.status == "joined",
+            )).all())
+            return membership, joined_ids
+        raise GroupServiceError("group_translation_runtime_not_ready", 409)
+
+    def _voice_consent_required(self, db, space_id: str, membership_id: str) -> None:
+        consent = db.scalar(select(GroupTranslationConsent).where(
+            GroupTranslationConsent.space_id == space_id,
+            GroupTranslationConsent.membership_id == membership_id,
+        ))
+        if not consent or consent.status != "granted" or consent.policy_version != self.settings.group_translation_policy_version:
+            raise GroupServiceError("group_translation_voice_consent_required", 409)
+
+    def _target_languages(self, db, space_id: str, membership_ids: list[str], source_language: str) -> list[str]:
+        profiles = list(db.scalars(select(GroupLanguageProfile).where(
+            GroupLanguageProfile.space_id == space_id,
+            GroupLanguageProfile.membership_id.in_(set(membership_ids)),
+        )).all()) if membership_ids else []
+        targets = {p.preferred_output_language for p in profiles if p.preferred_output_language in {"vi", "en", "zh-TW"}}
+        targets.discard(source_language)
+        return sorted(targets)[: max(1, int(self.settings.group_translation_max_targets))]
+
+    @staticmethod
+    def _segment_state(variants: list[GroupTranslationVariant]) -> str:
+        if not variants or all(v.state == "FINAL" for v in variants):
+            return "FINAL"
+        if any(v.state == "FINAL" for v in variants):
+            return "PARTIAL"
+        if all(v.state == "FAILED" for v in variants):
+            return "FAILED"
+        return "PROCESSING"
+
+    def _project_v2(self, db, actor: GroupActor, segment: GroupTranslationSegment, target_override: str | None = None) -> dict:
+        membership = self._membership(db, segment.space_id, actor)
+        profile = db.scalar(select(GroupLanguageProfile).where(
+            GroupLanguageProfile.space_id == segment.space_id,
+            GroupLanguageProfile.membership_id == membership.id,
+        ))
+        target = target_override or (profile.preferred_output_language if profile else actor.locale) or segment.source_language
+        if target not in {"vi", "en", "zh-TW"}:
+            target = segment.source_language
+        source = self.crypto.decrypt_text(
+            segment.source_ciphertext, segment.source_nonce,
+            aad=f"group-translation-segment-source:{segment.space_id}:{segment.id}",
+            version=segment.encryption_version,
+        )
+        variant = db.scalar(select(GroupTranslationVariant).where(
+            GroupTranslationVariant.segment_id == segment.id,
+            GroupTranslationVariant.target_language == target,
+        ))
+        translated = source if target == segment.source_language else None
+        if variant and variant.state == "FINAL" and variant.translated_ciphertext and variant.translated_nonce and variant.encryption_version:
+            translated = self.crypto.decrypt_text(
+                variant.translated_ciphertext, variant.translated_nonce,
+                aad=f"group-translation-variant:{segment.id}:{variant.target_language}",
+                version=variant.encryption_version,
+            )
+        return {
+            "id": segment.id,
+            "client_segment_id": segment.client_segment_id,
+            "runtime_kind": segment.runtime_kind,
+            "runtime_id": segment.runtime_id,
+            "speaker_membership_id": segment.speaker_membership_id,
+            "input_kind": segment.input_kind,
+            "source_language": segment.source_language,
+            "target_language": target,
+            "source_text": source,
+            "translated_text": translated,
+            "state": segment.state if target == segment.source_language or not variant else variant.state,
+            "failure_code": (variant.failure_code if variant and variant.state == "FAILED" else segment.failure_code),
+            "is_original": target == segment.source_language,
+            "auto_read_enabled": bool(profile.auto_read_enabled) if profile else False,
+            "created_at": _iso(segment.created_at),
+        }
+
+    async def _translate_variants(self, actor: GroupActor, segment_id: str, source_text: str, source_language: str, targets: list[str]) -> None:
+        if not targets:
+            with self.database.session() as db:
+                with db.begin():
+                    segment = db.get(GroupTranslationSegment, segment_id)
+                    if segment:
+                        segment.state = "FINAL"
+            return
+        if self.provider is None:
+            raise GroupServiceError("group_translation_provider_not_configured", 503)
+        import asyncio
+        semaphore = asyncio.Semaphore(3)
+
+        async def one(target: str) -> None:
+            async with semaphore:
+                try:
+                    result = await self.provider.translate_text(
+                        source_text=source_text,
+                        source_language=source_language,
+                        target_language=target,
+                        principal_id=actor.key,
+                        idempotency_key=f"group-v2:{segment_id}:{target}",
+                    )
+                    outcome = ("FINAL", result.text, result.model, result.request_id, "")
+                except Exception as exc:
+                    code = getattr(exc, "args", [None])[0] or "group_translation_provider_failed"
+                    outcome = ("FAILED", None, "", "", str(code)[:80])
+                with self.database.session() as db:
+                    with db.begin():
+                        variant = db.scalar(select(GroupTranslationVariant).where(
+                            GroupTranslationVariant.segment_id == segment_id,
+                            GroupTranslationVariant.target_language == target,
+                        ).with_for_update())
+                        if not variant:
+                            return
+                        variant.state, text_value, variant.provider_model, variant.provider_request_id, variant.failure_code = outcome
+                        variant.updated_at = _now()
+                        if text_value is not None:
+                            ciphertext, nonce, version = self.crypto.encrypt_text(
+                                text_value, aad=f"group-translation-variant:{segment_id}:{target}"
+                            )
+                            variant.translated_ciphertext = ciphertext
+                            variant.translated_nonce = nonce
+                            variant.encryption_version = version
+                        segment = db.get(GroupTranslationSegment, segment_id)
+                        if segment:
+                            variants = list(db.scalars(select(GroupTranslationVariant).where(GroupTranslationVariant.segment_id == segment_id)).all())
+                            segment.state = self._segment_state(variants)
+                            segment.failure_code = next((v.failure_code for v in variants if v.state == "FAILED" and v.failure_code), "")
+                            if self.event_broker:
+                                self.event_broker.enqueue_in_transaction(db, segment.space_id, "translation.segment.changed", resource_id=segment.id)
+                if self.event_broker:
+                    await self.event_broker.publish(segment.space_id, "translation.segment.changed", resource_id=segment.id)
+
+        await asyncio.gather(*(one(target) for target in targets))
+
+    async def submit_text(self, actor: GroupActor, space_id: str, values: dict, idempotency_key: str | None = None) -> dict:
+        if not self.settings.group_translation_enabled:
+            raise GroupServiceError("group_translation_disabled", 503)
+        source_text = str(values.get("source_text") or "").strip()
+        if not source_text or len(source_text) > 12000:
+            raise GroupServiceError("group_translation_text_invalid", 400)
+        source_language = str(values.get("source_language") or "")
+        if source_language not in {"vi", "en", "zh-TW"}:
+            raise GroupServiceError("group_translation_language_invalid", 400)
+        runtime_kind = values["runtime_kind"]
+        client_segment_id = str(values["client_segment_id"]).strip()
+        input_kind = str(values.get("input_kind") or "text")
+        if input_kind not in {"text", "voice"}:
+            raise GroupServiceError("group_translation_input_invalid", 400)
+        with self.database.session() as db:
+            with db.begin():
+                membership, joined_ids = self._require_v2_runtime(db, actor, space_id, runtime_kind, values["runtime_id"])
+                existing = db.scalar(select(GroupTranslationSegment).where(
+                    GroupTranslationSegment.space_id == space_id,
+                    GroupTranslationSegment.runtime_kind == runtime_kind,
+                    GroupTranslationSegment.runtime_id == values["runtime_id"],
+                    GroupTranslationSegment.speaker_membership_id == membership.id,
+                    GroupTranslationSegment.client_segment_id == client_segment_id,
+                ))
+                if existing:
+                    return self._project_v2(db, actor, existing)
+                segment_id = str(uuid4())
+                ciphertext, nonce, version = self.crypto.encrypt_text(source_text, aad=f"group-translation-segment-source:{space_id}:{segment_id}")
+                segment = GroupTranslationSegment(
+                    id=segment_id, client_segment_id=client_segment_id, space_id=space_id,
+                    runtime_kind=runtime_kind, runtime_id=values["runtime_id"], speaker_membership_id=membership.id,
+                    input_kind=input_kind, source_language=source_language,
+                    source_ciphertext=ciphertext, source_nonce=nonce, encryption_version=version,
+                    state="PROCESSING",
+                )
+                db.add(segment)
+                targets = self._target_languages(db, space_id, joined_ids, source_language)
+                for target in targets:
+                    db.add(GroupTranslationVariant(id=str(uuid4()), segment_id=segment.id, target_language=target, state="PROCESSING"))
+                db.flush()
+                if self.event_broker:
+                    self.event_broker.enqueue_in_transaction(db, space_id, "translation.segment.created", resource_id=segment.id)
+                payload = self._project_v2(db, actor, segment)
+        if self.event_broker:
+            await self.event_broker.publish(space_id, "translation.segment.created", resource_id=segment.id)
+        await self._translate_variants(actor, segment.id, source_text, source_language, targets)
+        with self.database.session() as db:
+            segment = db.get(GroupTranslationSegment, segment.id)
+            return self._project_v2(db, actor, segment) if segment else payload
+
+    async def submit_voice(self, actor: GroupActor, space_id: str, values: dict, audio: bytes, filename: str, content_type: str) -> dict:
+        if len(audio) > self.settings.group_translation_max_audio_bytes or (content_type and not str(content_type).lower().startswith("audio/")):
+            raise GroupServiceError("group_translation_audio_invalid", 413)
+        duration = values.get("duration_seconds")
+        if duration is not None:
+            try:
+                if float(duration) <= 0 or float(duration) > self.settings.group_translation_max_segment_seconds:
+                    raise GroupServiceError("group_translation_audio_invalid", 400)
+            except (TypeError, ValueError) as exc:
+                raise GroupServiceError("group_translation_audio_invalid", 400) from exc
+        with self.database.session() as db:
+            with db.begin():
+                membership, _joined_ids = self._require_v2_runtime(db, actor, space_id, values["runtime_kind"], values["runtime_id"])
+                self._voice_consent_required(db, space_id, membership.id)
+                existing = db.scalar(select(GroupTranslationSegment).where(
+                    GroupTranslationSegment.space_id == space_id,
+                    GroupTranslationSegment.runtime_kind == values["runtime_kind"],
+                    GroupTranslationSegment.runtime_id == values["runtime_id"],
+                    GroupTranslationSegment.speaker_membership_id == membership.id,
+                    GroupTranslationSegment.client_segment_id == values["client_segment_id"],
+                ))
+                if existing:
+                    return self._project_v2(db, actor, existing)
+        if self.provider is None or not hasattr(self.provider, "transcribe_audio"):
+            raise GroupServiceError("group_translation_provider_not_configured", 503)
+        try:
+            transcription = await self.provider.transcribe_audio(
+                audio=audio, filename=filename, content_type=content_type,
+                source_language=values["source_language"], principal_id=actor.key,
+                idempotency_key=f"group-v2-stt:{space_id}:{values['client_segment_id']}",
+            )
+        except GroupServiceError:
+            raise
+        except Exception as exc:
+            raise GroupServiceError(str(getattr(exc, "args", [None])[0] or "group_translation_provider_failed"), 502) from exc
+        values = dict(values)
+        values["source_text"] = transcription.text
+        values["input_kind"] = "voice"
+        return await self.submit_text(actor, space_id, values)
+
+    def v2_history(self, actor: GroupActor, space_id: str, runtime_kind: str | None, runtime_id: str | None, limit: int) -> list[dict]:
+        with self.database.session() as db:
+            if runtime_kind and runtime_id:
+                self._require_v2_runtime(db, actor, space_id, runtime_kind, runtime_id)
+            else:
+                self._membership(db, space_id, actor)
+            query = select(GroupTranslationSegment).where(GroupTranslationSegment.space_id == space_id)
+            if runtime_kind:
+                query = query.where(GroupTranslationSegment.runtime_kind == runtime_kind)
+            if runtime_id:
+                query = query.where(GroupTranslationSegment.runtime_id == runtime_id)
+            rows = list(db.scalars(query.order_by(GroupTranslationSegment.created_at.desc()).limit(max(1, min(limit, 100))).all()) )
+            return [self._project_v2(db, actor, row) for row in rows]
+
+    async def retry_variant(self, actor: GroupActor, space_id: str, segment_id: str, target_language: str) -> dict:
+        if target_language not in {"vi", "en", "zh-TW"}:
+            raise GroupServiceError("invalid_language", 400)
+        with self.database.session() as db:
+            segment = db.get(GroupTranslationSegment, segment_id)
+            if not segment or segment.space_id != space_id:
+                raise GroupServiceError("group_translation_segment_not_found", 404)
+            membership, _ = self._require_v2_runtime(db, actor, space_id, segment.runtime_kind, segment.runtime_id)
+            if membership.id != segment.speaker_membership_id:
+                raise GroupServiceError("group_translation_segment_forbidden", 403)
+            variant = db.scalar(select(GroupTranslationVariant).where(GroupTranslationVariant.segment_id == segment.id, GroupTranslationVariant.target_language == target_language))
+            if not variant:
+                raise GroupServiceError("group_translation_variant_not_found", 404)
+            if variant.state == "FINAL":
+                return self._project_v2(db, actor, segment, target_override=target_language)
+            source_text = self.crypto.decrypt_text(segment.source_ciphertext, segment.source_nonce, aad=f"group-translation-segment-source:{space_id}:{segment.id}", version=segment.encryption_version)
+            source_language = segment.source_language
+        await self._translate_variants(actor, segment.id, source_text, source_language, [target_language])
+        with self.database.session() as db:
+            return self._project_v2(db, actor, db.get(GroupTranslationSegment, segment.id), target_override=target_language)
 
     def claim_tts_job(self, actor: GroupActor, space_id: str) -> dict | None:
         with self.database.session() as db:
