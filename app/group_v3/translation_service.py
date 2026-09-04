@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from sqlalchemy import select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.core.config import Settings
@@ -841,12 +841,25 @@ class GroupTranslationService:
             if runtime_kind and runtime_id:
                 self._require_v2_runtime(db, actor, space_id, runtime_kind, runtime_id)
             else:
-                self._membership(db, space_id, actor)
+                membership = self._membership(db, space_id, actor)
             query = select(GroupTranslationSegment).where(GroupTranslationSegment.space_id == space_id)
             if runtime_kind:
                 query = query.where(GroupTranslationSegment.runtime_kind == runtime_kind)
             if runtime_id:
                 query = query.where(GroupTranslationSegment.runtime_id == runtime_id)
+            if not runtime_id:
+                media_ids = select(GroupMediaParticipant.session_id).where(
+                    GroupMediaParticipant.membership_id == membership.id,
+                    GroupMediaParticipant.invite_status == "joined",
+                )
+                radio_ids = select(GroupRadioParticipant.radio_session_id).where(
+                    GroupRadioParticipant.membership_id == membership.id,
+                    GroupRadioParticipant.status == "joined",
+                )
+                query = query.where(or_(
+                    and_(GroupTranslationSegment.runtime_kind.in_(("call", "video")), GroupTranslationSegment.runtime_id.in_(media_ids)),
+                    and_(GroupTranslationSegment.runtime_kind == "radio", GroupTranslationSegment.runtime_id.in_(radio_ids)),
+                ))
             rows = list(db.scalars(query.order_by(GroupTranslationSegment.created_at.desc()).limit(max(1, min(limit, 100))).all()) )
             return [self._project_v2(db, actor, row) for row in rows]
 
