@@ -930,11 +930,15 @@
   function header() {
     var title = state.space ? state.space.title : t("rooms");
     var status = state.surface === "radio" ? radioState() : state.mediaSession ? state.mediaSession.status.toUpperCase() : "ACTIVE";
+    var mine = myMembership();
+    var settingsButton = mine && ["owner", "admin"].indexOf(mine.role) >= 0
+      ? iconButton("settings", t("groupSettings"), "settings")
+      : "";
     return '<header class="group-header"><div class="group-identity">' +
       (state.surface === "radio" ? '<span class="radio-mark">' + icon("radio-tower", 21) + "</span>" : avatar(title, "teal", "lg", true)) +
       "<span><strong>" + esc(title) + "</strong><small>" + esc(activeMemberCount()) + " " + esc(t("membersLabel")) +
       '</small></span></div><div class="group-header-actions"><span class="surface-status">' + esc(status) + "</span>" +
-      iconButton("members", t("manageMembers"), "users") + iconButton("settings", t("groupSettings"), "settings") + iconButton("refresh", t("refreshData"), "refresh-cw") + iconButton("plugin", t("translationPlugin"), "languages") + "</div></header>";
+      iconButton("members", t("manageMembers"), "users") + settingsButton + iconButton("refresh", t("refreshData"), "refresh-cw") + iconButton("plugin", t("translationPlugin"), "languages") + "</div></header>";
   }
 
   function surface() {
