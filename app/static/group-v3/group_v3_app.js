@@ -649,15 +649,17 @@
       return member.status === "active" && (!mine || member.id !== mine.id);
     });
     var labels = others.map(function (member) {
-      return '<label><input type="checkbox" name="participant" value="' + esc(member.id) + '"> ' +
+      var searchText = String(member.display_name || "") + " " + String(member.principal_id || "");
+      return '<label data-media-member data-member-name="' + esc(searchText) + '"><input type="checkbox" name="participant" value="' + esc(member.id) + '"> ' +
         avatar(member.display_name, "mint", "sm", true) + "<span>" + esc(member.display_name) + "</span></label>";
     }).join("");
     var title = kind === "radio" ? t("startRadio") : kind === "video" ? t("startVideoCall") : t("startAudioCall");
     var iconName = kind === "radio" ? "radio-tower" : kind === "video" ? "video" : "phone-call";
     return '<div class="runtime-empty"><span>' + icon(iconName, 28) + "</span><h2>" + esc(t("noActiveSession")) + "</h2><p>" +
       esc(others.length ? t("chooseParticipants") : t("creatorNeedsInvitee")) + '</p><form class="media-start-form" data-form="' +
-      (kind === "radio" ? "create-radio" : "create-media") + '" data-kind="' + kind + '"><fieldset>' + labels +
-      '</fieldset><button type="submit" class="action-button action-primary" ' + (others.length ? "" : "disabled") + ">" +
+      (kind === "radio" ? "create-radio" : "create-media") + '" data-kind="' + kind + '">' +
+      (others.length ? '<label class="media-member-search"><span>' + icon("search", 15) + '<span class="sr-only">' + esc(t("searchMembers")) + '</span><input type="search" data-media-member-search autocomplete="off" placeholder="' + esc(t("searchMembers")) + '"></label>' : "") +
+      '<fieldset>' + labels + '</fieldset><p class="media-member-empty" data-media-no-results hidden>' + esc(t("noEligibleContacts")) + '</p><button type="submit" class="action-button action-primary" ' + (others.length ? "" : "disabled") + ">" +
       icon(iconName, 17) + "<span>" + esc(title) + "</span></button></form></div>";
   }
 
@@ -1798,6 +1800,20 @@
   });
 
   root.addEventListener("input", function (event) {
+    var memberSearch = event.target.closest("[data-media-member-search]");
+    if (memberSearch) {
+      var query = String(event.target.value || "").trim().toLocaleLowerCase();
+      var visible = 0;
+      root.querySelectorAll("[data-media-member]").forEach(function (member) {
+        var haystack = String(member.dataset.memberName || member.textContent || "").toLocaleLowerCase();
+        var matches = !query || haystack.indexOf(query) >= 0;
+        member.hidden = !matches;
+        if (matches) visible += 1;
+      });
+      var empty = root.querySelector("[data-media-no-results]");
+      if (empty) empty.hidden = visible > 0;
+      return;
+    }
     if (isTextEntry(event.target)) resizeTextEntry(event.target);
   });
 
