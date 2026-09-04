@@ -75,6 +75,14 @@ html, body, .group-native-app { width: 100%; min-width: 0; height: 100%; min-hei
 .member-manager-upgrade { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--canvas); }
 .member-manager-upgrade p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
 .member-manager-upgrade .action-button { justify-self: start; }
+.group-space-settings { display: grid; gap: 12px; padding: 14px 0 18px; border-bottom: 1px solid var(--border); }
+.group-space-settings label { display: grid; gap: 6px; color: var(--muted); font-size: 10px; font-weight: 750; }
+.group-space-settings input, .group-space-settings textarea, .group-settings-transfer select { width: 100%; min-height: 42px; padding: 10px 12px; color: var(--ink); border: 1px solid var(--border); border-radius: 10px; background: var(--canvas); font: inherit; }
+.group-space-settings textarea { min-height: 84px; resize: vertical; }
+.group-space-settings small, .group-settings p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.group-settings-transfer { display: grid; gap: 8px; }
+.group-settings-danger { margin-top: 18px; padding: 14px; border: 1px solid rgba(214, 66, 48, .3); border-radius: 12px; background: rgba(214, 66, 48, .05); }
+.group-settings-danger .action-button { margin-top: 10px; }
 .attachment-image { width: min(300px, 100%); display: grid; gap: 5px; margin-top: 8px; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; color: var(--teal-strong); background: var(--canvas); text-align: left; cursor: pointer; }
 .attachment-image img { width: 100%; max-height: 240px; display: block; object-fit: cover; }
 .attachment-image span { padding: 0 9px 8px; overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }

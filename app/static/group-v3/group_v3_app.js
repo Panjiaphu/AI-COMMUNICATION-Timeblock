@@ -34,7 +34,8 @@
     headphones: '<path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/>',
     "log-out": '<path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>',
     "refresh-cw": '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
-    history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>'
+    history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+    settings: '<path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="m19.4 15 .1.1a2 2 0 1 1-2.8 2.8l-.1-.1a2 2 0 0 0-3.4 1.4V19a2 2 0 1 1-4 0v-.2a2 2 0 0 0-3.4-1.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A2 2 0 0 0 1.6 11H1.5a2 2 0 1 1 0-4h.2a2 2 0 0 0 1.4-3.4l-.1-.1A2 2 0 1 1 5.8.7l.1.1A2 2 0 0 0 9.3-.6V-.5a2 2 0 1 1 4 0v.2a2 2 0 0 0 3.4 1.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A2 2 0 0 0 20.9 7h.1a2 2 0 1 1 0 4h-.2a2 2 0 0 0-1.4 3.4Z" transform="translate(1.5 1.5) scale(.875)"/>'
     ,search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>'
   };
 
@@ -54,6 +55,7 @@
     spaceInvitations: [],
     incomingInvitations: [],
     memberManagerOpen: false,
+    settingsOpen: false,
     messages: [],
     chatTranslations: {},
     pins: [],
@@ -619,6 +621,27 @@
       '</div></section></div>';
   }
 
+  function renderGroupSettings() {
+    if (!state.settingsOpen || !state.space) return "";
+    var mine = myMembership();
+    if (!mine || ["owner", "admin"].indexOf(mine.role) < 0) return "";
+    var canTransfer = mine.role === "owner";
+    var targets = state.members.filter(function (item) {
+      return item.status === "active" && item.id !== mine.id;
+    }).map(function (item) {
+      return '<option value="' + esc(item.id) + '">' + esc(item.display_name) + " · " + esc(t(item.role === "admin" ? "moderator" : "member")) + "</option>";
+    }).join("");
+    var transferBlock = canTransfer
+      ? '<section><h3>' + esc(t("transferOwnership")) + '</h3><p>' + esc(t("transferOwnershipNote")) + '</p><div class="group-settings-transfer"><select data-setting="transfer-target"><option value="">' + esc(t("chooseMember")) + "</option>" + targets + '</select>' + action("transfer-ownership", t("transferOwnership"), "users", "secondary") + "</div></section>"
+      : "";
+    var deleteBlock = canTransfer
+      ? '<section class="group-settings-danger"><h3>' + esc(t("dangerZone")) + '</h3><p>' + esc(t("deleteGroupNote")) + '</p>' + action("delete-group", t("deleteGroup"), "log-out", "danger") + "</section>"
+      : "";
+    return '<div class="member-manager-backdrop" data-action="close-settings"><section class="member-manager group-settings" role="dialog" aria-modal="true" aria-labelledby="group-settings-title" data-member-manager>' +
+      '<header><div><strong id="group-settings-title">' + esc(t("groupSettings")) + '</strong><small>' + esc(state.space.title) + '</small></div>' + iconButton("close-settings", t("close"), "log-out") + '</header><div class="member-manager-scroll">' +
+      '<form class="settings-form group-space-settings" data-form="save-group-settings"><label><span>' + esc(t("spaceName")) + '</span><input name="title" value="' + esc(state.space.title) + '" minlength="2" maxlength="120" required></label><label><span>' + esc(t("spaceDescription")) + '</span><textarea name="description" maxlength="500">' + esc(state.space.description || "") + '</textarea><small>' + esc(t("settingsVersion")) + ": " + esc(state.space.version) + '</small><button type="submit" class="action-button action-primary">' + icon("settings", 17) + '<span>' + esc(t("saveSettings")) + '</span></button></form>' + transferBlock + deleteBlock + '</div></section></div>';
+  }
+
   function renderMessage(message) {
     var mine = message.sender
       && message.sender.type === state.context.principal.type
@@ -911,7 +934,7 @@
       (state.surface === "radio" ? '<span class="radio-mark">' + icon("radio-tower", 21) + "</span>" : avatar(title, "teal", "lg", true)) +
       "<span><strong>" + esc(title) + "</strong><small>" + esc(activeMemberCount()) + " " + esc(t("membersLabel")) +
       '</small></span></div><div class="group-header-actions"><span class="surface-status">' + esc(status) + "</span>" +
-      iconButton("members", t("manageMembers"), "users") + iconButton("refresh", t("refreshData"), "refresh-cw") + iconButton("plugin", t("translationPlugin"), "languages") + "</div></header>";
+      iconButton("members", t("manageMembers"), "users") + iconButton("settings", t("groupSettings"), "settings") + iconButton("refresh", t("refreshData"), "refresh-cw") + iconButton("plugin", t("translationPlugin"), "languages") + "</div></header>";
   }
 
   function surface() {
@@ -1010,7 +1033,7 @@
       esc(t("nativeGroupApp")) + '</small></span></div><div class="mobile-header-actions">' + nav.mobileLogout + '<span class="mobile-state-dot"></span></div></header>' + renderRooms() +
       '<section class="native-main ' + (banner ? "has-banner" : "") + '"><div class="session-strip"><span><i></i>' +
       esc(t("signedIn")) + "</span><span>" + esc(state.groupAuthorized ? t("groupSession") : t("handoffRequiredTitle")) + "</span></div>" + banner + (state.groupAuthorized ? header() : "") + mobileLanguageBar() + surface() +
-      "</section>" + nav.mobile + "</div>" + renderMemberManager() + renderPrejoin() + renderAttachmentViewer();
+      "</section>" + nav.mobile + "</div>" + renderMemberManager() + renderGroupSettings() + renderPrejoin() + renderAttachmentViewer();
     root.dataset.runtimeState = "READY";
     syncIncomingRingtone();
     syncMediaElements();
@@ -1331,6 +1354,67 @@
     }
   }
 
+  async function saveGroupSettings(form) {
+    if (!state.space || !form) return;
+    var data = new FormData(form);
+    try {
+      var payload = await api("/api/group/spaces/" + encodeURIComponent(state.space.id), json("PATCH", {
+        title: String(data.get("title") || "").trim(),
+        description: String(data.get("description") || "").trim(),
+        version: state.space.version
+      }));
+      state.space = payload.space;
+      var room = state.spaces.find(function (item) { return item.id === state.space.id; });
+      if (room) Object.assign(room, state.space);
+      notify(t("settingsSaved"));
+      render();
+    } catch (error) {
+      notify(publicError(error));
+      if (error && error.status === 409) await loadSpaces(state.space.id).catch(function () {});
+      render();
+    }
+  }
+
+  async function transferOwnership(button) {
+    if (!state.space) return;
+    var select = root.querySelector('[data-setting="transfer-target"]');
+    var target = select && select.value;
+    if (!target) {
+      notify(t("chooseMember"));
+      return;
+    }
+    if (!window.confirm(t("transferOwnershipConfirm"))) return;
+    try {
+      await api("/api/group/spaces/" + encodeURIComponent(state.space.id) + "/ownership/transfer", json("POST", {
+        target_membership_id: target,
+        version: state.space.version
+      }));
+      state.settingsOpen = false;
+      await loadSpaces(state.space.id);
+      notify(t("ownershipTransferred"));
+      render();
+    } catch (error) {
+      notify(publicError(error));
+    }
+  }
+
+  async function deleteGroup() {
+    if (!state.space) return;
+    if (!window.confirm(t("deleteGroupConfirm"))) return;
+    var deletingId = state.space.id;
+    try {
+      await disconnectMedia(false);
+      await api("/api/group/spaces/" + encodeURIComponent(deletingId) + "?version=" + encodeURIComponent(state.space.version), { method: "DELETE" });
+      state.settingsOpen = false;
+      state.memberManagerOpen = false;
+      await loadSpaces("");
+      notify(t("groupDeleted"));
+      render();
+    } catch (error) {
+      notify(publicError(error));
+    }
+  }
+
   function closePrejoin(releaseStream) {
     state.prejoinOpen = false;
     state.prejoinBusy = false;
@@ -1627,12 +1711,25 @@
     if (name === "refresh") return refreshAll();
     if (name === "members") {
       state.memberManagerOpen = true;
+      state.settingsOpen = false;
       await loadMembershipManagement();
+      render();
+      return;
+    }
+    if (name === "settings") {
+      state.settingsOpen = true;
+      state.memberManagerOpen = false;
+      await loadSpace();
       render();
       return;
     }
     if (name === "close-members") {
       state.memberManagerOpen = false;
+      render();
+      return;
+    }
+    if (name === "close-settings") {
+      state.settingsOpen = false;
       render();
       return;
     }
@@ -1642,6 +1739,8 @@
     if (name === "reject-invitation") return decideInvitation(button, false);
     if (name === "toggle-member-role") return updateMember(button, { role: button.dataset.role });
     if (name === "remove-member") return updateMember(button, { status: "removed" });
+    if (name === "transfer-ownership") return transferOwnership(button);
+    if (name === "delete-group") return deleteGroup();
     if (name === "plugin") return updateSurface("chat-translation");
     if (name === "pin-message") return pinMessage(button);
     if (name === "toggle-auto-translate") {
@@ -1716,6 +1815,7 @@
     if (form.dataset.form === "create-media") return createMedia(form);
     if (form.dataset.form === "create-radio") return createRadio(form);
     if (form.dataset.form === "save-profile") return saveProfile(form);
+    if (form.dataset.form === "save-group-settings") return saveGroupSettings(form);
   }
 
   async function handleChange(control) {
@@ -2134,6 +2234,12 @@
   root.addEventListener("keydown", function (event) {
     if (event.key === "Escape" && state.attachmentViewer) {
       state.attachmentViewer = null;
+      render();
+      return;
+    }
+    if (event.key === "Escape" && (state.settingsOpen || state.memberManagerOpen)) {
+      state.settingsOpen = false;
+      state.memberManagerOpen = false;
       render();
       return;
     }

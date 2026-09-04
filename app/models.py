@@ -14,6 +14,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -48,6 +49,13 @@ class GroupMembership(Base):
         CheckConstraint("status IN ('active','left','removed')", name="ck_group_membership_status"),
         Index("ix_group_memberships_principal_status", "principal_type", "principal_id", "principal_user_id", "status"),
         Index("ix_group_memberships_space_status", "space_id", "status", "role"),
+        Index(
+            "uq_group_memberships_active_owner",
+            "space_id",
+            unique=True,
+            sqlite_where=text("status = 'active' AND role = 'owner'"),
+            postgresql_where=text("status = 'active' AND role = 'owner'"),
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)

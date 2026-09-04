@@ -17,6 +17,7 @@ from app.group_v3.schemas import (
     ReactionCreate,
     SpaceCreate,
     SpaceUpdate,
+    OwnershipTransfer,
 )
 from app.group_v3.service import GroupServiceError
 from app.integrations.timeblock.client import TimeblockIntegrationError
@@ -169,6 +170,31 @@ async def update_space(request: Request, space_id: str, body: SpaceUpdate) -> JS
     space = _service(request).update_space(actor, normalized_space_id, values)
     await _publish(request, normalized_space_id, "space.updated", normalized_space_id)
     return _json({"space": space})
+
+
+@router.post("/spaces/{space_id}/ownership/transfer")
+async def transfer_ownership(request: Request, space_id: str, body: OwnershipTransfer) -> JSONResponse:
+    require_write_origin(request)
+    actor = require_group_actor(request, "group.spaces.write")
+    normalized_space_id = _bounded_id(space_id, "space_id")
+    payload = _service(request).transfer_ownership(
+        actor,
+        normalized_space_id,
+        _bounded_id(body.target_membership_id, "membership_id"),
+        body.version,
+    )
+    await _publish(request, normalized_space_id, "ownership.transferred", body.target_membership_id)
+    return _json({"space": payload})
+
+
+@router.delete("/spaces/{space_id}")
+async def delete_space(request: Request, space_id: str, version: int = Query(..., ge=1)) -> JSONResponse:
+    require_write_origin(request)
+    actor = require_group_actor(request, "group.spaces.write")
+    normalized_space_id = _bounded_id(space_id, "space_id")
+    payload = _service(request).delete_space(actor, normalized_space_id, version)
+    await _publish(request, normalized_space_id, "space.deleted", normalized_space_id)
+    return _json({"space": payload})
 
 
 @router.get("/spaces/{space_id}/events")

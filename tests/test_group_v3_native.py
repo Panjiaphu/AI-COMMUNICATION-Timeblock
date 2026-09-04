@@ -719,3 +719,12 @@ def test_group_media_connection_migration_advances_single_head_and_is_reversible
     assert 'op.create_check_constraint(' in migration
     assert 'op.drop_constraint(' in migration
     assert 'op.drop_column("group_media_participants", "connection_status")' in migration
+
+
+def test_group_owner_invariant_migration_is_present_and_reversible_source():
+    migration = (ROOT / "alembic/versions/20260904_0022_group_owner_invariant.py").read_text(encoding="utf-8")
+    assert 'revision = "20260904_0022"' in migration
+    assert 'down_revision = "20260904_0021"' in migration
+    assert "uq_group_memberships_active_owner" in migration
+    assert "sqlite_where" in migration and "postgresql_where" in migration
+    assert 'op.drop_index("uq_group_memberships_active_owner"' in migration

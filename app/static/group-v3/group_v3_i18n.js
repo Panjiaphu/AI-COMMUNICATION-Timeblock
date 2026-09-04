@@ -285,6 +285,10 @@ Object.assign(copy.vi, {
   invitationAccepted: 'Đã tham gia không gian', invitationRejected: 'Đã từ chối lời mời',
   makeAdmin: 'Đặt làm quản trị', makeMember: 'Đặt làm thành viên', removeMember: 'Xóa thành viên',
   removeMemberConfirm: 'Xóa thành viên này khỏi Chat, dịch, Call, Video và Radio?', memberUpdated: 'Đã cập nhật thành viên',
+  groupSettings: 'Cài đặt không gian', spaceDescription: 'Mô tả không gian', settingsVersion: 'Phiên bản dữ liệu',
+  transferOwnership: 'Chuyển quyền chủ phòng', transferOwnershipNote: 'Chuyển quyền cho một thành viên đang hoạt động. Bạn sẽ trở thành điều phối viên.',
+  transferOwnershipConfirm: 'Chuyển quyền chủ phòng cho thành viên này?', ownershipTransferred: 'Đã chuyển quyền chủ phòng', chooseMember: 'Chọn thành viên',
+  dangerZone: 'Khu vực nguy hiểm', deleteGroup: 'Xóa không gian', deleteGroupNote: 'Xóa mềm không gian và kết thúc mọi Call, Video, Radio đang hoạt động.', deleteGroupConfirm: 'Xóa không gian này? Dữ liệu sẽ không còn hiển thị cho thành viên.', groupDeleted: 'Đã xóa không gian',
   accept: 'Chấp nhận', membershipAccessRevoked: 'Quyền thành viên của bạn trong không gian này đã bị thu hồi.',
 });
 Object.assign(copy.en, {
@@ -300,6 +304,10 @@ Object.assign(copy.en, {
   invitationAccepted: 'Space joined', invitationRejected: 'Invitation rejected',
   makeAdmin: 'Make admin', makeMember: 'Make member', removeMember: 'Remove member',
   removeMemberConfirm: 'Remove this member from Chat, translation, Call, Video, and Radio?', memberUpdated: 'Member updated',
+  groupSettings: 'Space settings', spaceDescription: 'Space description', settingsVersion: 'Data version',
+  transferOwnership: 'Transfer ownership', transferOwnershipNote: 'Transfer the owner role to an active member. You will become an admin.',
+  transferOwnershipConfirm: 'Transfer ownership to this member?', ownershipTransferred: 'Ownership transferred', chooseMember: 'Choose a member',
+  dangerZone: 'Danger zone', deleteGroup: 'Delete space', deleteGroupNote: 'Soft-delete the space and end every active Call, Video, and Radio session.', deleteGroupConfirm: 'Delete this space? It will disappear for all members.', groupDeleted: 'Space deleted',
   accept: 'Accept', membershipAccessRevoked: 'Your membership access to this space was revoked.',
 });
 Object.assign(copy['zh-TW'], {
@@ -315,6 +323,10 @@ Object.assign(copy['zh-TW'], {
   invitationAccepted: '已加入空間', invitationRejected: '已拒絕邀請',
   makeAdmin: '設為管理員', makeMember: '設為成員', removeMember: '移除成員',
   removeMemberConfirm: '要將此成員從聊天、翻譯、語音、視訊與 Radio 中移除嗎？', memberUpdated: '成員已更新',
+  groupSettings: '空間設定', spaceDescription: '空間描述', settingsVersion: '資料版本',
+  transferOwnership: '轉移房主權限', transferOwnershipNote: '將房主角色轉移給使用中的成員。你將成為管理員。',
+  transferOwnershipConfirm: '要將房主權限轉移給此成員嗎？', ownershipTransferred: '房主權限已轉移', chooseMember: '選擇成員',
+  dangerZone: '危險區域', deleteGroup: '刪除空間', deleteGroupNote: '軟刪除空間並結束所有進行中的語音、視訊與 Radio 工作階段。', deleteGroupConfirm: '要刪除此空間嗎？它將不再顯示給任何成員。', groupDeleted: '空間已刪除',
   accept: '接受', membershipAccessRevoked: '你在此空間的成員權限已被撤銷。',
 });
 

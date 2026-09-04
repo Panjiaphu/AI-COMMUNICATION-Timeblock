@@ -17,6 +17,7 @@ from app.models import (
     GroupAuditEvent,
     GroupIdempotencyRecord,
     GroupMediaParticipant,
+    GroupMediaSession,
     GroupMembership,
     GroupMessage,
     GroupMessagePin,
@@ -24,6 +25,7 @@ from app.models import (
     GroupRadioBurst,
     GroupRadioParticipant,
     GroupRadioProcessingJob,
+    GroupRadioSession,
     GroupSpace,
     GroupTtsJob,
 )
@@ -252,6 +254,8 @@ class GroupService:
                     raise GroupServiceError("group_space_not_found", 404)
                 if int(values["version"]) != space.version:
                     raise GroupServiceError("group_space_version_conflict", 409)
+                if values.get("lifecycle_status") is not None and membership.role != "owner":
+                    raise GroupServiceError("group_lifecycle_update_denied", 403)
                 for key in ("title", "description", "lifecycle_status"):
                     if values.get(key) is not None:
                         setattr(space, key, values[key])
@@ -259,6 +263,93 @@ class GroupService:
                 space.updated_at = _now()
                 self._audit(db, actor, space_id, "space.updated", resource_type="space", resource_id=space_id)
                 return self._space_payload(space, membership)
+
+    def transfer_ownership(
+        self,
+        actor: GroupActor,
+        space_id: str,
+        target_membership_id: str,
+        version: int,
+    ) -> dict:
+        """Atomically move the sole active owner role to another member."""
+
+        with self.database.session() as db:
+            try:
+                with db.begin():
+                    current_owner = self._require_membership(db, space_id, actor, roles={"owner"})
+                    space = db.get(GroupSpace, space_id)
+                    if not space or space.lifecycle_status == "deleted":
+                        raise GroupServiceError("group_space_not_found", 404)
+                    if int(version) != space.version:
+                        raise GroupServiceError("group_space_version_conflict", 409)
+                    if target_membership_id == current_owner.id:
+                        raise GroupServiceError("group_transfer_target_required", 400)
+                    target = db.get(GroupMembership, target_membership_id)
+                    if not target or target.space_id != space_id or target.status != "active":
+                        raise GroupServiceError("group_transfer_target_invalid", 404)
+                    # Demote first, then promote. The partial unique index prevents
+                    # any concurrent transaction from creating a second owner.
+                    current_owner.role = "admin"
+                    current_owner.updated_at = _now()
+                    target.role = "owner"
+                    target.updated_at = _now()
+                    space.version += 1
+                    space.updated_at = _now()
+                    self._audit(
+                        db,
+                        actor,
+                        space_id,
+                        "ownership.transferred",
+                        resource_type="membership",
+                        resource_id=target.id,
+                        metadata={"from_membership_id": current_owner.id, "to_membership_id": target.id},
+                    )
+                    return self._space_payload(space, current_owner)
+            except IntegrityError as exc:
+                raise GroupServiceError("group_owner_conflict", 409) from exc
+
+    def delete_space(self, actor: GroupActor, space_id: str, version: int) -> dict:
+        """Soft-delete a Group and stop all durable participation in one transaction."""
+
+        with self.database.session() as db:
+            with db.begin():
+                owner = self._require_membership(db, space_id, actor, roles={"owner"})
+                space = db.get(GroupSpace, space_id)
+                if not space or space.lifecycle_status == "deleted":
+                    raise GroupServiceError("group_space_not_found", 404)
+                if int(version) != space.version:
+                    raise GroupServiceError("group_space_version_conflict", 409)
+                now = _now()
+                space.lifecycle_status = "deleted"
+                space.version += 1
+                space.updated_at = now
+                db.execute(
+                    update(GroupMembership)
+                    .where(GroupMembership.space_id == space_id, GroupMembership.status == "active")
+                    .values(status="removed", left_at=now, updated_at=now)
+                )
+                db.execute(
+                    update(GroupMediaParticipant)
+                    .where(GroupMediaParticipant.session_id.in_(select(GroupMediaSession.id).where(GroupMediaSession.space_id == space_id)))
+                    .values(invite_status="left", connection_status="failed", connection_error_code="space_deleted", left_at=now, updated_at=now)
+                )
+                db.execute(
+                    update(GroupMediaSession)
+                    .where(GroupMediaSession.space_id == space_id, GroupMediaSession.status != "ended")
+                    .values(status="ended", ended_at=now, end_reason="space_deleted", updated_at=now)
+                )
+                db.execute(
+                    update(GroupRadioParticipant)
+                    .where(GroupRadioParticipant.radio_session_id.in_(select(GroupRadioSession.id).where(GroupRadioSession.space_id == space_id)))
+                    .values(status="removed", device_state="lost", left_at=now, device_lost_at=now, updated_at=now)
+                )
+                db.execute(
+                    update(GroupRadioSession)
+                    .where(GroupRadioSession.space_id == space_id, GroupRadioSession.status != "ended")
+                    .values(status="ended", ended_at=now, ended_by_membership_id=owner.id, updated_at=now)
+                )
+                self._audit(db, actor, space_id, "space.deleted", resource_type="space", resource_id=space_id)
+                return {"id": space_id, "lifecycle_status": "deleted", "version": space.version}
 
     def list_members(self, actor: GroupActor, space_id: str) -> list[dict]:
         with self.database.session() as db:
