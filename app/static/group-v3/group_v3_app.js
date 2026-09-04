@@ -443,9 +443,13 @@
         icon(item[1], 21) + "<span>" + esc(t(item[2])) + "</span></button>";
     }).join("");
     var direct = '<a href="/assistant" class="direct-navigation">' + icon("message-circle", 21) + "<span>" + esc(t("directMessages")) + "</span></a>";
+    var logoutPath = "/logout?lang=" + encodeURIComponent(state.locale);
+    var logout = '<a href="' + esc(logoutPath) + '" class="logout-navigation" aria-label="' + esc(t("logout")) + '" title="' + esc(t("logout")) + '">' + icon("log-out", 19) + "<span>" + esc(t("logout")) + "</span></a>";
+    var identity = '<div class="identity-actions"><div class="identity-chip" aria-label="' + esc(state.context && state.context.principal && state.context.principal.display_name || "") + '"><span>' + esc(initials(state.context && state.context.principal.display_name)) + "</span><i></i></div>" + logout + "</div>";
     return {
-      desktop: '<aside class="global-nav" aria-label="' + esc(t("roomNavigation")) + '"><div class="app-logo is-compact"><span class="app-logo-mark"><img src="/static/group-v3/timeblock-chat.svg" alt=""></span></div><nav>' + direct + buttons + '</nav><div class="identity-chip"><span>' + esc(initials(state.context && state.context.principal.display_name)) + "</span><i></i></div></aside>",
-      mobile: '<nav class="mobile-bottom-nav" aria-label="' + esc(t("roomNavigation")) + '">' + direct + buttons + "</nav>"
+      desktop: '<aside class="global-nav" aria-label="' + esc(t("roomNavigation")) + '"><div class="app-logo is-compact"><span class="app-logo-mark"><img src="/static/group-v3/timeblock-chat.svg" alt=""></span></div><nav>' + direct + buttons + '</nav>' + identity + "</aside>",
+      mobile: '<nav class="mobile-bottom-nav" aria-label="' + esc(t("roomNavigation")) + '">' + direct + buttons + "</nav>",
+      mobileLogout: logout
     };
   }
 
@@ -909,7 +913,7 @@
     root.innerHTML = '<div class="native-app native-' + (state.mobile ? "mobile" : "desktop") + '" data-state="' + esc(state.surface) +
       '" data-locale="' + esc(state.locale) + '">' + nav.desktop +
       '<header class="mobile-app-header"><div class="app-logo"><span class="app-logo-mark"><img src="/static/group-v3/timeblock-chat.svg" alt=""></span><span><strong>AI-COMMUNICATION</strong><small>' +
-      esc(t("nativeGroupApp")) + '</small></span></div><span class="mobile-state-dot"></span></header>' + renderRooms() +
+      esc(t("nativeGroupApp")) + '</small></span></div><div class="mobile-header-actions">' + nav.mobileLogout + '<span class="mobile-state-dot"></span></div></header>' + renderRooms() +
       '<section class="native-main ' + (banner ? "has-banner" : "") + '"><div class="session-strip"><span><i></i>' +
       esc(t("signedIn")) + "</span><span>" + esc(state.groupAuthorized ? t("groupSession") : t("handoffRequiredTitle")) + "</span></div>" + banner + (state.groupAuthorized ? header() : "") + mobileLanguageBar() + surface() +
       "</section>" + nav.mobile + "</div>" + renderMemberManager();

@@ -188,7 +188,7 @@ function translator(locale) {
 
 
 Object.assign(copy.vi, {
-  directMessages: 'Direct', handoffRequiredTitle: 'Cần quyền Giao tiếp nhóm',
+  directMessages: 'Direct', logout: 'Đăng xuất', handoffRequiredTitle: 'Cần quyền Giao tiếp nhóm',
   handoffRequiredNote: 'Mở launcher Giao tiếp nhóm tại Timeblock để nhận quyền theo phòng. Direct vẫn dùng cùng phiên đăng nhập này.',
   signedIn: 'Đã xác thực từ Timeblock', waitingHandoff: 'Đang chờ secure handoff từ Timeblock…',
   handoffFailed: 'Secure handoff không hợp lệ hoặc đã hết hạn.', openTimeblock: 'Quay lại Timeblock',
@@ -216,7 +216,7 @@ Object.assign(copy.vi, {
   creatorNeedsInvitee: 'Thêm thành viên từ liên hệ Timeblock trước khi bắt đầu phiên.',
 });
 Object.assign(copy.en, {
-  directMessages: 'Direct', handoffRequiredTitle: 'Group authorization required',
+  directMessages: 'Direct', logout: 'Log out', handoffRequiredTitle: 'Group authorization required',
   handoffRequiredNote: 'Open the Group Communication launcher in Timeblock to receive room-scoped access. Direct keeps using this app session.',
   signedIn: 'Authenticated by Timeblock', waitingHandoff: 'Waiting for a secure handoff from Timeblock…',
   handoffFailed: 'The secure handoff is invalid or expired.', openTimeblock: 'Return to Timeblock',
@@ -244,7 +244,7 @@ Object.assign(copy.en, {
   creatorNeedsInvitee: 'Add members from Timeblock contacts before starting a session.',
 });
 Object.assign(copy['zh-TW'], {
-  directMessages: 'Direct', handoffRequiredTitle: '需要群組通訊授權',
+  directMessages: 'Direct', logout: '登出', handoffRequiredTitle: '需要群組通訊授權',
   handoffRequiredNote: '請從 Timeblock 開啟群組通訊啟動器，以取得房間範圍授權。Direct 繼續使用同一個應用程式工作階段。',
   signedIn: '已由 Timeblock 驗證', waitingHandoff: '正在等待 Timeblock 的安全交接…',
   handoffFailed: '安全交接無效或已過期。', openTimeblock: '返回 Timeblock',
