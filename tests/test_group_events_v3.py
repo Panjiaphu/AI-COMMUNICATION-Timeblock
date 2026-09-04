@@ -61,3 +61,14 @@ def test_group_event_outbox_persists_and_is_secret_free(tmp_path):
         assert row.status == "published"
         assert row.published_at is not None
     database.dispose()
+
+
+def test_group_event_outbox_drain_is_noop_before_stale_local_migration(tmp_path):
+    database = Database(Settings(database_url=f"sqlite:///{(tmp_path / 'stale.sqlite3').as_posix()}"))
+
+    async def scenario():
+        broker = GroupEventBroker(database=database)
+        assert await broker.drain_outbox() == 0
+
+    asyncio.run(scenario())
+    database.dispose()

@@ -11,6 +11,7 @@ from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.models import GroupEventOutbox
 
@@ -219,18 +220,25 @@ class GroupEventBroker:
     async def drain_outbox(self, limit: int = 100) -> int:
         if not self._database:
             return 0
-        with self._database.session() as db:
-            rows = list(
-                db.scalars(
-                    select(GroupEventOutbox)
-                    .where(
-                        GroupEventOutbox.status.in_(("pending", "failed")),
-                        GroupEventOutbox.next_attempt_at <= _now(),
-                    )
-                    .order_by(GroupEventOutbox.created_at, GroupEventOutbox.id)
-                    .limit(max(1, min(int(limit), 500)))
-                ).all()
-            )
+        try:
+            with self._database.session() as db:
+                rows = list(
+                    db.scalars(
+                        select(GroupEventOutbox)
+                        .where(
+                            GroupEventOutbox.status.in_(("pending", "failed")),
+                            GroupEventOutbox.next_attempt_at <= _now(),
+                        )
+                        .order_by(GroupEventOutbox.created_at, GroupEventOutbox.id)
+                        .limit(max(1, min(int(limit), 500)))
+                    ).all()
+                )
+        except (OperationalError, ProgrammingError) as exc:
+            # A stale local database can start before its Group migration has
+            # been applied. Readiness remains fail-closed; housekeeping must
+            # not take down the process while waiting for migration.
+            logger.warning("Group event outbox unavailable; skipping drain: %s", exc)
+            return 0
         delivered = 0
         for row in rows:
             event = GroupEvent(row.id, row.event_type, row.space_id, row.resource_id)
