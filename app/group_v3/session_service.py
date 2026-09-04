@@ -108,6 +108,8 @@ class GroupMediaSessionService:
             "display_name": item.display_name,
             "livekit_identity": item.livekit_identity,
             "invite_status": item.invite_status,
+            "connection_status": item.connection_status,
+            "connection_error_code": item.connection_error_code,
             "joined_at": _iso(item.joined_at),
             "rejected_at": _iso(item.rejected_at),
             "left_at": _iso(item.left_at),
@@ -195,6 +197,7 @@ class GroupMediaSessionService:
                             display_name=membership.display_name,
                             livekit_identity=participant_identity(session.id, membership.id),
                             invite_status="joined" if is_actor else "invited",
+                            connection_status="not_connected",
                             joined_at=_now() if is_actor else None,
                         )
                     )
@@ -242,12 +245,47 @@ class GroupMediaSessionService:
                     participant.invite_status = "joined"
                     participant.joined_at = _now()
                     participant.updated_at = _now()
-                if session.status == "ringing":
+                participant.connection_status = "not_connected"
+                participant.connection_error_code = ""
+                self._audit(db, actor, space_id, "media_session.joined", session.id)
+                db.flush()
+                return self._session_payload(db, session)
+
+    def update_connection_state(
+        self,
+        actor: GroupActor,
+        space_id: str,
+        session_id: str,
+        status: str,
+        failure_code: str = "",
+    ) -> dict:
+        if status not in {"connecting", "connected", "reconnecting", "failed"}:
+            raise GroupServiceError("invalid_media_connection_status", 400)
+        with self.database.session() as db:
+            with db.begin():
+                self._membership(db, space_id, actor)
+                session = self._locked_session(db, space_id, session_id)
+                participant = self._participant(db, session_id, actor, for_update=True)
+                if session.status == "ended":
+                    raise GroupServiceError("group_media_session_ended", 409)
+                if participant.invite_status != "joined":
+                    raise GroupServiceError("group_media_join_required", 409)
+                participant.connection_status = status
+                participant.connection_error_code = str(failure_code or "")[:80] if status == "failed" else ""
+                participant.updated_at = _now()
+                if status == "connected" and session.status == "ringing":
                     session.status = "active"
                     session.started_at = _now()
                     session.version += 1
                     session.updated_at = _now()
-                self._audit(db, actor, space_id, "media_session.joined", session.id)
+                self._audit(
+                    db,
+                    actor,
+                    space_id,
+                    "media_session.connection_state",
+                    session.id,
+                    {"status": status, "failure_code": participant.connection_error_code},
+                )
                 db.flush()
                 return self._session_payload(db, session)
 
@@ -376,8 +414,8 @@ class GroupMediaSessionService:
             if not session or session.space_id != space_id:
                 raise GroupServiceError("group_media_session_not_found", 404)
             participant = self._participant(db, session_id, actor)
-            if session.status != "active" or participant.invite_status != "joined":
-                # This is the hard RINGING boundary: no microphone/camera grant exists yet.
+            if session.status not in {"ringing", "active"} or participant.invite_status != "joined":
+                # RINGING still has no grant until this participant explicitly joins.
                 raise GroupServiceError("group_media_grant_not_ready", 409)
             try:
                 desired = tuple(json.loads(participant.desired_video_subscriptions_json))

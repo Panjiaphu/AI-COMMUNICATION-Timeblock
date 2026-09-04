@@ -471,6 +471,110 @@ def test_native_radio_floor_media_grant_stop_and_leave_are_end_to_end(tmp_path):
         assert left.json()["ended_for_all"] is False
 
 
+def test_group_media_join_stays_ringing_until_provider_connection(tmp_path):
+    app = _native_app(
+        tmp_path,
+        group_media_enabled=True,
+        group_livekit_url="wss://group-v3.livekit.cloud",
+        group_livekit_api_key="livekit-api-key",
+        group_livekit_api_secret="livekit-api-secret",
+    )
+    owner_session = app.state.bff_session_store.create_group_session(
+        principal=_handoff_payload("video")["principal"],
+        scope=SCOPES,
+        expires_at=_future(),
+        handoff_id="media-owner-handoff",
+        surface="video",
+        entitlement=AI_ENTITLEMENT,
+    )
+    invitee_principal = {
+        "type": "member",
+        "id": "84",
+        "user_id": "84",
+        "display_name": "Tran An",
+        "locale": "en",
+    }
+    invitee_session = app.state.bff_session_store.create_group_session(
+        principal=invitee_principal,
+        scope=SCOPES,
+        expires_at=_future(),
+        handoff_id="media-invitee-handoff",
+        surface="video",
+        entitlement=AI_ENTITLEMENT,
+    )
+    headers = {"Origin": PUBLIC_ORIGIN}
+
+    with TestClient(app) as client:
+        client.cookies.set(app.state.settings.guilua_session_cookie, owner_session.session_id)
+        created_space = client.post(
+            "/api/group/spaces",
+            json={"title": "Media lifecycle", "description": "Two-phase join"},
+            headers={**headers, "Idempotency-Key": "media-space-0001"},
+        )
+        assert created_space.status_code == 201
+        space_id = created_space.json()["space"]["id"]
+        invitee = client.post(
+            f"/api/group/spaces/{space_id}/memberships",
+            json={
+                "principal_type": "member",
+                "principal_id": "84",
+                "principal_user_id": "84",
+                "display_name": "Tran An",
+                "role": "member",
+            },
+            headers=headers,
+        )
+        assert invitee.status_code == 201
+        invitee_membership_id = invitee.json()["membership"]["id"]
+        created = client.post(
+            f"/api/group/spaces/{space_id}/sessions",
+            json={"media_kind": "video", "title": "Media lifecycle", "participant_membership_ids": [invitee_membership_id]},
+            headers=headers,
+        )
+        assert created.status_code == 201
+        session_id = created.json()["session"]["id"]
+        assert created.json()["session"]["status"] == "ringing"
+        owner_participant = next(item for item in created.json()["session"]["participants"] if item["membership_id"] != invitee_membership_id)
+        assert owner_participant["invite_status"] == "joined"
+        assert owner_participant["connection_status"] == "not_connected"
+
+        client.cookies.set(app.state.settings.guilua_session_cookie, invitee_session.session_id)
+        joined = client.post(
+            f"/api/group/spaces/{space_id}/sessions/{session_id}/join",
+            headers=headers,
+        )
+        assert joined.status_code == 200
+        assert joined.json()["session"]["status"] == "ringing"
+        invitee_participant = next(item for item in joined.json()["session"]["participants"] if item["membership_id"] == invitee_membership_id)
+        assert invitee_participant["invite_status"] == "joined"
+        assert invitee_participant["connection_status"] == "not_connected"
+
+        connecting = client.post(
+            f"/api/group/spaces/{space_id}/sessions/{session_id}/connection-state",
+            json={"status": "connecting"},
+            headers=headers,
+        )
+        assert connecting.status_code == 200
+        assert connecting.json()["session"]["status"] == "ringing"
+
+        grant = client.post(
+            f"/api/group/spaces/{space_id}/sessions/{session_id}/media-grant",
+            headers=headers,
+        )
+        assert grant.status_code == 200
+        assert grant.json()["grant"]["provider"] == "livekit-cloud"
+
+        connected = client.post(
+            f"/api/group/spaces/{space_id}/sessions/{session_id}/connection-state",
+            json={"status": "connected"},
+            headers=headers,
+        )
+        assert connected.status_code == 200
+        assert connected.json()["session"]["status"] == "active"
+        invitee_participant = next(item for item in connected.json()["session"]["participants"] if item["membership_id"] == invitee_membership_id)
+        assert invitee_participant["connection_status"] == "connected"
+
+
 def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     app = create_app(Settings(app_env="test", debug=True))
     route_paths = set(app.openapi()["paths"])
@@ -497,7 +601,8 @@ def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     connect_media = app_js[
         app_js.index("async function connectMedia") : app_js.index("async function connectRadio")
     ]
-    assert connect_media.index('state.mediaSession.status !== "active"') < connect_media.index("connectWithGrant")
+    assert "state.mediaSession.status !== \"active\" && state.mediaSession.status !== \"ringing\"" in connect_media
+    assert connect_media.index("updateMediaConnectionState(\"connecting\")") < connect_media.index("connectWithGrant")
     assert "if (publish)" in app_js and "getUserMedia" in app_js
     assert "selectAudioOutput" in translation_js
     assert "private_audio_playback\": \"suppressed" in radio_router
@@ -587,3 +692,16 @@ def test_group_invitation_migration_advances_single_head_and_is_reversible_sourc
     assert 'down_revision = "20260902_0018"' in migration
     assert '"group_invitations"' in migration
     assert 'op.drop_table("group_invitations")' in migration
+
+
+def test_group_media_connection_migration_advances_single_head_and_is_reversible_source():
+    migration = (
+        ROOT / "alembic/versions/20260904_0020_group_media_connection_state.py"
+    ).read_text(encoding="utf-8")
+    assert 'revision = "20260904_0020"' in migration
+    assert 'down_revision = "20260903_0019"' in migration
+    assert '"connection_status"' in migration
+    assert '"connection_error_code"' in migration
+    assert 'op.create_check_constraint(' in migration
+    assert 'op.drop_constraint(' in migration
+    assert 'op.drop_column("group_media_participants", "connection_status")' in migration

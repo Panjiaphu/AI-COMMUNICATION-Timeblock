@@ -334,7 +334,12 @@ class GroupMediaParticipant(Base):
         UniqueConstraint("session_id", "membership_id", name="uq_group_media_participant_member"),
         UniqueConstraint("session_id", "livekit_identity", name="uq_group_media_participant_identity"),
         CheckConstraint("invite_status IN ('invited','joined','rejected','left')", name="ck_group_media_participants_invite"),
+        CheckConstraint(
+            "connection_status IN ('not_connected','connecting','connected','reconnecting','failed')",
+            name="ck_group_media_participants_connection",
+        ),
         Index("ix_group_media_participants_session_status", "session_id", "invite_status"),
+        Index("ix_group_media_participants_session_connection", "session_id", "connection_status"),
         Index("ix_group_media_participants_principal", "principal_type", "principal_id", "principal_user_id", "invite_status"),
     )
 
@@ -347,6 +352,8 @@ class GroupMediaParticipant(Base):
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)
     livekit_identity: Mapped[str] = mapped_column(String(80), nullable=False)
     invite_status: Mapped[str] = mapped_column(String(16), nullable=False, default="invited", server_default="invited")
+    connection_status: Mapped[str] = mapped_column(String(20), nullable=False, default="not_connected", server_default="not_connected")
+    connection_error_code: Mapped[str] = mapped_column(String(80), nullable=False, default="", server_default="")
     desired_video_subscriptions_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
     invited_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     joined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

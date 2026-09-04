@@ -82,6 +82,8 @@
   var refreshQueued = false;
   var groupEventSource = null;
   var groupEventRefreshTimer = 0;
+  var mediaGeneration = 0;
+  var mediaActionInFlight = false;
   var chatTranslationSweep = false;
   var chatTranslationInflight = new Set();
   var chatTranslationFailures = new Map();
@@ -1223,7 +1225,8 @@
   }
 
   async function mediaAction(name) {
-    if (!state.mediaSession) return;
+    if (!state.mediaSession || mediaActionInFlight) return;
+    mediaActionInFlight = true;
     var base = "/api/group/spaces/" + encodeURIComponent(state.space.id) + "/sessions/" + encodeURIComponent(state.mediaSession.id);
     try {
       if (name === "join-media") {
@@ -1253,6 +1256,8 @@
       }
     } catch (error) {
       notify(publicError(error));
+    } finally {
+      mediaActionInFlight = false;
     }
   }
 
@@ -1567,6 +1572,7 @@
       throw new Error("group_media_client_unavailable");
     }
     await disconnectMedia(false);
+    var generation = mediaGeneration;
     disconnecting = false;
     currentGrantIdentity = String(grant.participant_identity || "");
     var room = new library.Room({
@@ -1582,55 +1588,120 @@
     room.on(library.RoomEvent.TrackUnsubscribed, function (track) {
       if (track && track.detach) track.detach().forEach(function (element) { element.remove(); });
     });
+    if (library.RoomEvent.Reconnecting) {
+      room.on(library.RoomEvent.Reconnecting, function () {
+        if (room !== mediaRoom || generation !== mediaGeneration) return;
+        state.mediaConnected = false;
+        render();
+        if (state.surface !== "radio") {
+          updateMediaConnectionState("reconnecting").catch(function () {});
+        }
+      });
+    }
+    if (library.RoomEvent.Reconnected) {
+      room.on(library.RoomEvent.Reconnected, function () {
+        if (room !== mediaRoom || generation !== mediaGeneration) return;
+        state.mediaConnected = true;
+        render();
+        if (state.surface !== "radio") {
+          updateMediaConnectionState("connected").catch(function () {});
+        }
+      });
+    }
     room.on(library.RoomEvent.Disconnected, function () {
       if (room !== mediaRoom || disconnecting) return;
       state.mediaConnected = false;
       if (state.surface === "radio") radioDeviceLost();
       else {
-        state.error = t("mediaUnavailable");
-        render();
-      }
-    });
-    await room.connect(grant.url, grant.token);
-    if (publish) {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("group_media_unavailable");
-      localStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        video: grant.media_kind === "video" ? { facingMode: "user" } : false
-      });
-      for (var mediaTrack of localStream.getTracks()) {
-        mediaTrack.addEventListener("ended", function () {
-          if (state.surface === "radio" && state.floorToken) radioDeviceLost();
-        }, { once: true });
-        await room.localParticipant.publishTrack(mediaTrack, {
-          source: mediaTrack.kind === "video" ? library.Track.Source.Camera : library.Track.Source.Microphone
+        updateMediaConnectionState("failed", "provider_disconnected").catch(function () {}).finally(function () {
+          disconnectMedia(false).catch(function () {});
+          state.error = t("mediaUnavailable");
+          render();
         });
       }
-    }
-    state.mediaConnected = true;
-    state.micEnabled = true;
-    state.videoEnabled = true;
-    render();
-    syncMediaElements();
-    if (state.surface === "radio" && publish && localStream) {
-      var audioTrack = localStream.getAudioTracks()[0];
-      if (audioTrack) {
-        window.dispatchEvent(new CustomEvent("group-v3:local-radio-audio", {
-          detail: { track: audioTrack, burst_id: state.burst && state.burst.id || "" }
-        }));
+    });
+    try {
+      if (publish) {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("group_media_unavailable");
+        localStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          video: grant.media_kind === "video" ? { facingMode: "user" } : false
+        });
+        if (generation !== mediaGeneration) throw new Error("group_media_stale_attempt");
       }
+      await room.connect(grant.url, grant.token);
+      if (generation !== mediaGeneration) throw new Error("group_media_stale_attempt");
+      if (publish && localStream) {
+        for (var mediaTrack of localStream.getTracks()) {
+          mediaTrack.addEventListener("ended", function () {
+            if (state.surface === "radio" && state.floorToken) radioDeviceLost();
+          }, { once: true });
+          await room.localParticipant.publishTrack(mediaTrack, {
+            source: mediaTrack.kind === "video" ? library.Track.Source.Camera : library.Track.Source.Microphone
+          });
+          if (generation !== mediaGeneration) throw new Error("group_media_stale_attempt");
+        }
+      }
+      state.mediaConnected = true;
+      state.micEnabled = true;
+      state.videoEnabled = true;
+      render();
+      syncMediaElements();
+      if (state.surface === "radio" && publish && localStream) {
+        var audioTrack = localStream.getAudioTracks()[0];
+        if (audioTrack) {
+          window.dispatchEvent(new CustomEvent("group-v3:local-radio-audio", {
+            detail: { track: audioTrack, burst_id: state.burst && state.burst.id || "" }
+          }));
+        }
+      }
+    } catch (error) {
+      if (generation === mediaGeneration && mediaRoom === room) await disconnectMedia(false);
+      else if (localStream && generation !== mediaGeneration) {
+        localStream.getTracks().forEach(function (track) { track.stop(); });
+      }
+      throw error;
     }
   }
 
+  async function updateMediaConnectionState(status, failureCode) {
+    if (!state.mediaSession || state.surface === "radio") return null;
+    var path = "/api/group/spaces/" + encodeURIComponent(state.space.id) + "/sessions/" +
+      encodeURIComponent(state.mediaSession.id) + "/connection-state";
+    var payload = await api(path, json("POST", {
+      status: status,
+      failure_code: failureCode || ""
+    }));
+    if (payload.session) state.mediaSession = payload.session;
+    return payload.session || null;
+  }
+
   async function connectMedia() {
-    if (!state.mediaSession || state.mediaSession.status !== "active") {
+    if (!state.mediaSession) {
+      notify(t("mediaPolicy"));
+      return;
+    }
+    var participant = selfParticipant(state.mediaSession);
+    if (!participant || participant.invite_status !== "joined") {
+      notify(t("mediaPolicy"));
+      return;
+    }
+    if (state.mediaSession.status !== "active" && state.mediaSession.status !== "ringing") {
       notify(t("mediaPolicy"));
       return;
     }
     var path = "/api/group/spaces/" + encodeURIComponent(state.space.id) + "/sessions/" +
       encodeURIComponent(state.mediaSession.id) + "/media-grant";
-    var payload = await api(path, { method: "POST" });
-    await connectWithGrant(payload.grant, true);
+    await updateMediaConnectionState("connecting");
+    try {
+      var payload = await api(path, { method: "POST" });
+      await connectWithGrant(payload.grant, true);
+      await updateMediaConnectionState("connected");
+      render();
+    } catch (error) {
+      await updateMediaConnectionState("failed", String(error && error.message || "media_connect_failed").slice(0, 80)).catch(function () {});
+      throw error;
+    }
   }
 
   async function connectRadio(mode) {
@@ -1641,6 +1712,7 @@
   }
 
   async function disconnectMedia(emitEvent) {
+    mediaGeneration += 1;
     disconnecting = true;
     var room = mediaRoom;
     mediaRoom = null;
