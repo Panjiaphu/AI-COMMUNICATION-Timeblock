@@ -47,7 +47,7 @@ const vi = {
   routeSelected: 'Đã chọn tuyến âm thanh cục bộ', deviceNotice: 'Đã chọn tai nghe (mô phỏng)',
   headset: 'Tai nghe Bluetooth', outputDevice: 'Thiết bị phát', networkGood: 'Mạng ổn định',
   noBackend: 'Control chỉ đổi state cục bộ; không gọi API, LiveKit, OpenAI, mic, camera, STT hoặc TTS.',
-  refresh: 'Làm mới', close: 'Đóng', more: 'Thêm', expandVideo: 'Mở rộng Video', shrinkVideo: 'Thu nhỏ Video', expandTranslation: 'Mở rộng bản dịch', shrinkTranslation: 'Thu nhỏ bản dịch', focusParticipant: 'Tập trung người này', hideParticipant: 'Ẩn ô này', restoreParticipant: 'Khôi phục ô', recipients: 'người nhận', on: 'Bật', off: 'Tắt', status: 'Trạng thái', stoppingBurst: 'Đang dừng lượt nói', releasingFloor: 'Đang trả quyền nói trước khi xử lý bản dịch.', radioDisconnected: 'Radio đã ngắt kết nối', radioReconnectNote: 'Kết nối lại chế độ nghe trước khi xin quyền nói.',
+  refresh: 'Làm mới', close: 'Đóng', more: 'Thêm', expandVideo: 'Mở rộng Video', shrinkVideo: 'Thu nhỏ Video', expandTranslation: 'Mở rộng bản dịch', shrinkTranslation: 'Thu nhỏ bản dịch', focusParticipant: 'Tập trung người này', hideParticipant: 'Ẩn ô này', restoreParticipant: 'Khôi phục ô', recipients: 'người nhận', on: 'Bật', off: 'Tắt', status: 'Trạng thái', stoppingBurst: 'Đang dừng lượt nói', releasingFloor: 'Đang trả quyền nói trước khi xử lý bản dịch.', radioDisconnected: 'Radio đã ngắt kết nối', radioReconnectNote: 'Kết nối lại chế độ nghe trước khi xin quyền nói.', videoWorkspaceControls: 'Điều chỉnh không gian Video', radioWorkspaceControls: 'Điều chỉnh không gian Radio', radioWorkspace: 'Không gian Radio', shrinkRadio: 'Thu nhỏ Radio', expandRadio: 'Mở rộng Radio', mediaSafetyControls: 'Điều khiển cuộc gọi trong bản dịch',
 };
 
 const en = {
@@ -96,7 +96,7 @@ const en = {
   routeSelected: 'Local audio route selected', deviceNotice: 'Headphones selected (mock)',
   headset: 'Bluetooth headset', outputDevice: 'Audio output', networkGood: 'Network stable',
   noBackend: 'Controls only change local state; no API, LiveKit, OpenAI, microphone, camera, STT or TTS.',
-  refresh: 'Refresh', close: 'Close', more: 'More', expandVideo: 'Expand Video', shrinkVideo: 'Shrink Video', expandTranslation: 'Expand translation', shrinkTranslation: 'Shrink translation', focusParticipant: 'Focus participant', hideParticipant: 'Hide tile', restoreParticipant: 'Restore tile', recipients: 'recipients', on: 'On', off: 'Off', status: 'Status', stoppingBurst: 'Stopping burst', releasingFloor: 'Releasing the floor before translation processing.', radioDisconnected: 'Radio disconnected', radioReconnectNote: 'Reconnect in listen mode before requesting the floor.',
+  refresh: 'Refresh', close: 'Close', more: 'More', expandVideo: 'Expand Video', shrinkVideo: 'Shrink Video', expandTranslation: 'Expand translation', shrinkTranslation: 'Shrink translation', focusParticipant: 'Focus participant', hideParticipant: 'Hide tile', restoreParticipant: 'Restore tile', recipients: 'recipients', on: 'On', off: 'Off', status: 'Status', stoppingBurst: 'Stopping burst', releasingFloor: 'Releasing the floor before translation processing.', radioDisconnected: 'Radio disconnected', radioReconnectNote: 'Reconnect in listen mode before requesting the floor.', videoWorkspaceControls: 'Adjust Video workspace', radioWorkspaceControls: 'Adjust Radio workspace', radioWorkspace: 'Radio workspace', shrinkRadio: 'Shrink Radio', expandRadio: 'Expand Radio', mediaSafetyControls: 'Call controls in translation',
 };
 
 const zhTW = {
@@ -145,7 +145,7 @@ const zhTW = {
   routeSelected: '已選擇本機音訊路由', deviceNotice: '已選擇耳機（模擬）',
   headset: 'Bluetooth 耳機', outputDevice: '音訊輸出', networkGood: '網路穩定',
   noBackend: '控制項只會變更本機狀態；不呼叫 API、LiveKit、OpenAI、麥克風、相機、STT 或 TTS。',
-  refresh: '重新整理', close: '關閉', more: '更多', expandVideo: '展開視訊', shrinkVideo: '縮小視訊', expandTranslation: '展開翻譯', shrinkTranslation: '縮小翻譯', focusParticipant: '聚焦成員', hideParticipant: '隱藏畫面', restoreParticipant: '還原畫面', recipients: '位收件者', on: '開啟', off: '關閉', status: '狀態', stoppingBurst: '正在停止發言', releasingFloor: '先釋放發言權，再處理翻譯。', radioDisconnected: 'Radio 已中斷連線', radioReconnectNote: '請先重新連線至聆聽模式，再請求發言權。',
+  refresh: '重新整理', close: '關閉', more: '更多', expandVideo: '展開視訊', shrinkVideo: '縮小視訊', expandTranslation: '展開翻譯', shrinkTranslation: '縮小翻譯', focusParticipant: '聚焦成員', hideParticipant: '隱藏畫面', restoreParticipant: '還原畫面', recipients: '位收件者', on: '開啟', off: '關閉', status: '狀態', stoppingBurst: '正在停止發言', releasingFloor: '先釋放發言權，再處理翻譯。', radioDisconnected: 'Radio 已中斷連線', radioReconnectNote: '請先重新連線至聆聽模式，再請求發言權。', videoWorkspaceControls: '調整視訊工作區', radioWorkspaceControls: '調整 Radio 工作區', radioWorkspace: 'Radio 工作區', shrinkRadio: '縮小 Radio', expandRadio: '展開 Radio', mediaSafetyControls: '翻譯中的通話控制',
 };
 
 const screenLabelsVi = [

@@ -20,7 +20,8 @@
 
   function focus(identity) {
     focusedIdentity = String(identity || "");
-    return setActiveSpeaker(focusedIdentity);
+    window.dispatchEvent(new CustomEvent("group-video-layout:change", { detail: snapshot() }));
+    return snapshot();
   }
 
   function clearFocus() {
@@ -31,7 +32,10 @@
 
   function hide(identity) {
     var value = String(identity || "");
-    if (value) hiddenIdentities.add(value);
+    if (value) {
+      hiddenIdentities.add(value);
+      if (focusedIdentity === value) focusedIdentity = "";
+    }
     window.dispatchEvent(new CustomEvent("group-video-layout:change", { detail: snapshot() }));
     return snapshot();
   }
@@ -45,7 +49,9 @@
 
   function presentationIdentity(participants) {
     var list = (participants || []).filter(function (item) { return !hiddenIdentities.has(String(item.livekit_identity || item.id || "")); });
-    return focusedIdentity || activeSpeakerIdentity || (list[0] && String(list[0].livekit_identity || list[0].id || "")) || "";
+    var focused = focusedIdentity && list.some(function (item) { return String(item.livekit_identity || item.id || "") === focusedIdentity; }) ? focusedIdentity : "";
+    var active = activeSpeakerIdentity && list.some(function (item) { return String(item.livekit_identity || item.id || "") === activeSpeakerIdentity; }) ? activeSpeakerIdentity : "";
+    return focused || active || (list[0] && String(list[0].livekit_identity || list[0].id || "")) || "";
   }
 
   function layoutClass(count) {

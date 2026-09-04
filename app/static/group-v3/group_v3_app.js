@@ -147,6 +147,9 @@
     return '<svg class="ui-icon" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + ICONS[name] + "</svg>";
   }
 
+  /* Shared by presentation helpers loaded before this module. */
+  window.GroupV3Icon = icon;
+
   function initials(name) {
     return String(name || "?").trim().split(/\s+/).slice(-2).map(function (part) {
       return part[0] || "";
@@ -178,6 +181,28 @@
 
   function workspaceButton(actionName, label, iconName, disabled) {
     return '<button type="button" class="icon-button workspace-control" data-workspace-action="' + actionName + '" aria-label="' + esc(label) + '" title="' + esc(label) + '"' + (disabled ? " disabled" : "") + '>' + icon(iconName, 19) + "</button>";
+  }
+
+  function videoPanelControls() {
+    var workspace = window.GroupCommunicationWorkspace && window.GroupCommunicationWorkspace.snapshot
+      ? window.GroupCommunicationWorkspace.snapshot()
+      : { requestedVideoMode: "STANDARD" };
+    var requested = workspace.requestedVideoMode || (workspace.requested && workspace.requested.mediaMode) || "STANDARD";
+    return '<div class="panel-resize-controls" role="group" aria-label="' + esc(t("videoWorkspaceControls")) + '">' +
+      workspaceButton("video-minus", t("shrinkVideo"), "minus", requested === (state.mobile ? "COMPACT" : "STANDARD")) +
+      '<span data-video-mode-label>' + esc(workspace.videoMode || "STANDARD") + '</span>' +
+      workspaceButton("video-plus", t("expandVideo"), "plus", requested === "MAXIMIZED") + '</div>';
+  }
+
+  function radioPanelControls() {
+    var workspace = window.GroupCommunicationWorkspace && window.GroupCommunicationWorkspace.snapshot
+      ? window.GroupCommunicationWorkspace.snapshot()
+      : { requestedRadioMode: "STANDARD", radioMode: "STANDARD" };
+    var requested = workspace.requestedRadioMode || (workspace.requested && workspace.requested.radioMode) || "STANDARD";
+    return '<div class="panel-resize-controls radio-panel-resize-controls" role="group" aria-label="' + esc(t("radioWorkspaceControls")) + '">' +
+      workspaceButton("radio-minus", t("shrinkRadio"), "minus", requested === "COMPACT") +
+      '<span data-radio-mode-label>' + esc(workspace.radioMode || "STANDARD") + '</span>' +
+      workspaceButton("radio-plus", t("expandRadio"), "plus", requested === "MAXIMIZED") + '</div>';
   }
 
   function wave(compact) {
@@ -274,6 +299,15 @@
     return (session.participants || []).find(function (item) {
       return item.membership_id === membership.id;
     });
+  }
+
+  function mediaParticipantConnected(person) {
+    if (!person) return false;
+    if (typeof person.media_connected === "boolean") return person.media_connected;
+    if (typeof person.mediaConnected === "boolean") return person.mediaConnected;
+    if (person.media_connection_state) return String(person.media_connection_state).toLowerCase() === "connected";
+    if (person.connection_state) return String(person.connection_state).toLowerCase() === "connected";
+    return person.invite_status === "joined";
   }
 
   function memberName(id) {
@@ -723,7 +757,6 @@
   }
 
   function callDock(kind) {
-    var workspace = window.GroupCommunicationWorkspace && window.GroupCommunicationWorkspace.snapshot ? window.GroupCommunicationWorkspace.snapshot() : { videoMode: "BALANCED" };
     var moreMenu = state.moreMediaOpen
       ? '<div class="media-more-menu" data-more-menu><div>' + esc(t("more")) + '</div>' + action("end-media", t("endForAll"), "phone-call", "ghost", 'class="end-for-all"') + '</div>'
       : "";
@@ -735,15 +768,21 @@
         ? action("toggle-video", state.videoEnabled ? t("videoOn") : t("videoOff"), "video", state.videoEnabled ? "secondary" : "danger")
         : "") +
       action("leave-media", t("leaveCall"), "log-out", "danger") +
-      (kind === "video" ? workspaceButton("video-minus", t("shrinkVideo"), "minus", workspace.videoMode === "COMPACT") + workspaceButton("video-plus", t("expandVideo"), "plus", workspace.videoMode === "FULL") : "") +
       action("more-media", t("more"), "more-horizontal", "secondary") + moreMenu + "</div>";
   }
 
   function translationDock() {
     var workspace = window.GroupCommunicationWorkspace && window.GroupCommunicationWorkspace.snapshot ? window.GroupCommunicationWorkspace.snapshot() : { translationMode: "COLLAPSED" };
-    return '<aside class="translation-dock" data-translation-mode="' + esc(workspace.translationMode) + '"><header class="translation-dock__bar"><strong>' + esc(t("translationPlugin")) + '</strong><span data-translation-mode-label>' + esc(workspace.translationMode) + '</span><div>' +
+    var mode = workspace.effectiveTranslationMode || workspace.translationMode || "COLLAPSED";
+    var safety = state.surface === "video" && state.mediaSession
+      ? '<div class="translation-safety-layer" aria-label="' + esc(t("mediaSafetyControls")) + '"><span class="translation-live-status">' + badge("LIVE", "success") + '</span><span class="translation-video-mini">' + icon("video", 16) + '<span>' + esc(t("activeVideo")) + '</span></span>' +
+        action("toggle-mic", state.micEnabled ? t("micOn") : t("micOff"), "mic", state.micEnabled ? "secondary" : "danger") +
+        action("toggle-video", state.videoEnabled ? t("videoOn") : t("videoOff"), "video", state.videoEnabled ? "secondary" : "danger") +
+        action("more-media", t("more"), "more-horizontal", "secondary") + action("leave-media", t("leaveCall"), "log-out", "danger") + workspaceButton("video-restore", t("shrinkVideo"), "panel-right", false) + '</div>'
+      : "";
+    return '<aside class="translation-dock" data-translation-mode="' + esc(mode) + '" data-translation-requested-mode="' + esc(workspace.requestedTranslationMode || workspace.translationMode || "COLLAPSED") + '"><header class="translation-dock__bar"><strong>' + esc(t("translationPlugin")) + '</strong><span data-translation-mode-label>' + esc(workspace.desktopTranslationMode || mode) + '</span><div>' +
       workspaceButton("translation-minus", t("shrinkTranslation"), "minus", workspace.translationMode === "COLLAPSED") + workspaceButton("translation-plus", t("expandTranslation"), "plus", workspace.translationMode === "FULL") +
-      '</div></header><div class="translation-dock__body" data-group-translation-v2></div></aside>';
+      '</div></header><div class="translation-dock__body" data-group-translation-v2></div>' + safety + '</aside>';
   }
 
   function renderMedia() {
@@ -766,22 +805,30 @@
         "</p>" + callDock(kind) + "</div>" + renderParticipants(true) + "</div>";
     }
     if (kind === "video") {
-      var people = (session.participants || []).filter(function (person) { return person.invite_status === "joined"; });
+      var people = (session.participants || []).filter(mediaParticipantConnected);
       var layout = window.GroupV3VideoLayout && window.GroupV3VideoLayout.snapshot ? window.GroupV3VideoLayout.snapshot() : { activeSpeakerIdentity: "", focusedIdentity: "", hiddenIdentities: [] };
       var featuredIdentity = layout.focusedIdentity || layout.activeSpeakerIdentity || "";
-      var tiles = people.map(function (person, index) {
+      var workspaceSnapshot = window.GroupCommunicationWorkspace && window.GroupCommunicationWorkspace.snapshot ? window.GroupCommunicationWorkspace.snapshot() : {};
+      var compact = workspaceSnapshot.effective && workspaceSnapshot.effective.mediaMode === "COMPACT";
+      var visiblePeople = compact && people.length > 1
+        ? people.filter(function (person) { return String(person.livekit_identity || person.id || "") === featuredIdentity; }).slice(0, 1)
+        : people;
+      if (compact && !visiblePeople.length && people.length) visiblePeople = people.slice(0, 1);
+      var hiddenCount = Math.max(0, people.length - visiblePeople.length);
+      var tiles = visiblePeople.map(function (person, index) {
         var identity = String(person.livekit_identity || person.id || "");
         var featured = featuredIdentity ? identity === featuredIdentity : people.length === 1;
         var hidden = (layout.hiddenIdentities || []).indexOf(identity) >= 0;
         return '<article class="video-tile ' + (featured ? "is-featured " : "") + (identity === layout.activeSpeakerIdentity ? "is-speaking " : "") + (hidden ? "is-presentation-hidden " : "") + (index % 2 ? "tone-mint" : "tone-teal") + '" data-video-identity="' + esc(identity) + '" data-video-name="' + esc(person.display_name) + '">' +
           avatar(person.display_name, featured ? "teal" : "mint", featured ? "xl" : "lg", true) + '<div><strong>' + esc(person.display_name) + '</strong>' + (identity === layout.activeSpeakerIdentity ? wave(true) : "") + '</div>' +
           '<div class="video-tile-actions"><button type="button" data-video-focus="' + esc(identity) + '" aria-label="' + esc(t("focusParticipant")) + '">' + icon("focus", 15) + '</button><button type="button" data-video-hide="' + esc(identity) + '" aria-label="' + esc(t("hideParticipant")) + '">' + icon("minus", 15) + '</button></div></article>';
-      }).join("");
+      }).join("") + (compact && hiddenCount ? '<button type="button" class="video-compact-summary" data-action="members" aria-label="' + esc(t("participants")) + '"><span>+' + esc(String(hiddenCount)) + '</span><small>' + esc(t("participantsShort")) + '</small></button>' : "");
       var drawer = '<aside class="group-participant-drawer" data-participant-drawer hidden></aside>';
       var gridClass = window.GroupV3VideoLayout && window.GroupV3VideoLayout.layoutClass ? window.GroupV3VideoLayout.layoutClass(people.length) : "count-" + people.length;
       return '<div class="video-call-layout with-translation' +
         ' surface-content"><div class="video-stage"><div class="call-status-line">' + badge("LIVE", "success") + "<span>" +
-        esc(t("activeVideo")) + '</span><small class="media-participant-count">' + esc(String(people.length)) + " " + esc(t("participantsShort")) + '</small><span class="video-layout-mode" data-video-mode-label>' + esc((window.GroupCommunicationWorkspace && window.GroupCommunicationWorkspace.snapshot().videoMode) || "BALANCED") + '</span><button type="button" class="icon-button" data-action="toggle-participant-drawer" aria-label="' + esc(t("participants")) + '">' + icon("users", 17) + '</button></div><div class="video-grid ' + gridClass + '" data-video-grid>' + tiles + "</div>" + callDock(kind) +
+        esc(t("activeVideo")) + '</span><small class="media-participant-count">' + esc(String(people.length)) + " " + esc(t("participantsShort")) + '</small><span class="video-layout-mode" data-video-mode-label>' + esc((window.GroupCommunicationWorkspace && window.GroupCommunicationWorkspace.snapshot().videoMode) || "STANDARD") + '</span><button type="button" class="icon-button" data-action="toggle-participant-drawer" aria-label="' + esc(t("participants")) + '">' + icon("users", 17) + '</button></div><div class="video-grid ' + gridClass + '" data-video-grid>' + tiles + "</div>" +
+        '<div class="video-panel-toolbar">' + videoPanelControls() + '</div>' + callDock(kind) +
         '<div class="audio-host" data-audio-host></div></div>' + drawer + translationDock() + "</div>";
     }
     var speaker = (session.participants || []).find(function (person) { return person.invite_status === "joined"; }) || me;
@@ -819,7 +866,7 @@
     var radioWorkspace = window.GroupCommunicationWorkspace && window.GroupCommunicationWorkspace.snapshot ? window.GroupCommunicationWorkspace.snapshot() : { radioTranslationMode: "COLLAPSED" };
     return '<aside class="radio-inspector"><section class="radio-members-card"><div class="panel-title"><span>' +
       icon("users", 18) + esc(t("participants")) + "</span>" + badge(String(participants.length), "mint") +
-      '</div><div class="radio-members">' + rows + '</div></section><section class="radio-translation-card" data-radio-translation-mode="' + esc(radioWorkspace.radioTranslationMode) + '"><header class="translation-dock__bar"><strong>' + esc(t("radioTranslation")) + '</strong><span data-radio-translation-mode-label>' + esc(radioWorkspace.radioTranslationMode) + '</span><div>' +
+      '</div><div class="radio-members">' + rows + '</div></section><section class="radio-translation-card" data-radio-translation-mode="' + esc(radioWorkspace.effective && radioWorkspace.effective.radioTranslationMode || radioWorkspace.radioTranslationMode) + '" data-radio-translation-requested-mode="' + esc(radioWorkspace.requestedRadioTranslationMode || radioWorkspace.radioTranslationMode) + '"><header class="translation-dock__bar"><strong>' + esc(t("radioTranslation")) + '</strong><span data-radio-translation-mode-label>' + esc(radioWorkspace.radioTranslationMode) + '</span><div>' +
       workspaceButton("radio-translation-minus", t("shrinkTranslation"), "minus", radioWorkspace.radioTranslationMode === "COLLAPSED") + workspaceButton("radio-translation-plus", t("expandTranslation"), "plus", radioWorkspace.radioTranslationMode === "FULL") +
       '</div></header><div class="translation-dock__body" data-group-translation-v2></div></section>' +
       action("leave-radio", t("leaveRadio"), "log-out", "secondary", 'class="desktop-leave"') + "</aside>";
@@ -882,7 +929,10 @@
     }
     var current = radioState();
     var pttAction = current === "TALKING" ? action("stop-radio", t("stopBurst"), "mic", "danger") : action("start-radio", t("startTalking"), "mic", "primary", ["READY"].indexOf(current) >= 0 ? "" : "disabled");
-    return '<div class="radio-content state-' + current.toLowerCase() + ' surface-content"><main class="radio-center"><section class="floor-summary floor-' +
+    var workspace = window.GroupCommunicationWorkspace && window.GroupCommunicationWorkspace.snapshot ? window.GroupCommunicationWorkspace.snapshot() : {};
+    var radioMode = workspace.radioMode || "STANDARD";
+    var radioTranslationMode = workspace.radioTranslationMode || "COLLAPSED";
+    return '<div class="radio-content state-' + current.toLowerCase() + ' surface-content" data-radio-mode="' + esc(radioMode) + '" data-radio-translation-mode="' + esc(radioTranslationMode) + '"><main class="radio-center"><div class="radio-stage-toolbar"><span>' + esc(t("radioWorkspace")) + '</span><span data-radio-mode-label>' + esc(radioMode) + '</span>' + radioPanelControls() + '</div><section class="floor-summary floor-' +
       current.toLowerCase() + '"><div class="floor-copy"><span class="floor-indicator"><i></i></span><span><strong>' +
       esc(current === "FLOOR_BUSY" ? t("floorBusy") : current === "TALKING" ? t("talkingNow") : t("floorAvailable")) +
       "</strong><small>" + esc(current) + '</small></span></div><div class="floor-level"><span style="width:' +
@@ -1036,6 +1086,16 @@
     else window.GroupV3Ringback.stop();
   }
 
+  function presentationRuntimeKey() {
+    if (state.surface === "video" || state.surface === "call") {
+      return "video:" + String(state.mediaSession && state.mediaSession.id || state.space && state.space.id || "none");
+    }
+    if (state.surface === "radio") {
+      return "radio:" + String(state.radioSession && state.radioSession.id || state.space && state.space.id || "none");
+    }
+    return String(state.surface || "chat") + ":" + String(state.space && state.space.id || "none");
+  }
+
   function render() {
     if (state.status !== "READY" && state.status !== "HANDOFF_REQUIRED") {
       if (window.GroupV3IncomingRingtone) window.GroupV3IncomingRingtone.stop();
@@ -1053,7 +1113,7 @@
     var nav = navigation();
     var banner = state.error ? '<div class="runtime-banner is-error">' + icon("refresh-cw", 15) + "<span>" + esc(state.error) + "</span></div>" : "";
     root.innerHTML = '<div class="native-app native-' + (state.mobile ? "mobile" : "desktop") + '" data-state="' + esc(state.surface) +
-      '" data-locale="' + esc(state.locale) + '">' + nav.desktop +
+      '" data-locale="' + esc(state.locale) + '" data-runtime-key="' + esc(presentationRuntimeKey()) + '">' + nav.desktop +
       '<header class="mobile-app-header"><div class="app-logo"><span class="app-logo-mark"><img src="/static/group-v3/timeblock-chat.svg" alt=""></span><span><strong>AI-COMMUNICATION</strong><small>' +
       esc(t("nativeGroupApp")) + '</small></span></div><div class="mobile-header-actions">' + nav.mobileLogout + '<span class="mobile-state-dot"></span></div></header>' + renderRooms() +
       '<section class="native-main ' + (banner ? "has-banner" : "") + '"><div class="session-strip"><span><i></i>' +
@@ -1063,7 +1123,7 @@
     if (window.GroupCommunicationWorkspace && window.GroupCommunicationWorkspace.apply) window.GroupCommunicationWorkspace.apply(root);
     var participantDrawer = root.querySelector("[data-participant-drawer]");
     if (participantDrawer && window.GroupV3ParticipantDrawer && state.mediaSession) {
-      window.GroupV3ParticipantDrawer.render(participantDrawer, (state.mediaSession.participants || []).filter(function (item) { return item.invite_status === "joined"; }), {
+      window.GroupV3ParticipantDrawer.render(participantDrawer, (state.mediaSession.participants || []).filter(mediaParticipantConnected), {
         title: t("participants"), close: t("close"), member: t("member"), focus: t("focusParticipant"), hide: t("hideParticipant"), restore: t("restoreParticipant")
       });
     }
