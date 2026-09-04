@@ -672,7 +672,7 @@ class GroupTranslationService:
                 aad=f"group-translation-variant:{segment.id}:{variant.target_language}",
                 version=variant.encryption_version,
             )
-        return {
+        payload = {
             "id": segment.id,
             "client_segment_id": segment.client_segment_id,
             "runtime_kind": segment.runtime_kind,
@@ -689,6 +689,52 @@ class GroupTranslationService:
             "auto_read_enabled": bool(profile.auto_read_enabled) if profile else False,
             "created_at": _iso(segment.created_at),
         }
+        # The speaker receives an author projection with every generated
+        # language variant and a recipient count. Other participants receive
+        # only their own preferred-output projection above.
+        if membership.id == segment.speaker_membership_id and target_override is None:
+            if segment.runtime_kind in {"call", "video"}:
+                joined_ids = list(db.scalars(select(GroupMediaParticipant.membership_id).where(
+                    GroupMediaParticipant.session_id == segment.runtime_id,
+                    GroupMediaParticipant.invite_status == "joined",
+                )).all())
+            else:
+                joined_ids = list(db.scalars(select(GroupRadioParticipant.membership_id).where(
+                    GroupRadioParticipant.radio_session_id == segment.runtime_id,
+                    GroupRadioParticipant.status == "joined",
+                )).all())
+            recipients = [item for item in joined_ids if item != membership.id]
+            profiles = list(db.scalars(select(GroupLanguageProfile).where(
+                GroupLanguageProfile.space_id == segment.space_id,
+                GroupLanguageProfile.membership_id.in_(set(recipients)),
+            )).all()) if recipients else []
+            variants = []
+            source_recipient_count = sum(1 for profile in profiles if profile.preferred_output_language == segment.source_language)
+            variants.append({
+                "target_language": segment.source_language,
+                "state": "FINAL",
+                "translated_text": source,
+                "recipient_count": source_recipient_count,
+            })
+            for row in db.scalars(select(GroupTranslationVariant).where(GroupTranslationVariant.segment_id == segment.id).order_by(GroupTranslationVariant.target_language)).all():
+                value = None
+                if row.state == "FINAL" and row.translated_ciphertext and row.translated_nonce and row.encryption_version:
+                    value = self.crypto.decrypt_text(
+                        row.translated_ciphertext, row.translated_nonce,
+                        aad=f"group-translation-variant:{segment.id}:{row.target_language}", version=row.encryption_version,
+                    )
+                variants.append({
+                    "target_language": row.target_language,
+                    "state": row.state,
+                    "translated_text": value,
+                    "recipient_count": sum(1 for profile in profiles if profile.preferred_output_language == row.target_language),
+                    "failure_code": row.failure_code,
+                })
+            payload["variants"] = variants
+            payload["author_view"] = True
+        else:
+            payload["author_view"] = False
+        return payload
 
     async def _translate_variants(self, actor: GroupActor, segment_id: str, source_text: str, source_language: str, targets: list[str]) -> None:
         if not targets:
@@ -860,7 +906,13 @@ class GroupTranslationService:
                     and_(GroupTranslationSegment.runtime_kind.in_(("call", "video")), GroupTranslationSegment.runtime_id.in_(media_ids)),
                     and_(GroupTranslationSegment.runtime_kind == "radio", GroupTranslationSegment.runtime_id.in_(radio_ids)),
                 ))
-            rows = list(db.scalars(query.order_by(GroupTranslationSegment.created_at.desc()).limit(max(1, min(limit, 100))).all()) )
+            rows = list(
+                db.scalars(
+                    query.order_by(GroupTranslationSegment.created_at.desc()).limit(
+                        max(1, min(limit, 100))
+                    )
+                ).all()
+            )
             return [self._project_v2(db, actor, row) for row in rows]
 
     async def retry_variant(self, actor: GroupActor, space_id: str, segment_id: str, target_language: str) -> dict:

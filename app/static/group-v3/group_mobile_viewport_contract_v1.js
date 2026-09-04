@@ -104,6 +104,8 @@
       standalone: standalone
     };
 
+    window.dispatchEvent(new CustomEvent("group-v3:viewport", { detail: lastSnapshot }));
+
     if (keyboardOpen && activeEditor && scrollPinned) {
       window.requestAnimationFrame(function () {
         var scroll = root.querySelector(".thread-scroll");

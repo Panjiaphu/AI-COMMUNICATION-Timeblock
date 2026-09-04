@@ -36,7 +36,13 @@
     "refresh-cw": '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
     history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
     settings: '<path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="m19.4 15 .1.1a2 2 0 1 1-2.8 2.8l-.1-.1a2 2 0 0 0-3.4 1.4V19a2 2 0 1 1-4 0v-.2a2 2 0 0 0-3.4-1.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A2 2 0 0 0 1.6 11H1.5a2 2 0 1 1 0-4h.2a2 2 0 0 0 1.4-3.4l-.1-.1A2 2 0 1 1 5.8.7l.1.1A2 2 0 0 0 9.3-.6V-.5a2 2 0 1 1 4 0v.2a2 2 0 0 0 3.4 1.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A2 2 0 0 0 20.9 7h.1a2 2 0 1 1 0 4h-.2a2 2 0 0 0-1.4 3.4Z" transform="translate(1.5 1.5) scale(.875)"/>'
-    ,search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>'
+    ,search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+    plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
+    minus: '<path d="M5 12h14"/>',
+    "more-horizontal": '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+    maximize: '<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>',
+    "panel-right": '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/>',
+    focus: '<circle cx="12" cy="12" r="3"/><path d="M3 8V5a2 2 0 0 1 2-2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2h-3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/>'
   };
 
   var state = {
@@ -90,6 +96,7 @@
     attachmentViewer: null,
     mediaReconnectState: "idle",
     mediaReconnectAttempts: 0
+    ,moreMediaOpen: false
   };
 
   var mediaRoom = null;
@@ -167,6 +174,10 @@
 
   function iconButton(name, label, iconName) {
     return '<button type="button" class="icon-button" data-action="' + name + '" aria-label="' + esc(label) + '" title="' + esc(label) + '">' + icon(iconName, 19) + "</button>";
+  }
+
+  function workspaceButton(actionName, label, iconName, disabled) {
+    return '<button type="button" class="icon-button workspace-control" data-workspace-action="' + actionName + '" aria-label="' + esc(label) + '" title="' + esc(label) + '"' + (disabled ? " disabled" : "") + '>' + icon(iconName, 19) + "</button>";
   }
 
   function wave(compact) {
@@ -712,6 +723,10 @@
   }
 
   function callDock(kind) {
+    var workspace = window.GroupCommunicationWorkspace && window.GroupCommunicationWorkspace.snapshot ? window.GroupCommunicationWorkspace.snapshot() : { videoMode: "BALANCED" };
+    var moreMenu = state.moreMediaOpen
+      ? '<div class="media-more-menu" data-more-menu><div>' + esc(t("more")) + '</div>' + action("end-media", t("endForAll"), "phone-call", "ghost", 'class="end-for-all"') + '</div>'
+      : "";
     return '<div class="call-control-dock">' +
       (state.mediaConnected
         ? action("toggle-mic", state.micEnabled ? t("micOn") : t("micOff"), "mic", state.micEnabled ? "secondary" : "danger")
@@ -720,11 +735,15 @@
         ? action("toggle-video", state.videoEnabled ? t("videoOn") : t("videoOff"), "video", state.videoEnabled ? "secondary" : "danger")
         : "") +
       action("leave-media", t("leaveCall"), "log-out", "danger") +
-      action("end-media", t("endForAll"), "phone-call", "ghost", 'class="end-for-all"') + "</div>";
+      (kind === "video" ? workspaceButton("video-minus", t("shrinkVideo"), "minus", workspace.videoMode === "COMPACT") + workspaceButton("video-plus", t("expandVideo"), "plus", workspace.videoMode === "FULL") : "") +
+      action("more-media", t("more"), "more-horizontal", "secondary") + moreMenu + "</div>";
   }
 
   function translationDock() {
-    return '<aside class="translation-dock" data-group-translation-v2></aside>';
+    var workspace = window.GroupCommunicationWorkspace && window.GroupCommunicationWorkspace.snapshot ? window.GroupCommunicationWorkspace.snapshot() : { translationMode: "COLLAPSED" };
+    return '<aside class="translation-dock" data-translation-mode="' + esc(workspace.translationMode) + '"><header class="translation-dock__bar"><strong>' + esc(t("translationPlugin")) + '</strong><span data-translation-mode-label>' + esc(workspace.translationMode) + '</span><div>' +
+      workspaceButton("translation-minus", t("shrinkTranslation"), "minus", workspace.translationMode === "COLLAPSED") + workspaceButton("translation-plus", t("expandTranslation"), "plus", workspace.translationMode === "FULL") +
+      '</div></header><div class="translation-dock__body" data-group-translation-v2></div></aside>';
   }
 
   function renderMedia() {
@@ -748,15 +767,22 @@
     }
     if (kind === "video") {
       var people = (session.participants || []).filter(function (person) { return person.invite_status === "joined"; });
+      var layout = window.GroupV3VideoLayout && window.GroupV3VideoLayout.snapshot ? window.GroupV3VideoLayout.snapshot() : { activeSpeakerIdentity: "", focusedIdentity: "", hiddenIdentities: [] };
+      var featuredIdentity = layout.focusedIdentity || layout.activeSpeakerIdentity || "";
       var tiles = people.map(function (person, index) {
-        return '<article class="video-tile ' + (index === 0 ? "is-featured is-speaking" : "tone-mint") + '" data-video-identity="' +
-          esc(person.livekit_identity) + '">' + avatar(person.display_name, index === 0 ? "teal" : "mint", index === 0 ? "xl" : "lg", true) +
-          "<div><strong>" + esc(person.display_name) + "</strong>" + (index === 0 ? wave(true) : "") + "</div></article>";
+        var identity = String(person.livekit_identity || person.id || "");
+        var featured = featuredIdentity ? identity === featuredIdentity : people.length === 1;
+        var hidden = (layout.hiddenIdentities || []).indexOf(identity) >= 0;
+        return '<article class="video-tile ' + (featured ? "is-featured " : "") + (identity === layout.activeSpeakerIdentity ? "is-speaking " : "") + (hidden ? "is-presentation-hidden " : "") + (index % 2 ? "tone-mint" : "tone-teal") + '" data-video-identity="' + esc(identity) + '" data-video-name="' + esc(person.display_name) + '">' +
+          avatar(person.display_name, featured ? "teal" : "mint", featured ? "xl" : "lg", true) + '<div><strong>' + esc(person.display_name) + '</strong>' + (identity === layout.activeSpeakerIdentity ? wave(true) : "") + '</div>' +
+          '<div class="video-tile-actions"><button type="button" data-video-focus="' + esc(identity) + '" aria-label="' + esc(t("focusParticipant")) + '">' + icon("focus", 15) + '</button><button type="button" data-video-hide="' + esc(identity) + '" aria-label="' + esc(t("hideParticipant")) + '">' + icon("minus", 15) + '</button></div></article>';
       }).join("");
+      var drawer = '<aside class="group-participant-drawer" data-participant-drawer hidden></aside>';
+      var gridClass = window.GroupV3VideoLayout && window.GroupV3VideoLayout.layoutClass ? window.GroupV3VideoLayout.layoutClass(people.length) : "count-" + people.length;
       return '<div class="video-call-layout with-translation' +
         ' surface-content"><div class="video-stage"><div class="call-status-line">' + badge("LIVE", "success") + "<span>" +
-        esc(t("activeVideo")) + '</span><small class="media-participant-count">' + esc(String(people.length)) + " " + esc(t("participantsShort")) + '</small></div><div class="video-grid count-' + Math.min(people.length, 8) + '" data-video-grid>' + tiles + "</div>" + callDock(kind) +
-        '<div class="audio-host" data-audio-host></div></div>' + translationDock() + "</div>";
+        esc(t("activeVideo")) + '</span><small class="media-participant-count">' + esc(String(people.length)) + " " + esc(t("participantsShort")) + '</small><span class="video-layout-mode" data-video-mode-label>' + esc((window.GroupCommunicationWorkspace && window.GroupCommunicationWorkspace.snapshot().videoMode) || "BALANCED") + '</span><button type="button" class="icon-button" data-action="toggle-participant-drawer" aria-label="' + esc(t("participants")) + '">' + icon("users", 17) + '</button></div><div class="video-grid ' + gridClass + '" data-video-grid>' + tiles + "</div>" + callDock(kind) +
+        '<div class="audio-host" data-audio-host></div></div>' + drawer + translationDock() + "</div>";
     }
     var speaker = (session.participants || []).find(function (person) { return person.invite_status === "joined"; }) || me;
     var peopleRow = (session.participants || []).filter(function (person) { return person.invite_status === "joined"; }).slice(0, 4).map(function (person) {
@@ -790,9 +816,12 @@
         "<span><strong>" + esc(person.display_name) + "</strong><small>" + esc(person.status) + "</small></span>" +
         (speaking ? wave(true) : "<i></i>") + "</div>";
     }).join("");
+    var radioWorkspace = window.GroupCommunicationWorkspace && window.GroupCommunicationWorkspace.snapshot ? window.GroupCommunicationWorkspace.snapshot() : { radioTranslationMode: "COLLAPSED" };
     return '<aside class="radio-inspector"><section class="radio-members-card"><div class="panel-title"><span>' +
       icon("users", 18) + esc(t("participants")) + "</span>" + badge(String(participants.length), "mint") +
-      '</div><div class="radio-members">' + rows + '</div></section><section class="radio-translation-card"><div data-group-translation-v2></div></section>' +
+      '</div><div class="radio-members">' + rows + '</div></section><section class="radio-translation-card" data-radio-translation-mode="' + esc(radioWorkspace.radioTranslationMode) + '"><header class="translation-dock__bar"><strong>' + esc(t("radioTranslation")) + '</strong><span data-radio-translation-mode-label>' + esc(radioWorkspace.radioTranslationMode) + '</span><div>' +
+      workspaceButton("radio-translation-minus", t("shrinkTranslation"), "minus", radioWorkspace.radioTranslationMode === "COLLAPSED") + workspaceButton("radio-translation-plus", t("expandTranslation"), "plus", radioWorkspace.radioTranslationMode === "FULL") +
+      '</div></header><div class="translation-dock__body" data-group-translation-v2></div></section>' +
       action("leave-radio", t("leaveRadio"), "log-out", "secondary", 'class="desktop-leave"') + "</aside>";
   }
 
@@ -852,12 +881,13 @@
         action("reject-radio", t("reject"), "log-out", "secondary") + "</div></main>" + radioRoster() + "</div>";
     }
     var current = radioState();
+    var pttAction = current === "TALKING" ? action("stop-radio", t("stopBurst"), "mic", "danger") : action("start-radio", t("startTalking"), "mic", "primary", ["READY"].indexOf(current) >= 0 ? "" : "disabled");
     return '<div class="radio-content state-' + current.toLowerCase() + ' surface-content"><main class="radio-center"><section class="floor-summary floor-' +
       current.toLowerCase() + '"><div class="floor-copy"><span class="floor-indicator"><i></i></span><span><strong>' +
       esc(current === "FLOOR_BUSY" ? t("floorBusy") : current === "TALKING" ? t("talkingNow") : t("floorAvailable")) +
       "</strong><small>" + esc(current) + '</small></span></div><div class="floor-level"><span style="width:' +
       (current === "TALKING" ? 78 : current === "FLOOR_BUSY" ? 56 : 18) + '%"></span></div></section>' + radioStage() +
-      '<div class="radio-mobile-dock">' + action("stop-radio", t("stopBurst"), "mic", "danger", current === "TALKING" ? "" : "disabled") +
+      '<div class="radio-mobile-dock">' + pttAction +
       action("leave-radio", t("leaveRadio"), "log-out", "secondary") + "</div></main>" + radioRoster() + "</div>";
   }
 
@@ -1030,6 +1060,13 @@
       esc(t("signedIn")) + "</span><span>" + esc(state.groupAuthorized ? t("groupSession") : t("handoffRequiredTitle")) + "</span></div>" + banner + (state.groupAuthorized ? header() : "") + mobileLanguageBar() + surface() +
       "</section>" + nav.mobile + "</div>" + renderMemberManager() + renderGroupSettings() + renderPrejoin() + renderAttachmentViewer();
     root.dataset.runtimeState = "READY";
+    if (window.GroupCommunicationWorkspace && window.GroupCommunicationWorkspace.apply) window.GroupCommunicationWorkspace.apply(root);
+    var participantDrawer = root.querySelector("[data-participant-drawer]");
+    if (participantDrawer && window.GroupV3ParticipantDrawer && state.mediaSession) {
+      window.GroupV3ParticipantDrawer.render(participantDrawer, (state.mediaSession.participants || []).filter(function (item) { return item.invite_status === "joined"; }), {
+        title: t("participants"), close: t("close"), member: t("member"), focus: t("focusParticipant"), hide: t("hideParticipant"), restore: t("restoreParticipant")
+      });
+    }
     syncIncomingRingtone();
     syncCallerRingback();
     syncMediaElements();
@@ -1090,6 +1127,7 @@
     state.radioSession = null;
     state.radioFloor = null;
     state.burst = null;
+    state.moreMediaOpen = false;
     state.error = "";
     if (window.location.pathname.indexOf("/group") === 0) {
       window.history.pushState({ groupSurface: next }, "", "/group/" + encodeURIComponent(next));
@@ -1724,6 +1762,13 @@
       render();
       return;
     }
+    if (name === "more-media") {
+      state.moreMediaOpen = !state.moreMediaOpen;
+      var menu = root.querySelector("[data-more-menu]");
+      if (menu) menu.hidden = !state.moreMediaOpen;
+      else render();
+      return;
+    }
     if (name === "invite-contact") return inviteContact(button);
     if (name === "cancel-invitation") return cancelInvitation(button);
     if (name === "accept-invitation") return decideInvitation(button, true);
@@ -1945,6 +1990,14 @@
     room.on(library.RoomEvent.TrackUnsubscribed, function (track) {
       if (track && track.detach) track.detach().forEach(function (element) { element.remove(); });
     });
+    var activeSpeakerEvent = library.RoomEvent.ActiveSpeakersChanged || library.RoomEvent.ActiveSpeakerChanged;
+    if (activeSpeakerEvent) {
+      room.on(activeSpeakerEvent, function (speakers) {
+        if (room !== mediaRoom || generation !== mediaGeneration || !window.GroupV3VideoLayout) return;
+        var first = Array.isArray(speakers) ? speakers[0] : speakers;
+        window.GroupV3VideoLayout.setActiveSpeaker(first && (first.identity || first.sid || first.livekit_identity) || "");
+      });
+    }
     if (library.RoomEvent.Reconnecting) {
       room.on(library.RoomEvent.Reconnecting, function () {
         if (room !== mediaRoom || generation !== mediaGeneration) return;
