@@ -766,7 +766,7 @@
       }).join("");
       return '<div class="video-call-layout ' + (state.profile && state.profile.auto_translate_enabled ? "with-translation" : "") +
         ' surface-content"><div class="video-stage"><div class="call-status-line">' + badge("LIVE", "success") + "<span>" +
-        esc(t("activeVideo")) + '</span></div><div class="video-grid" data-video-grid>' + tiles + "</div>" + callDock(kind) +
+        esc(t("activeVideo")) + '</span><small class="media-participant-count">' + esc(String(people.length)) + " " + esc(t("participantsShort")) + '</small></div><div class="video-grid count-' + Math.min(people.length, 8) + '" data-video-grid>' + tiles + "</div>" + callDock(kind) +
         '<div class="audio-host" data-audio-host></div></div>' + (state.profile && state.profile.auto_translate_enabled ? translationDock() : "") + "</div>";
     }
     var speaker = (session.participants || []).find(function (person) { return person.invite_status === "joined"; }) || me;

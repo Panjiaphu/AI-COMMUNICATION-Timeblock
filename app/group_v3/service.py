@@ -291,6 +291,7 @@ class GroupService:
                     # any concurrent transaction from creating a second owner.
                     current_owner.role = "admin"
                     current_owner.updated_at = _now()
+                    db.flush()
                     target.role = "owner"
                     target.updated_at = _now()
                     space.version += 1

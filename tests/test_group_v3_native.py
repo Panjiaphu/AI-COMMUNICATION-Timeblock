@@ -628,8 +628,8 @@ def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     assert "AI-COMMUNICATION 會持久保存成員資格" in i18n_js
     assert "Timeblock durably stores" not in i18n_js
     assert "Timeblock lưu bền" not in i18n_js
-    assert 'group_v3_i18n.js?v=20260904-media-picker-1' in template
-    assert 'group_v3_app.js?v=20260904-prejoin-1' in template
+    assert 'group_v3_i18n.js?v=20260904-p8-1' in template
+    assert 'group_v3_app.js?v=20260904-p8-1' in template
     assert 'class="logout-navigation"' in app_js
     assert 'mobileLogout: logout' in app_js
     assert "logout: 'Đăng xuất'" in i18n_js

@@ -69,3 +69,13 @@ def test_group_v3_attachment_viewer_has_authenticated_inline_media_and_mobile_ex
     assert 'data-action=\"close-attachment\"' in app_js
     assert ".attachment-viewer-backdrop" in runtime_css
     assert ".attachment-viewer-download" in runtime_css
+
+
+def test_group_v3_media_roster_does_not_hide_mobile_participants():
+    app_js = (ROOT / "app/static/group-v3/group_v3_app.js").read_text(encoding="utf-8")
+    runtime_css = (ROOT / "app/static/group-v3/group_v3.css").read_text(encoding="utf-8")
+    assert "media-participant-count" in app_js
+    assert "count-" in app_js
+    assert ".video-tile:nth-child(4)" not in runtime_css
+    assert ".audio-participant-row > div:nth-child(n+4)" not in runtime_css
+    assert "overflow-x: auto" in runtime_css
