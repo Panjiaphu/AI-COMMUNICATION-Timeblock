@@ -534,6 +534,40 @@ async def get_attachment(request: Request, space_id: str, attachment_id: str) ->
     )
 
 
+@router.get("/spaces/{space_id}/attachments/{attachment_id}/inline")
+async def get_attachment_inline(request: Request, space_id: str, attachment_id: str) -> Response:
+    """Serve a whitelisted media attachment inline for the Group viewer.
+
+    The route keeps the same membership/encryption checks as downloads and
+    refuses active content such as SVG/HTML from being embedded.
+    """
+    actor = require_group_actor(request, "group.messages.read")
+    metadata, payload = _service(request).get_attachment(
+        actor,
+        _bounded_id(space_id, "space_id"),
+        _bounded_id(attachment_id, "attachment_id"),
+    )
+    allowed = {
+        "image/jpeg", "image/png", "image/gif", "image/webp",
+        "audio/mpeg", "audio/ogg", "audio/wav", "audio/webm",
+        "video/mp4", "video/ogg", "video/webm",
+    }
+    if metadata["mime_type"] not in allowed:
+        raise HTTPException(status_code=415, detail="inline_media_not_supported")
+    safe_name = quote(metadata["name"], safe="")
+    return Response(
+        payload,
+        media_type=metadata["mime_type"],
+        headers={
+            "Cache-Control": "no-store, private, max-age=0",
+            "Content-Disposition": f"inline; filename*=UTF-8''{safe_name}",
+            "Content-Length": str(metadata["size_bytes"]),
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "default-src 'none'; img-src 'self'; media-src 'self'",
+        },
+    )
+
+
 @router.get("/spaces/{space_id}/audit")
 async def list_audit(
     request: Request,

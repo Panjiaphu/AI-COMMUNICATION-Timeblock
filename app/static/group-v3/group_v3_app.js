@@ -85,6 +85,7 @@
     prejoinVideoDeviceId: "",
     prejoinOutputDeviceId: "",
     prejoinConfirmed: false,
+    attachmentViewer: null,
     mediaReconnectState: "idle",
     mediaReconnectAttempts: 0
   };
@@ -624,6 +625,12 @@
       && message.sender.id === state.context.principal.id
       && message.sender.user_id === state.context.principal.user_id;
     var attachments = (message.attachments || []).map(function (item) {
+      if (item.is_image) {
+        return '<button type="button" class="attachment-image" data-action="open-attachment" data-src="' + esc(item.inline_url || item.download_url) + '" data-download="' + esc(item.download_url) + '" data-name="' + esc(item.name) + '" data-mime="' + esc(item.mime_type) + '"><img src="' + esc(item.inline_url || item.download_url) + '" alt="' + esc(item.name) + '" loading="lazy"><span>' + esc(item.name) + '</span></button>';
+      }
+      if (item.is_audio || item.is_video) {
+        return '<button type="button" class="attachment-chip attachment-media" data-action="open-attachment" data-src="' + esc(item.inline_url || item.download_url) + '" data-download="' + esc(item.download_url) + '" data-name="' + esc(item.name) + '" data-mime="' + esc(item.mime_type) + '">' + icon(item.is_video ? "video" : "headphones", 14) + "<span>" + esc(item.name) + "</span></button>";
+      }
       return '<a class="attachment-chip" href="' + esc(item.download_url) + '" download>' + icon("paperclip", 14) + "<span>" + esc(item.name) + "</span></a>";
     }).join("");
     var time = message.created_at ? formatTime(message.created_at) : "";
@@ -958,8 +965,33 @@
       '<small class="prejoin-status">' + esc(state.prejoinBusy ? t("prejoinChecking") : localStream ? t("prejoinReady") : t("permissionRequired")) + '</small></section></div>';
   }
 
+  function renderAttachmentViewer() {
+    var item = state.attachmentViewer;
+    if (!item) return "";
+    var mime = String(item.mime || "");
+    var media = mime.indexOf("image/") === 0
+      ? '<img class="attachment-viewer-media" src="' + esc(item.src) + '" alt="' + esc(item.name) + '">'
+      : mime.indexOf("video/") === 0
+        ? '<video class="attachment-viewer-media" src="' + esc(item.src) + '" controls autoplay playsinline></video>'
+        : '<audio class="attachment-viewer-audio" src="' + esc(item.src) + '" controls autoplay></audio>';
+    return '<div class="attachment-viewer-backdrop" data-action="close-attachment"><section class="attachment-viewer" role="dialog" aria-modal="true" aria-label="' + esc(item.name) + '">' +
+      '<header><strong>' + esc(item.name) + '</strong>' + iconButton("close-attachment", t("close"), "log-out") + '</header><div class="attachment-viewer-stage">' + media + '</div>' +
+      '<a class="action-button action-secondary attachment-viewer-download" href="' + esc(item.download || item.src) + '" download>' + icon("paperclip", 16) + '<span>' + esc(t("downloadAttachment")) + '</span></a></section></div>';
+  }
+
+  function syncIncomingRingtone() {
+    if (!window.GroupV3IncomingRingtone) return;
+    var participant = state.mediaSession && selfParticipant(state.mediaSession);
+    if (participant && participant.invite_status === "invited" && state.mediaSession.status === "ringing") {
+      window.GroupV3IncomingRingtone.start(state.mediaSession.id);
+    } else {
+      window.GroupV3IncomingRingtone.stop();
+    }
+  }
+
   function render() {
     if (state.status !== "READY" && state.status !== "HANDOFF_REQUIRED") {
+      if (window.GroupV3IncomingRingtone) window.GroupV3IncomingRingtone.stop();
       var failed = state.status === "FAILED";
       root.innerHTML = '<section class="group-v3-bootstrap ' + (failed ? "is-error" : "") +
         '"><img src="/static/group-v3/timeblock-chat.svg" width="56" height="56" alt=""><strong>AI-COMMUNICATION</strong><span>' +
@@ -978,8 +1010,9 @@
       esc(t("nativeGroupApp")) + '</small></span></div><div class="mobile-header-actions">' + nav.mobileLogout + '<span class="mobile-state-dot"></span></div></header>' + renderRooms() +
       '<section class="native-main ' + (banner ? "has-banner" : "") + '"><div class="session-strip"><span><i></i>' +
       esc(t("signedIn")) + "</span><span>" + esc(state.groupAuthorized ? t("groupSession") : t("handoffRequiredTitle")) + "</span></div>" + banner + (state.groupAuthorized ? header() : "") + mobileLanguageBar() + surface() +
-      "</section>" + nav.mobile + "</div>" + renderMemberManager() + renderPrejoin();
+      "</section>" + nav.mobile + "</div>" + renderMemberManager() + renderPrejoin() + renderAttachmentViewer();
     root.dataset.runtimeState = "READY";
+    syncIncomingRingtone();
     syncMediaElements();
     if (state.prejoinOpen && localStream) {
       var preview = root.querySelector("[data-prejoin-video]");
@@ -1622,6 +1655,21 @@
       return saveProfile();
     }
     if (name === "toggle-consent") return toggleConsent();
+    if (name === "open-attachment") {
+      state.attachmentViewer = {
+        src: button.dataset.src || "",
+        download: button.dataset.download || button.dataset.src || "",
+        name: button.dataset.name || t("attach"),
+        mime: button.dataset.mime || "application/octet-stream"
+      };
+      render();
+      return;
+    }
+    if (name === "close-attachment") {
+      state.attachmentViewer = null;
+      render();
+      return;
+    }
     if (name === "prepare-prejoin" || name === "retry-prejoin") return preparePrejoin();
     if (name === "confirm-prejoin") return confirmPrejoin();
     if (name === "cancel-prejoin") {
@@ -2059,7 +2107,9 @@
   root.addEventListener("click", function (event) {
     var button = event.target.closest("[data-action]");
     if (!button || button.disabled) return;
+    if (window.GroupV3IncomingRingtone) window.GroupV3IncomingRingtone.arm();
     if (button.classList.contains("member-manager-backdrop") && event.target.closest("[data-member-manager]")) return;
+    if (button.classList.contains("attachment-viewer-backdrop") && event.target.closest(".attachment-viewer")) return;
     handleAction(button.dataset.action, button);
   });
 
@@ -2082,6 +2132,11 @@
   });
 
   root.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && state.attachmentViewer) {
+      state.attachmentViewer = null;
+      render();
+      return;
+    }
     var editor = event.target;
     if (!editor || editor.tagName !== "TEXTAREA" || !editor.matches("[data-group-text-entry]")) return;
     if (event.key !== "Enter" || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;

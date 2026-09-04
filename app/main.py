@@ -45,6 +45,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             while True:
                 await asyncio.sleep(30)
                 await app.state.room_manager.cleanup()
+                drain_outbox = getattr(app.state.group_event_broker, "drain_outbox", None)
+                if drain_outbox:
+                    await drain_outbox()
                 if app.state.settings.group_radio_v3_enabled:
                     try:
                         await app.state.group_radio_service.reconcile_device_loss(app.state.group_radio_floor)
@@ -58,6 +61,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
         task = asyncio.create_task(cleanup_loop())
         try:
+            start_events = getattr(application.state.group_event_broker, "start", None)
+            if start_events:
+                await start_events()
             yield
         finally:
             task.cancel()
@@ -73,6 +79,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             group_radio_floor = getattr(getattr(app, "state", None), "group_radio_floor", None)
             if group_radio_floor:
                 await group_radio_floor.close()
+            group_event_broker = getattr(getattr(app, "state", None), "group_event_broker", None)
+            close_events = getattr(group_event_broker, "close", None)
+            if close_events:
+                await close_events()
 
     application = FastAPI(title=runtime_settings.app_name, debug=runtime_settings.debug, lifespan=lifespan)
     application.state.settings = runtime_settings
@@ -85,7 +95,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         application.state.database,
         runtime_settings.group_invitation_ttl_seconds,
     )
-    application.state.group_event_broker = GroupEventBroker()
+    application.state.group_event_broker = GroupEventBroker(
+        database=application.state.database,
+        redis_url=runtime_settings.group_radio_redis_url,
+        redis_namespace=f"{runtime_settings.group_radio_redis_namespace}:group-events",
+    )
     application.state.group_media_session_service = GroupMediaSessionService(
         application.state.database,
         runtime_settings,

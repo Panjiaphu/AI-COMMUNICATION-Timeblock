@@ -75,6 +75,19 @@ html, body, .group-native-app { width: 100%; min-width: 0; height: 100%; min-hei
 .member-manager-upgrade { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--canvas); }
 .member-manager-upgrade p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
 .member-manager-upgrade .action-button { justify-self: start; }
+.attachment-image { width: min(300px, 100%); display: grid; gap: 5px; margin-top: 8px; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; color: var(--teal-strong); background: var(--canvas); text-align: left; cursor: pointer; }
+.attachment-image img { width: 100%; max-height: 240px; display: block; object-fit: cover; }
+.attachment-image span { padding: 0 9px 8px; overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.attachment-media { cursor: pointer; }
+.attachment-viewer-backdrop { position: fixed; inset: 0; z-index: 180; display: grid; place-items: center; padding: 20px; background: rgba(5, 22, 20, .82); }
+.attachment-viewer { width: min(960px, 100%); max-height: calc(100dvh - 40px); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 12px; padding: 14px; overflow: hidden; border-radius: 16px; color: var(--white); background: #092721; box-shadow: 0 24px 70px rgba(0, 0, 0, .42); }
+.attachment-viewer > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.attachment-viewer > header strong { min-width: 0; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.attachment-viewer > header .icon-button { color: var(--white); border-color: rgba(255, 255, 255, .24); background: rgba(255, 255, 255, .08); }
+.attachment-viewer-stage { min-height: 0; display: grid; place-items: center; overflow: auto; }
+.attachment-viewer-media { max-width: 100%; max-height: min(70dvh, 720px); display: block; object-fit: contain; }
+.attachment-viewer-audio { width: min(560px, 100%); }
+.attachment-viewer-download { justify-self: center; min-width: 150px; color: var(--teal-strong); background: var(--white); text-decoration: none; }
 .native-main.has-banner { grid-template-rows: 28px 44px 76px minmax(0, 1fr); }
 .native-main.has-banner .runtime-banner { grid-row: 2; }
 .native-main.has-banner .group-header { grid-row: 3; }
@@ -105,6 +118,9 @@ html, body, .group-native-app { width: 100%; min-width: 0; height: 100%; min-hei
   .member-manager-actions { max-width: 48%; flex-wrap: wrap; }
   .member-manager-actions .action-button { min-width: 44px; }
   .member-manager-actions .action-button span { display: none; }
+  .attachment-viewer-backdrop { align-items: end; padding: 0; }
+  .attachment-viewer { width: 100%; max-height: 100dvh; padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); border-radius: 16px 16px 0 0; }
+  .attachment-viewer-media { max-height: 72dvh; }
 }
 
 @media (prefers-reduced-motion: reduce) {

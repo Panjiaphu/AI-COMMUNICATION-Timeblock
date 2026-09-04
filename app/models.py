@@ -287,6 +287,26 @@ class GroupAuditEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
+class GroupEventOutbox(Base):
+    __tablename__ = "group_event_outbox"
+    __table_args__ = (
+        CheckConstraint("status IN ('pending','published','failed')", name="ck_group_event_outbox_status"),
+        Index("ix_group_event_outbox_delivery", "status", "next_attempt_at", "created_at"),
+        Index("ix_group_event_outbox_space_created", "space_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    space_id: Mapped[str] = mapped_column(String(36), ForeignKey("group_spaces.id", ondelete="CASCADE"), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    resource_id: Mapped[str] = mapped_column(String(80), nullable=False, default="", server_default="")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", server_default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    last_error: Mapped[str] = mapped_column(String(160), nullable=False, default="", server_default="")
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class GroupIdempotencyRecord(Base):
     __tablename__ = "group_idempotency_records"
     __table_args__ = (

@@ -439,6 +439,10 @@ class GroupService:
                     "mime_type": item.mime_type,
                     "size_bytes": item.size_bytes,
                     "download_url": f"/api/group/spaces/{item.space_id}/attachments/{item.id}",
+                    "inline_url": f"/api/group/spaces/{item.space_id}/attachments/{item.id}/inline",
+                    "is_image": item.mime_type in {"image/jpeg", "image/png", "image/gif", "image/webp"},
+                    "is_audio": item.mime_type.startswith("audio/"),
+                    "is_video": item.mime_type.startswith("video/"),
                 }
             )
         payloads = []

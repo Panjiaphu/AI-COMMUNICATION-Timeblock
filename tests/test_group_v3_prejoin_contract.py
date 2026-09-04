@@ -41,3 +41,31 @@ def test_group_v3_media_reconnect_is_bounded_and_cleanup_cancels_stale_work():
     assert "devicechange" in app_js
     assert "beforeunload" in app_js or "pagehide" in app_js
     assert "group_media_stale_attempt" in app_js
+
+
+def test_group_v3_incoming_ringtone_is_gesture_gated_and_single_tab_coordinated():
+    template = (ROOT / "app/templates/group_communication_v3.html").read_text(encoding="utf-8")
+    app_js = (ROOT / "app/static/group-v3/group_v3_app.js").read_text(encoding="utf-8")
+    ringtone_js = (ROOT / "app/static/group-v3/group_incoming_ringtone.js").read_text(encoding="utf-8")
+    assert "group_incoming_ringtone.js?v=20260904-ringtone-1" in template
+    assert "syncIncomingRingtone" in app_js
+    assert "GroupV3IncomingRingtone.arm" in app_js
+    assert "BroadcastChannel" in ringtone_js
+    assert "AudioContext" in ringtone_js
+    assert "getUserMedia" not in ringtone_js
+    assert "localStorage" not in ringtone_js
+
+
+def test_group_v3_attachment_viewer_has_authenticated_inline_media_and_mobile_exit():
+    router = (ROOT / "app/group_v3/router.py").read_text(encoding="utf-8")
+    service = (ROOT / "app/group_v3/service.py").read_text(encoding="utf-8")
+    app_js = (ROOT / "app/static/group-v3/group_v3_app.js").read_text(encoding="utf-8")
+    runtime_css = (ROOT / "app/static/group-v3/group_v3_runtime.css").read_text(encoding="utf-8")
+    assert "/attachments/{attachment_id}/inline" in router
+    assert '"Content-Disposition": f"inline;' in router
+    assert "inline_media_not_supported" in router
+    assert '"inline_url"' in service and '"is_image"' in service
+    assert "attachmentViewer" in app_js
+    assert 'data-action=\"close-attachment\"' in app_js
+    assert ".attachment-viewer-backdrop" in runtime_css
+    assert ".attachment-viewer-download" in runtime_css

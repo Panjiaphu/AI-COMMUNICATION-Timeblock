@@ -708,6 +708,11 @@ def test_group_media_connection_migration_advances_single_head_and_is_reversible
         ROOT / "alembic/versions/20260904_0020_group_media_connection_state.py"
     ).read_text(encoding="utf-8")
     assert 'revision = "20260904_0020"' in migration
+    outbox_migration = (
+        ROOT / "alembic/versions/20260904_0021_group_event_outbox.py"
+    ).read_text(encoding="utf-8")
+    assert 'revision = "20260904_0021"' in outbox_migration
+    assert "group_event_outbox" in outbox_migration
     assert 'down_revision = "20260903_0019"' in migration
     assert '"connection_status"' in migration
     assert '"connection_error_code"' in migration
