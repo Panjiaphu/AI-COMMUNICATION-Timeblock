@@ -1016,9 +1016,20 @@
     }
   }
 
+  function syncCallerRingback() {
+    if (!window.GroupV3Ringback) return;
+    var participant = state.mediaSession && selfParticipant(state.mediaSession);
+    var outgoing = participant && participant.invite_status === "joined" &&
+      state.mediaSession.initiated_by_membership_id === participant.membership_id &&
+      state.mediaSession.status === "ringing" && !state.mediaConnected;
+    if (outgoing) window.GroupV3Ringback.start(state.mediaSession.id);
+    else window.GroupV3Ringback.stop();
+  }
+
   function render() {
     if (state.status !== "READY" && state.status !== "HANDOFF_REQUIRED") {
       if (window.GroupV3IncomingRingtone) window.GroupV3IncomingRingtone.stop();
+      if (window.GroupV3Ringback) window.GroupV3Ringback.stop();
       var failed = state.status === "FAILED";
       root.innerHTML = '<section class="group-v3-bootstrap ' + (failed ? "is-error" : "") +
         '"><img src="/static/group-v3/timeblock-chat.svg" width="56" height="56" alt=""><strong>AI-COMMUNICATION</strong><span>' +
@@ -1040,6 +1051,7 @@
       "</section>" + nav.mobile + "</div>" + renderMemberManager() + renderGroupSettings() + renderPrejoin() + renderAttachmentViewer();
     root.dataset.runtimeState = "READY";
     syncIncomingRingtone();
+    syncCallerRingback();
     syncMediaElements();
     if (state.prejoinOpen && localStream) {
       var preview = root.querySelector("[data-prejoin-video]");
@@ -2212,6 +2224,7 @@
     var button = event.target.closest("[data-action]");
     if (!button || button.disabled) return;
     if (window.GroupV3IncomingRingtone) window.GroupV3IncomingRingtone.arm();
+    if (window.GroupV3Ringback) window.GroupV3Ringback.arm();
     if (button.classList.contains("member-manager-backdrop") && event.target.closest("[data-member-manager]")) return;
     if (button.classList.contains("attachment-viewer-backdrop") && event.target.closest(".attachment-viewer")) return;
     handleAction(button.dataset.action, button);

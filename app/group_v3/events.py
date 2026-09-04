@@ -5,6 +5,7 @@ import json
 import logging
 from collections import defaultdict
 from collections.abc import AsyncIterator
+from contextvars import ContextVar
 from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -68,6 +69,12 @@ class GroupEventBroker:
         self._pubsub: Any | None = None
         self._listener_task: asyncio.Task[None] | None = None
         self._closed = False
+        # Services enqueue events inside their SQLAlchemy transaction.  The
+        # request-local handoff lets the router publish that exact row after
+        # commit without creating a second semantic event.
+        self._transaction_events: ContextVar[dict[tuple[str, str, str], str]] = ContextVar(
+            "group_v3_transaction_events", default={}
+        )
 
     @asynccontextmanager
     async def subscribe(self, space_id: str) -> AsyncIterator[asyncio.Queue[GroupEvent]]:
@@ -174,6 +181,32 @@ class GroupEventBroker:
                     )
                 )
 
+    def enqueue_in_transaction(self, db: Any, space_id: str, event_type: str, *, resource_id: Any = "") -> str:
+        """Insert an outbox row using the caller's already-open transaction.
+
+        No commit is performed here.  If the business transaction rolls back,
+        the event row rolls back with it.  The router can subsequently call
+        :meth:`publish` and the request-local handoff will dispatch this row.
+        """
+        normalized_space = str(space_id or "")[:36]
+        normalized_type = str(event_type or "group.changed")[:80]
+        normalized_resource = str(resource_id or "")[:80]
+        event_id = uuid4().hex
+        db.add(
+            GroupEventOutbox(
+                id=event_id,
+                space_id=normalized_space,
+                event_type=normalized_type,
+                resource_id=normalized_resource,
+                status="pending",
+                next_attempt_at=_now(),
+            )
+        )
+        current = dict(self._transaction_events.get())
+        current[(normalized_space, normalized_type, normalized_resource)] = event_id
+        self._transaction_events.set(current)
+        return event_id
+
     def _mark(self, event_id: str, *, status: str, error: str = "", attempts: int | None = None) -> None:
         if not self._database:
             return
@@ -197,16 +230,22 @@ class GroupEventBroker:
         await self._redis.publish(self._channel, json.dumps(payload, separators=(",", ":")))
 
     async def publish(self, space_id: str, event_type: str, *, resource_id: Any = "") -> None:
-        event = GroupEvent(
-            uuid4().hex,
-            str(event_type or "group.changed")[:80],
-            str(space_id)[:36],
-            str(resource_id or "")[:80],
-        )
-        try:
-            self._persist_pending(event)
-        except Exception as exc:
-            logger.exception("Group event outbox write failed: %s", exc)
+        normalized_space = str(space_id)[:36]
+        normalized_type = str(event_type or "group.changed")[:80]
+        normalized_resource = str(resource_id or "")[:80]
+        key = (normalized_space, normalized_type, normalized_resource)
+        event_id = self._transaction_events.get().get(key)
+        if event_id:
+            remaining = dict(self._transaction_events.get())
+            remaining.pop(key, None)
+            self._transaction_events.set(remaining)
+            event = GroupEvent(event_id, normalized_type, normalized_space, normalized_resource)
+        else:
+            event = GroupEvent(uuid4().hex, normalized_type, normalized_space, normalized_resource)
+            try:
+                self._persist_pending(event)
+            except Exception as exc:
+                logger.exception("Group event outbox write failed: %s", exc)
         await self._fanout(event)
         if self._redis:
             try:
@@ -215,10 +254,13 @@ class GroupEventBroker:
             except Exception as exc:  # pragma: no cover - depends on external Redis
                 self._mark(event.event_id, status="failed", error=str(exc), attempts=1)
         else:
-            self._mark(event.event_id, status="published")
+            # Local SSE fan-out is useful in a single process, but it is not
+            # durable distributed delivery. Keep the row pending so a later
+            # worker can retry once Redis/Valkey is available.
+            logger.info("Group event queued pending; Redis/Valkey unavailable")
 
     async def drain_outbox(self, limit: int = 100) -> int:
-        if not self._database:
+        if not self._database or not self._redis:
             return 0
         try:
             with self._database.session() as db:

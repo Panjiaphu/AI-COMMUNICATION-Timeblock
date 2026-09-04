@@ -42,10 +42,15 @@ def _token_hash(value: str) -> str:
 
 
 class GroupRadioService:
-    def __init__(self, database: Database, settings: Settings, provider: LiveKitGroupMediaProvider):
+    def __init__(self, database: Database, settings: Settings, provider: LiveKitGroupMediaProvider, event_broker=None):
         self.database = database
         self.settings = settings
         self.provider = provider
+        self.event_broker = event_broker
+
+    def _enqueue(self, db, space_id: str, event_type: str, resource_id: object = "") -> None:
+        if self.event_broker:
+            self.event_broker.enqueue_in_transaction(db, space_id, event_type, resource_id=resource_id)
 
     def _enabled(self) -> None:
         if not self.settings.group_radio_v3_enabled:
@@ -127,6 +132,7 @@ class GroupRadioService:
                     self._audit(db, actor, space_id, "radio.session_created", "radio_session", session.id, {"invitee_count": len(invitees)})
                     db.flush()
                     db.refresh(session)
+                    self._enqueue(db, space_id, "radio.session_created", session.id)
                     return self._session_payload(db, session)
             except IntegrityError as exc:
                 raise GroupServiceError("group_radio_session_conflict", 409) from exc
@@ -164,6 +170,7 @@ class GroupRadioService:
                 participant.left_at = None
                 participant.updated_at = _now()
                 self._audit(db, actor, space_id, "radio.participant_joined", "radio_session", session.id)
+                self._enqueue(db, space_id, "radio.participant_joined", session.id)
                 db.flush()
                 return self._session_payload(db, session)
 
@@ -187,6 +194,7 @@ class GroupRadioService:
                     "radio_session",
                     session.id,
                 )
+                self._enqueue(db, space_id, "radio.participant_rejected", session.id)
                 db.flush()
                 return self._session_payload(db, session)
 
@@ -201,6 +209,7 @@ class GroupRadioService:
                 participant.left_at = _now()
                 participant.updated_at = _now()
                 self._audit(db, actor, space_id, "radio.participant_left", "radio_session", session.id, {"ended_for_all": False})
+                self._enqueue(db, space_id, "radio.participant_left", session.id)
                 db.flush()
                 return self._session_payload(db, session)
 
@@ -224,6 +233,7 @@ class GroupRadioService:
                             participant.status = "left"
                             participant.left_at = now
                     self._audit(db, actor, space_id, "radio.session_ended_for_all", "radio_session", session.id, {"ended_for_all": True})
+                    self._enqueue(db, space_id, "radio.session_ended_for_all", session.id)
                 db.flush()
                 return self._session_payload(db, session)
 
@@ -283,6 +293,7 @@ class GroupRadioService:
                 burst = GroupRadioBurst(id=str(uuid4()), radio_session_id=session.id, space_id=space_id, speaker_participant_id=participant.id, speaker_membership_id=participant.membership_id, floor_token_hash=_token_hash(floor_token), state="talking", source_language=source_language, target_languages_json=json.dumps(planned_targets, separators=(",", ":")), started_at=_now())
                 db.add(burst)
                 self._audit(db, actor, space_id, "radio.floor_acquired", "radio_burst", burst.id, {"target_language_count": len(planned_targets), "targets_from_recipient_profiles": True})
+                self._enqueue(db, space_id, "radio.floor_acquired", burst.id)
                 db.flush()
                 return self._burst_payload(burst)
 
@@ -317,6 +328,7 @@ class GroupRadioService:
                     burst.updated_at = _now()
                     db.add(GroupRadioProcessingJob(id=str(uuid4()), burst_id=burst.id, status="ready" if targets else "completed"))
                     self._audit(db, actor, space_id, "radio.burst_floor_released", "radio_burst", burst.id, {"before_downstream": True, "reason": reason[:40]})
+                    self._enqueue(db, space_id, "radio.floor_released", burst.id)
                 db.flush()
                 return self._burst_payload(burst)
 
@@ -341,6 +353,7 @@ class GroupRadioService:
                     participant.updated_at = now
                     db.add(GroupRadioProcessingJob(id=str(uuid4()), burst_id=burst.id, status="suppressed", failure_code="device_lost_private_audio_suppressed"))
                     self._audit(db, actor, space_id, "radio.burst_device_lost", "radio_burst", burst.id, {"private_audio_playback": "suppressed"})
+                    self._enqueue(db, space_id, "radio.device_lost", burst.id)
                 db.flush()
                 return self._burst_payload(burst)
 

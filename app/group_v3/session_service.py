@@ -42,10 +42,16 @@ class GroupMediaSessionService:
         database: Database,
         settings: Settings,
         provider: LiveKitGroupMediaProvider,
+        event_broker=None,
     ):
         self.database = database
         self.settings = settings
         self.provider = provider
+        self.event_broker = event_broker
+
+    def _enqueue(self, db, space_id: str, event_type: str, resource_id: object = "") -> None:
+        if self.event_broker:
+            self.event_broker.enqueue_in_transaction(db, space_id, event_type, resource_id=resource_id)
 
     @staticmethod
     def _membership(db, space_id: str, actor: GroupActor) -> GroupMembership:
@@ -128,6 +134,7 @@ class GroupMediaSessionService:
             "space_id": session.space_id,
             "media_kind": session.media_kind,
             "title": session.title,
+            "initiated_by_membership_id": session.initiated_by_membership_id,
             "status": session.status,
             "version": session.version,
             "participants": [self._participant_payload(item) for item in participants],
@@ -204,6 +211,7 @@ class GroupMediaSessionService:
                 self._audit(db, actor, space_id, "media_session.ringing", session.id, {"media_kind": session.media_kind, "invitee_count": len(invitees)})
                 db.flush()
                 db.refresh(session)
+                self._enqueue(db, space_id, "media_session.created", session.id)
                 return self._session_payload(db, session)
 
     def list_sessions(self, actor: GroupActor, space_id: str, status: str | None, limit: int) -> list[dict]:
@@ -248,6 +256,7 @@ class GroupMediaSessionService:
                 participant.connection_status = "not_connected"
                 participant.connection_error_code = ""
                 self._audit(db, actor, space_id, "media_session.joined", session.id)
+                self._enqueue(db, space_id, "media_session.joined", session.id)
                 db.flush()
                 return self._session_payload(db, session)
 
@@ -286,6 +295,7 @@ class GroupMediaSessionService:
                     session.id,
                     {"status": status, "failure_code": participant.connection_error_code},
                 )
+                self._enqueue(db, space_id, "media_session.connection_state", session.id)
                 db.flush()
                 return self._session_payload(db, session)
 
@@ -315,6 +325,7 @@ class GroupMediaSessionService:
                     session.end_reason = "all_invites_rejected"
                     session.version += 1
                 self._audit(db, actor, space_id, "media_session.rejected", session.id)
+                self._enqueue(db, space_id, "media_session.rejected", session.id)
                 db.flush()
                 return self._session_payload(db, session)
 
@@ -345,6 +356,7 @@ class GroupMediaSessionService:
                     session.end_reason = "last_participant_left"
                     session.version += 1
                 self._audit(db, actor, space_id, "media_session.left", session.id, {"ended_for_all": False})
+                self._enqueue(db, space_id, "media_session.left", session.id)
                 db.flush()
                 return self._session_payload(db, session)
 
@@ -373,6 +385,7 @@ class GroupMediaSessionService:
                     session.version += 1
                     session.updated_at = now
                     self._audit(db, actor, space_id, "media_session.ended_for_all", session.id, {"ended_for_all": True})
+                    self._enqueue(db, space_id, "media_session.ended_for_all", session.id)
                 db.flush()
                 return self._session_payload(db, session)
 
@@ -405,6 +418,7 @@ class GroupMediaSessionService:
                 participant.desired_video_subscriptions_json = json.dumps(identities, separators=(",", ":"))
                 participant.updated_at = _now()
                 self._audit(db, actor, space_id, "media_session.video_subscriptions_updated", session.id, {"target_count": len(identities)})
+                self._enqueue(db, space_id, "media_session.video_subscriptions_updated", session.id)
                 return {"session_id": session.id, "desired_video_subscriptions": list(identities)}
 
     def media_grant(self, actor: GroupActor, space_id: str, session_id: str) -> dict:

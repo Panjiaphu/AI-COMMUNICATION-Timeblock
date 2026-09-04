@@ -58,8 +58,8 @@ def test_group_event_outbox_persists_and_is_secret_free(tmp_path):
     with database.session() as db:
         row = db.get(GroupEventOutbox, event_id)
         assert row is not None
-        assert row.status == "published"
-        assert row.published_at is not None
+        assert row.status == "pending"
+        assert row.published_at is None
     database.dispose()
 
 
@@ -72,3 +72,52 @@ def test_group_event_outbox_drain_is_noop_before_stale_local_migration(tmp_path)
 
     asyncio.run(scenario())
     database.dispose()
+
+
+def test_group_event_enqueue_is_atomic_with_business_transaction(tmp_path):
+    database = Database(Settings(database_url=f"sqlite:///{(tmp_path / 'atomic.sqlite3').as_posix()}"))
+    Base.metadata.create_all(database.engine)
+    broker = GroupEventBroker(database=database)
+
+    try:
+        with database.session() as db:
+            try:
+                with db.begin():
+                    db.add(
+                        GroupSpace(
+                            id="space-atomic-rollback",
+                            title="Rollback",
+                            description="",
+                            created_by_type="member",
+                            created_by_id="member-1",
+                            created_by_user_id="user-1",
+                        )
+                    )
+                    db.flush()
+                    broker.enqueue_in_transaction(db, "space-atomic-rollback", "space.created", resource_id="space-atomic-rollback")
+                    raise RuntimeError("force rollback")
+            except RuntimeError:
+                pass
+        with database.session() as db:
+            assert db.get(GroupSpace, "space-atomic-rollback") is None
+            assert db.get(GroupEventOutbox, "space-atomic-rollback") is None
+
+        with database.session() as db:
+            with db.begin():
+                db.add(
+                    GroupSpace(
+                        id="space-atomic-commit",
+                        title="Commit",
+                        description="",
+                        created_by_type="member",
+                        created_by_id="member-1",
+                        created_by_user_id="user-1",
+                    )
+                )
+                db.flush()
+                event_id = broker.enqueue_in_transaction(db, "space-atomic-commit", "space.created", resource_id="space-atomic-commit")
+        with database.session() as db:
+            row = db.get(GroupEventOutbox, event_id)
+            assert row is not None and row.status == "pending"
+    finally:
+        database.dispose()

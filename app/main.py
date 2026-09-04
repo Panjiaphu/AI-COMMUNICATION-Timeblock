@@ -90,20 +90,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     group_crypto = GroupCrypto(runtime_settings)
     livekit_provider = LiveKitGroupMediaProvider(runtime_settings)
     application.state.group_media_provider = livekit_provider
-    application.state.group_service = GroupService(application.state.database, group_crypto)
-    application.state.group_invitation_service = GroupInvitationService(
-        application.state.database,
-        runtime_settings.group_invitation_ttl_seconds,
-    )
     application.state.group_event_broker = GroupEventBroker(
         database=application.state.database,
         redis_url=runtime_settings.group_radio_redis_url,
         redis_namespace=f"{runtime_settings.group_radio_redis_namespace}:group-events",
     )
+    application.state.group_service = GroupService(
+        application.state.database, group_crypto, application.state.group_event_broker
+    )
+    application.state.group_invitation_service = GroupInvitationService(
+        application.state.database,
+        runtime_settings.group_invitation_ttl_seconds,
+        application.state.group_event_broker,
+    )
     application.state.group_media_session_service = GroupMediaSessionService(
         application.state.database,
         runtime_settings,
         livekit_provider,
+        application.state.group_event_broker,
     )
     application.state.group_translation_service = GroupTranslationService(
         application.state.database,
@@ -123,6 +127,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         application.state.database,
         runtime_settings,
         livekit_provider,
+        application.state.group_event_broker,
     )
     application.state.room_manager = RoomManager(runtime_settings)
     application.state.timeblock_client = TimeblockClient(runtime_settings)

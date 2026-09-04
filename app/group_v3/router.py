@@ -149,7 +149,8 @@ async def create_space(
     require_write_origin(request)
     actor = require_group_actor(request, "group.spaces.write")
     result = _service(request).create_space(actor, body.model_dump(), idempotency_key)
-    await _publish(request, result["space"]["id"], "space.created", result["space"]["id"])
+    if not result.get("idempotent"):
+        await _publish(request, result["space"]["id"], "space.created", result["space"]["id"])
     return _json(result, status_code=200 if result.get("idempotent") else 201)
 
 
@@ -282,7 +283,8 @@ async def create_invitation(request: Request, space_id: str, body: InvitationCre
         payload,
     )
     invitation = result["invitation"]
-    await _publish(request, normalized_space_id, "invitation.created", invitation["id"])
+    if not result.get("idempotent"):
+        await _publish(request, normalized_space_id, "invitation.created", invitation["id"])
     return _json(result, status_code=200 if result.get("idempotent") else 201)
 
 
@@ -316,7 +318,8 @@ async def accept_invitation(request: Request, invitation_id: str) -> JSONRespons
         _bounded_id(invitation_id, "invitation_id"),
         accept=True,
     )
-    await _publish(request, result["invitation"]["space_id"], "invitation.accepted", invitation_id)
+    if not result.get("idempotent"):
+        await _publish(request, result["invitation"]["space_id"], "invitation.accepted", invitation_id)
     return _json(result)
 
 
@@ -330,7 +333,8 @@ async def reject_invitation(request: Request, invitation_id: str) -> JSONRespons
         _bounded_id(invitation_id, "invitation_id"),
         accept=False,
     )
-    await _publish(request, result["invitation"]["space_id"], "invitation.rejected", invitation_id)
+    if not result.get("idempotent"):
+        await _publish(request, result["invitation"]["space_id"], "invitation.rejected", invitation_id)
     return _json(result)
 
 
@@ -405,7 +409,8 @@ async def create_message(
         body.model_dump(),
         idempotency_key,
     )
-    await _publish(request, normalized_space_id, "message.created", result["message"]["id"])
+    if not result.get("idempotent"):
+        await _publish(request, normalized_space_id, "message.created", result["message"]["id"])
     return _json(result, status_code=200 if result.get("idempotent") else 201)
 
 

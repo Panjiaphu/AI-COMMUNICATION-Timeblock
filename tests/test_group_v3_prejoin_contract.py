@@ -56,6 +56,19 @@ def test_group_v3_incoming_ringtone_is_gesture_gated_and_single_tab_coordinated(
     assert "localStorage" not in ringtone_js
 
 
+def test_group_v3_caller_ringback_is_gesture_gated_and_stoppable():
+    template = (ROOT / "app/templates/group_communication_v3.html").read_text(encoding="utf-8")
+    app_js = (ROOT / "app/static/group-v3/group_v3_app.js").read_text(encoding="utf-8")
+    ringback_js = (ROOT / "app/static/group-v3/group_ringback.js").read_text(encoding="utf-8")
+    assert "group_ringback.js?v=20260904-ringback-1" in template
+    assert "GroupV3Ringback.start" in app_js
+    assert "GroupV3Ringback.stop" in app_js
+    assert "GroupV3Ringback.arm" in app_js
+    assert "BroadcastChannel" in ringback_js
+    assert "AudioContext" in ringback_js
+    assert "pagehide" not in ringback_js or "stop" in ringback_js
+
+
 def test_group_v3_attachment_viewer_has_authenticated_inline_media_and_mobile_exit():
     router = (ROOT / "app/group_v3/router.py").read_text(encoding="utf-8")
     service = (ROOT / "app/group_v3/service.py").read_text(encoding="utf-8")

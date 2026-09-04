@@ -55,9 +55,16 @@ def _canonical_json(value: object) -> str:
 
 
 class GroupService:
-    def __init__(self, database: Database, crypto: GroupCrypto):
+    def __init__(self, database: Database, crypto: GroupCrypto, event_broker=None):
         self.database = database
         self.crypto = crypto
+        self.event_broker = event_broker
+
+    def _enqueue(self, db, space_id: str, event_type: str, resource_id: object = "") -> None:
+        if self.event_broker:
+            self.event_broker.enqueue_in_transaction(
+                db, space_id, event_type, resource_id=resource_id
+            )
 
     @staticmethod
     def _membership(db, space_id: str, actor: GroupActor) -> GroupMembership | None:
@@ -235,6 +242,7 @@ class GroupService:
                 db.refresh(membership)
                 payload = {"space": self._space_payload(space, membership), "idempotent": False}
                 self._idempotency_store(db, endpoint, actor, key, request_hash, payload, 201)
+                self._enqueue(db, space.id, "space.created", space.id)
                 return payload
 
     def get_space(self, actor: GroupActor, space_id: str) -> dict:
@@ -262,6 +270,7 @@ class GroupService:
                 space.version += 1
                 space.updated_at = _now()
                 self._audit(db, actor, space_id, "space.updated", resource_type="space", resource_id=space_id)
+                self._enqueue(db, space_id, "space.updated", space_id)
                 return self._space_payload(space, membership)
 
     def transfer_ownership(
@@ -305,6 +314,7 @@ class GroupService:
                         resource_id=target.id,
                         metadata={"from_membership_id": current_owner.id, "to_membership_id": target.id},
                     )
+                    self._enqueue(db, space_id, "ownership.transferred", target.id)
                     return self._space_payload(space, current_owner)
             except IntegrityError as exc:
                 raise GroupServiceError("group_owner_conflict", 409) from exc
@@ -350,6 +360,7 @@ class GroupService:
                     .values(status="ended", ended_at=now, ended_by_membership_id=owner.id, updated_at=now)
                 )
                 self._audit(db, actor, space_id, "space.deleted", resource_type="space", resource_id=space_id)
+                self._enqueue(db, space_id, "space.deleted", space_id)
                 return {"id": space_id, "lifecycle_status": "deleted", "version": space.version}
 
     def list_members(self, actor: GroupActor, space_id: str) -> list[dict]:
@@ -395,6 +406,7 @@ class GroupService:
                         )
                         db.add(item)
                     self._audit(db, actor, space_id, "membership.upserted", resource_type="membership", resource_id=item.id, metadata={"role": item.role})
+                    self._enqueue(db, space_id, "membership.created", item.id)
                     return self._membership_payload(item)
             except IntegrityError as exc:
                 raise GroupServiceError("group_membership_conflict", 409) from exc
@@ -486,6 +498,7 @@ class GroupService:
                         )
                 item.updated_at = _now()
                 self._audit(db, actor, space_id, "membership.updated", resource_type="membership", resource_id=item.id, metadata={"role": item.role, "status": item.status})
+                self._enqueue(db, space_id, "membership.updated", item.id)
                 return self._membership_payload(item)
 
     def radio_session_ids_for_membership(self, membership_id: str) -> list[str]:
@@ -651,6 +664,7 @@ class GroupService:
                     db.flush()
                     payload = {"message": self._message_payloads(db, actor, [message])[0], "idempotent": False}
                     self._idempotency_store(db, endpoint, actor, key, request_hash, payload, 201)
+                    self._enqueue(db, space_id, "message.created", message.id)
                     return payload
             except IntegrityError as exc:
                 raise GroupServiceError("group_message_conflict", 409) from exc
@@ -675,6 +689,7 @@ class GroupService:
                 message.encryption_version = version
                 message.edited_at = _now()
                 self._audit(db, actor, space_id, "message.updated", resource_type="message", resource_id=message.id)
+                self._enqueue(db, space_id, "message.updated", message.id)
                 return self._message_payloads(db, actor, [message])[0]
 
     def delete_message(self, actor: GroupActor, space_id: str, message_id: str) -> dict:
@@ -701,6 +716,7 @@ class GroupService:
                     db.execute(delete(GroupMessageReaction).where(GroupMessageReaction.message_id == message_id))
                     db.execute(delete(GroupMessagePin).where(GroupMessagePin.message_id == message_id))
                     self._audit(db, actor, space_id, "message.deleted", resource_type="message", resource_id=message.id)
+                    self._enqueue(db, space_id, "message.deleted", message.id)
                 return {"message_id": message_id, "deleted": True}
 
     def set_reaction(self, actor: GroupActor, space_id: str, message_id: str, reaction: str, enabled: bool) -> dict:
@@ -724,6 +740,7 @@ class GroupService:
                     elif not enabled and existing:
                         db.delete(existing)
                     self._audit(db, actor, space_id, "reaction.added" if enabled else "reaction.removed", resource_type="message", resource_id=message_id, metadata={"reaction": reaction})
+                    self._enqueue(db, space_id, "message.reaction", message_id)
                     db.flush()
                     return {"message": self._message_payloads(db, actor, [message])[0]}
             except IntegrityError as exc:
@@ -743,6 +760,7 @@ class GroupService:
                     elif not enabled and existing:
                         db.delete(existing)
                     self._audit(db, actor, space_id, "message.pinned" if enabled else "message.unpinned", resource_type="message", resource_id=message_id)
+                    self._enqueue(db, space_id, "message.pin", message_id)
                     return {"message_id": message_id, "pinned": enabled}
             except IntegrityError as exc:
                 raise GroupServiceError("group_pin_conflict", 409) from exc
