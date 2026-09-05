@@ -34,6 +34,7 @@
     },
     active: false
   };
+  var lastVideoIntent = "video";
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -64,6 +65,7 @@
   }
 
   function resetForRuntime(runtimeKey, surface) {
+    lastVideoIntent = "video";
     state.runtimeKey = String(runtimeKey || "");
     state.surface = String(surface || "");
     state.requested = {
@@ -100,7 +102,10 @@
 
     /* Suppression is effective-only: requested values are restored when the
        user exits the temporary immersive mode. */
-    if (state.surface === "video" && mediaMode === "MAXIMIZED") translationMode = "COLLAPSED";
+    if (state.surface === "video" && mediaMode === "MAXIMIZED") {
+      if (lastVideoIntent === "translation" && translationMode !== "COLLAPSED") mediaMode = "STANDARD";
+      else translationMode = "COLLAPSED";
+    }
     if (state.surface === "video" && translationMode === "FULL") mediaMode = mobile ? "COMPACT" : "STANDARD";
     if (state.surface === "radio" && radioTranslationMode === "FULL") radioMode = "COMPACT";
 
@@ -155,6 +160,7 @@
     if (candidate === "BALANCED") candidate = "STANDARD";
     if (candidate === "FULL") candidate = "MAXIMIZED";
     state.requested.mediaMode = normalize(candidate, list, "STANDARD");
+    lastVideoIntent = "video";
     emit();
     return snapshot();
   }
@@ -162,7 +168,10 @@
   function setTranslationMode(next, radio) {
     var mode = canonicalTranslation(next);
     if (radio) state.requested.radioTranslationMode = mode;
-    else state.requested.translationMode = mode;
+    else {
+      state.requested.translationMode = mode;
+      lastVideoIntent = "translation";
+    }
     emit();
     return snapshot();
   }
@@ -182,11 +191,11 @@
 
   function stepVideo(delta) {
     var list = state.viewport.mobile ? MOBILE_VIDEO_MODES : DESKTOP_VIDEO_MODES;
-    return setVideoMode(step(list, state.requested.mediaMode, delta));
+    return setVideoMode(step(list, state.effective.mediaMode, delta));
   }
 
   function stepTranslation(delta, radio) {
-    var current = radio ? state.requested.radioTranslationMode : state.requested.translationMode;
+    var current = radio ? state.effective.radioTranslationMode : state.effective.translationMode;
     return setTranslationMode(step(TRANSLATION_MODES, current, delta), radio);
   }
 
@@ -247,8 +256,8 @@
       translationShell.dataset.translationRequestedMode = requested.translationMode;
       var translationLabel = translationShell.querySelector("[data-translation-mode-label]");
       if (translationLabel) translationLabel.textContent = state.viewport.mobile ? effective.translationMode : effective.desktopTranslationMode;
-      translationShell.querySelectorAll('[data-workspace-action="translation-minus"]').forEach(function (button) { button.disabled = requested.translationMode === "COLLAPSED"; });
-      translationShell.querySelectorAll('[data-workspace-action="translation-plus"]').forEach(function (button) { button.disabled = requested.translationMode === "FULL"; });
+      translationShell.querySelectorAll('[data-workspace-action="translation-minus"]').forEach(function (button) { button.disabled = effective.translationMode === "COLLAPSED"; });
+      translationShell.querySelectorAll('[data-workspace-action="translation-plus"]').forEach(function (button) { button.disabled = effective.translationMode === "FULL"; });
     }
     if (radioShell) {
       radioShell.dataset.radioMode = effective.radioMode;
@@ -267,9 +276,9 @@
     target.querySelectorAll("[data-video-mode-label]").forEach(function (node) { node.textContent = effective.mediaMode; });
     target.querySelectorAll("[data-radio-mode-label]").forEach(function (node) { node.textContent = effective.radioMode; });
     target.querySelectorAll('[data-workspace-action="video-minus"]').forEach(function (button) {
-      button.disabled = requested.mediaMode === (state.viewport.mobile ? "COMPACT" : "STANDARD");
+      button.disabled = effective.mediaMode === (state.viewport.mobile ? "COMPACT" : "STANDARD");
     });
-    target.querySelectorAll('[data-workspace-action="video-plus"]').forEach(function (button) { button.disabled = requested.mediaMode === "MAXIMIZED"; });
+    target.querySelectorAll('[data-workspace-action="video-plus"]').forEach(function (button) { button.disabled = effective.mediaMode === "MAXIMIZED"; });
     target.querySelectorAll('[data-workspace-action="radio-minus"]').forEach(function (button) { button.disabled = requested.radioMode === "COMPACT"; });
     target.querySelectorAll('[data-workspace-action="radio-plus"]').forEach(function (button) { button.disabled = requested.radioMode === "MAXIMIZED"; });
     document.body.classList.toggle("group-communication-immersive", state.active);
@@ -280,7 +289,7 @@
 
   function handleClick(event) {
     var control = event.target.closest && event.target.closest("[data-workspace-action]");
-    if (!control) return;
+    if (!control || control.disabled) return;
     var action = control.dataset.workspaceAction;
     if (action === "video-plus") stepVideo(1);
     else if (action === "video-minus") stepVideo(-1);

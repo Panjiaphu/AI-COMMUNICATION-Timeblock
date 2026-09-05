@@ -7,6 +7,14 @@
   var initializedRuntimes = window.__groupV3TranslationHistoryBootstrapped || (window.__groupV3TranslationHistoryBootstrapped = new Set());
   var tts = window.speechSynthesis || null;
   var activePlayback = null;
+  var traces = [];
+  function trace(state, stage, status, detail, segmentId) {
+    // Never retain audio, transcript, credentials or complete response bodies.
+    traces.push({ runtime: state && state.runtimeKey || "", stage: stage, status: status,
+      detail: /^[a-zA-Z0-9_.-]{1,100}$/.test(String(detail || "")) ? String(detail) : "",
+      segmentId: segmentId || "", at: Date.now() });
+    if (traces.length > 100) traces.shift();
+  }
 
   function runtime() {
     return window.GroupV3Runtime && window.GroupV3Runtime.snapshot ? window.GroupV3Runtime.snapshot() : null;
@@ -47,13 +55,14 @@
       recipients: translate("recipients"),
       play: translate("translationPlay"),
       retry: translate("translationRetry")
+      ,noRecipients: translate("translationNoRecipients"), variants: translate("translationVariants")
     };
   }
 
   function stateFor(panel, snapshot) {
     var current = mounted.get(panel);
     var key = runtimeKey(snapshot);
-    if (current && current.runtimeKey !== key) {
+    if (current && (current.runtimeKey !== key || current.disposed)) {
       disposeState(current);
       current = null;
     }
@@ -63,6 +72,10 @@
         runtimeKey: key,
         generation: 0,
         historyLoaded: false,
+        segments: new Map(),
+        historySequence: 0,
+        phase: "READY",
+        timer: 0,
         submitting: false,
         recording: null,
         requests: new Set(),
@@ -90,6 +103,9 @@
       RECORDING: "translationRecording",
       STOPPING: "translationStopping",
       PROCESSING: "translationProcessing",
+      PREPARING: "translationProcessing",
+      PROCESSING_STT: "translationRecognizing",
+      TRANSLATING: "translationProcessing",
       RESULT_READY: "translationResultReady",
       ERROR: "translationError"
     }[status];
@@ -97,16 +113,41 @@
   }
 
   function setStatus(panel, status) {
+    var state = mounted.get(panel);
+    if (state) state.phase = status;
     panel.dataset.translationState = status;
     var node = panel.querySelector("[data-v2-status]");
     if (node) node.textContent = statusText(status);
+    var button = panel.querySelector('[data-v2-action="record"]');
+    if (button) {
+      var recording = status === "RECORDING";
+      var busy = ["PREPARING", "STOPPING", "PROCESSING", "PROCESSING_STT", "TRANSLATING"].indexOf(status) >= 0;
+      var key = recording ? "translationStopSave" : busy ? "translationProcessing" : "translationRecord";
+      var symbol = recording ? "save" : busy ? "languages" : "mic";
+      var elapsed = recording && state && state.recording ? " · " + Math.floor((Date.now() - state.recording.startedAt) / 1000) + "s" : "";
+      button.innerHTML = (window.GroupV3Icon ? window.GroupV3Icon(symbol, 18) : "") + "<span>" + translate(key) + elapsed + "</span>";
+      button.setAttribute("aria-label", translate(key));
+      button.setAttribute("aria-pressed", String(recording));
+      button.disabled = busy || !translationAvailable(panel, runtime());
+      button.dataset.voiceIcon = symbol;
+    }
+    panel.querySelectorAll('textarea, select, input, [data-v2-action="send"]').forEach(function (control) {
+      control.disabled = !translationAvailable(panel, runtime()) || ["READY", "RESULT_READY", "ERROR"].indexOf(status) < 0;
+    });
   }
 
-  function setError(panel, message) {
+  function setError(panel, message, category) {
     var node = panel.querySelector("[data-v2-error]");
     if (!node) return;
     node.hidden = !message;
     node.textContent = message || "";
+    node.dataset.errorCategory = message ? category || "TRANSLATION_VARIANT_ERROR" : "";
+  }
+  function warning(panel, message) {
+    var node = panel.querySelector("[data-v2-warning]");
+    if (!node) return;
+    node.hidden = !message;
+    node.querySelector("span").textContent = message || "";
   }
 
   function errorText(error, fallbackKey) {
@@ -130,6 +171,8 @@
     options = options || {};
     var controller = typeof AbortController === "function" ? new AbortController() : null;
     var init = Object.assign({}, options, { credentials: "same-origin", cache: "no-store" });
+    var stage = /\/profile$/.test(path) ? "PROFILE" : /v2-history/.test(path) ? "HISTORY_SYNC" :
+      /segments\/voice/.test(path) ? "STT" : "TRANSLATION_VARIANT";
     init.headers = Object.assign({ Accept: "application/json" }, options.headers || {});
     if (controller) {
       init.signal = controller.signal;
@@ -142,10 +185,19 @@
           error.code = String(payload.detail || payload.error || "translation_request_failed");
           error.status = response.status;
           error.payload = payload;
+          error.category = stage + "_ERROR";
+          trace(state, stage, response.status, error.code);
           throw error;
         }
+        trace(state, stage, response.status, "", payload.segment && payload.segment.id);
         return payload;
       });
+    }).catch(function (error) {
+      if (!error.category) {
+        error.category = stage + "_ERROR";
+        trace(state, stage, error.status || 0, error.code || error.name);
+      }
+      throw error;
     }).finally(function () {
       if (controller && state) state.requests.delete(controller);
     });
@@ -157,6 +209,7 @@
 
   function translationAvailable(panel, snapshot) {
     if (!snapshot || !snapshot.space_id || !snapshot.runtime_id) return false;
+    if (snapshot.media_connected === false) return false;
     if (document.querySelector(".prejoin-backdrop")) return false;
     var content = panel.closest(".chat-content, .radio-content");
     if (!content) return true;
@@ -166,9 +219,13 @@
   }
 
   function setAvailability(panel, available) {
+    var state = mounted.get(panel);
+    if (state && state.available === available) return;
+    if (state) state.available = available;
     var message = panel.querySelector("[data-v2-availability]");
     var controls = panel.querySelectorAll("textarea, select, input, button[data-v2-action]");
     controls.forEach(function (control) { control.disabled = !available; });
+    if (available && state) setStatus(panel, state.phase);
     if (!message) return;
     message.hidden = available;
     message.textContent = available ? "" : translate("translationUnavailable");
@@ -213,7 +270,7 @@
     var state = mounted.get(panel);
     if (!text || !state || state.disposed) return false;
     if (!tts || typeof window.SpeechSynthesisUtterance !== "function") {
-      setError(panel, translate("translationTtsUnavailable"));
+      setError(panel, translate("translationTtsUnavailable"), "TTS_ERROR");
       return false;
     }
     if (state.ttsPlaying && state.ttsText === text) {
@@ -228,8 +285,12 @@
     state.ttsKey = key || "";
     activePlayback = { panel: panel, state: state, text: text, key: key || "" };
     setButtonPlayback(panel, text, true);
-    utterance.onend = utterance.onerror = function () {
+    utterance.onend = function () {
       if (activePlayback && activePlayback.state === state && activePlayback.text === text) stopPlayback();
+    };
+    utterance.onerror = function () {
+      stopPlayback();
+      setError(panel, translate("translationTtsUnavailable"), "TTS_ERROR");
     };
     tts.speak(utterance);
     if (!automatic) setError(panel, "");
@@ -237,7 +298,7 @@
   }
 
   function maybeAutoRead(segments, panel, snapshot) {
-    if (!snapshot || !snapshot.auto_read) return;
+    if (!snapshot) return;
     var key = runtimeKey(snapshot);
     var bootstrap = !initializedRuntimes.has(key);
     var candidate = null;
@@ -245,7 +306,7 @@
       if (!item || item.state !== "FINAL" || item.author_view || !item.translated_text ||
         String(item.speaker_membership_id || "") === String(snapshot.membership_id || "")) return;
       var playback = playbackKey(snapshot, item);
-      if (bootstrap) {
+      if (bootstrap || !snapshot.auto_read) {
         autoplaySeen.add(playback);
       } else if (!autoplaySeen.has(playback)) {
         autoplaySeen.add(playback);
@@ -266,22 +327,32 @@
       return Promise.resolve([]);
     }
     setAvailability(panel, true);
+    state.historyPending = true;
     var generation = state.generation;
+    var sequence = ++state.historySequence;
     var query = "v2-history?runtime_kind=" + encodeURIComponent(snapshot.runtime_kind) +
       "&runtime_id=" + encodeURIComponent(snapshot.runtime_id) + "&limit=50";
     return api(endpoint(snapshot, query), {}, state).then(function (payload) {
-      if (!isCurrent(panel, state, generation)) return [];
+      if (!isCurrent(panel, state, generation) || sequence !== state.historySequence) return [];
       var segments = payload.segments || [];
-      renderHistory(panel, segments);
+      if (state.phase === "PROCESSING_STT" && segments.some(function (segment) {
+        return segment.client_segment_id === state.pendingSegmentId && segment.source_text;
+      })) setStatus(panel, "TRANSLATING");
+      segments.forEach(function (segment) { state.segments.set(String(segment.id), segment); });
+      var ordered = Array.from(state.segments.values()).sort(function (a, b) {
+        return (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0);
+      }).slice(0, 50);
+      state.segments = new Map(ordered.map(function (segment) { return [String(segment.id), segment]; }));
+      renderHistory(panel, ordered);
       maybeAutoRead(segments, panel, snapshot);
       state.historyLoaded = true;
-      setError(panel, "");
+      warning(panel, "");
       return segments;
     }).catch(function (error) {
       if (!isCurrent(panel, state, generation) || error.name === "AbortError") return [];
-      setError(panel, errorText(error, "translationHistoryError"));
+      warning(panel, errorText(error, "translationHistoryError"));
       return [];
-    });
+    }).finally(function () { if (sequence === state.historySequence) state.historyPending = false; });
   }
 
   function syncSharedProfile(profile) {
@@ -289,7 +360,6 @@
     if (window.GroupV3Runtime && typeof window.GroupV3Runtime.updateProfile === "function") {
       window.GroupV3Runtime.updateProfile(profile);
     }
-    window.dispatchEvent(new CustomEvent("group-v3:profile-updated", { detail: profile }));
   }
 
   function saveProfile(panel) {
@@ -318,8 +388,11 @@
 
   function mergeSegment(panel, item) {
     if (!item) return;
+    var state = mounted.get(panel);
+    if (state) state.segments.set(String(item.id), item);
     var host = panel.querySelector("[data-v2-history]");
     if (!host) return;
+    host.querySelectorAll(".group-translation-v2__empty").forEach(function (node) { node.remove(); });
     var existing = Array.from(host.querySelectorAll("[data-segment-id]")).find(function (node) {
       return node.dataset.segmentId === String(item.id || "");
     });
@@ -338,7 +411,7 @@
       setError(panel, translate("translationUnavailable"));
       return Promise.reject(new Error("translationUnavailable"));
     }
-    if (!snapshot || !state || !snapshot.space_id || !snapshot.runtime_id || !sourceText || state.submitting) return Promise.resolve(null);
+    if (!snapshot || !state || !snapshot.space_id || !snapshot.runtime_id || !sourceText) return Promise.resolve(null);
     state.submitting = true;
     var clientSegmentId = uuid();
     setError(panel, "");
@@ -357,12 +430,12 @@
       if (text) text.value = "";
       var item = payload.segment;
       mergeSegment(panel, item);
-      setStatus(panel, item && item.state === "FINAL" ? "RESULT_READY" : "PROCESSING");
+      completeSegment(panel, item);
       return loadHistory(panel).then(function () { return item; });
     }).catch(function (error) {
       if (error.name !== "AbortError") {
         setStatus(panel, "ERROR");
-        setError(panel, errorText(error));
+        setError(panel, errorText(error), error.category);
       }
       throw error;
     }).finally(function () {
@@ -370,93 +443,140 @@
     });
   }
 
-  function stopRecording(panel) {
+  function completeSegment(panel, item) {
+    var failed = item && (item.state === "FAILED" || item.state === "PARTIAL" ||
+      (item.variants || []).some(function (variant) { return variant.state === "FAILED"; }));
+    setStatus(panel, failed ? "ERROR" : "RESULT_READY");
+    if (failed) {
+      setError(panel, translate("translationVariantError"), "TRANSLATION_VARIANT_ERROR");
+      trace(mounted.get(panel), "TRANSLATION_VARIANT", 200, item.failure_code, item.id);
+    } else setError(panel, "");
+  }
+
+  function recordingFailure(panel, message, category) {
     var state = mounted.get(panel);
-    var recording = state && state.recording;
-    if (!recording || !recording.recorder) return;
+    if (state) {
+      window.clearInterval(state.timer);
+      state.timer = 0;
+      state.submitting = false;
+    }
+    setStatus(panel, "ERROR");
+    setError(panel, message, category || "RECORDING_ERROR");
+    trace(state, category || "RECORDING_ERROR", 0, category || "RECORDING_ERROR");
+  }
+
+  function stopRecording(panel) {
+    var state = mounted.get(panel), recording = state && state.recording;
+    if (!recording || recording.recorder.state !== "recording") return;
+    window.clearInterval(state.timer);
+    state.timer = 0;
+    recording.durationMs = Math.max(1, Date.now() - recording.startedAt);
     setStatus(panel, "STOPPING");
-    try {
-      if (recording.recorder.state !== "inactive") recording.recorder.stop();
-    } catch (error) {
+    try { recording.recorder.stop(); }
+    catch (_error) {
+      recording.failed = true;
       state.recording = null;
-      setStatus(panel, "ERROR");
-      setError(panel, errorText(error));
+      recordingFailure(panel, translate("translationRecordingError"));
     }
   }
 
   function startRecording(panel) {
-    var snapshot = runtime();
-    var state = mounted.get(panel);
+    var snapshot = runtime(), state = mounted.get(panel);
     var track = window.GroupV3Runtime && window.GroupV3Runtime.getLocalAudioTrack && window.GroupV3Runtime.getLocalAudioTrack();
-    if (!translationAvailable(panel, snapshot) || !snapshot || !state || !track || track.readyState === "ended" || !window.MediaRecorder || typeof window.MediaStream !== "function") {
-      setError(panel, translate("translationMicUnavailable"));
+    if (!state || state.disposed) return;
+    if (!translationAvailable(panel, snapshot) || !track || track.readyState !== "live" ||
+        track.enabled === false || track.muted || !window.MediaRecorder || typeof window.MediaStream !== "function") {
+      recordingFailure(panel, translate("translationMicUnavailable"));
+      return;
+    }
+    if (snapshot.consent_status !== "granted") {
+      recordingFailure(panel, translate("translationConsentRequired"));
       return;
     }
     if (state.recording) return;
-    var mediaStream;
     var recorder;
+    var mime = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus"].find(function (candidate) {
+      return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(candidate);
+    });
     try {
-      mediaStream = new MediaStream([track]);
-      recorder = new MediaRecorder(mediaStream);
-    } catch (error) {
-      setError(panel, errorText(error));
+      // Wrap, never clone/stop/acquire the Group owner's microphone track.
+      recorder = new MediaRecorder(new MediaStream([track]), mime ? { mimeType: mime } : undefined);
+    } catch (_error) {
+      recordingFailure(panel, translate("translationRecordingError"));
       return;
     }
-    var generation = ++state.generation;
-    var chunks = [];
-    var segmentId = uuid();
+    var generation = ++state.generation, chunks = [], segmentId = uuid();
+    state.pendingSegmentId = segmentId;
     var source = panel.querySelector("[data-v2-source]");
-    var recording = { recorder: recorder, generation: generation, snapshot: snapshot, segmentId: segmentId, chunks: chunks };
+    var recording = { recorder: recorder, generation: generation, snapshot: snapshot,
+      segmentId: segmentId, chunks: chunks, startedAt: Date.now(), durationMs: 0, failed: false,
+      sourceLanguage: source && source.value || snapshot.spoken_language || "vi" };
     state.recording = recording;
+    state.submitting = true;
     recorder.addEventListener("dataavailable", function (event) {
       if (event.data && event.data.size) chunks.push(event.data);
     });
+    recorder.addEventListener("error", function () {
+      recording.failed = true;
+      state.recording = null;
+      if (isCurrent(panel, state, generation)) recordingFailure(panel, translate("translationRecordingError"));
+    });
     recorder.addEventListener("stop", function () {
+      window.clearInterval(state.timer);
+      state.timer = 0;
       if (state.recording === recording) state.recording = null;
-      if (!isCurrent(panel, state, generation) || !chunks.length) {
-        if (isCurrent(panel, state, generation)) setStatus(panel, "READY");
+      if (!isCurrent(panel, state, generation) || recording.failed) return;
+      var actualMime = recorder.mimeType || (chunks[0] && chunks[0].type) || mime || "";
+      var extension = /mp4|m4a/.test(actualMime) ? "m4a" : /ogg/.test(actualMime) ? "ogg" : /webm/.test(actualMime) ? "webm" : "";
+      if (!chunks.length || !chunks.some(function (chunk) { return chunk.size > 0; })) {
+        recordingFailure(panel, translate("translationEmptyAudio"), "EMPTY_AUDIO_ERROR");
+        return;
+      }
+      if (!extension) {
+        recordingFailure(panel, translate("translationRecordingError"));
         return;
       }
       var form = new FormData();
-      form.append("audio", new Blob(chunks, { type: recorder.mimeType || "audio/webm" }), "group-translation.webm");
+      form.append("audio", new Blob(chunks, { type: actualMime }), "group-translation." + extension);
       form.append("runtime_kind", snapshot.runtime_kind);
       form.append("runtime_id", snapshot.runtime_id);
       form.append("client_segment_id", segmentId);
-      form.append("source_language", source && source.value || snapshot.spoken_language || "vi");
-      setStatus(panel, "PROCESSING");
+      form.append("source_language", recording.sourceLanguage);
+      form.append("duration_seconds", String((recording.durationMs || Math.max(1, Date.now() - recording.startedAt)) / 1000));
+      setStatus(panel, "PROCESSING_STT");
       api(endpoint(snapshot, "segments/voice"), {
-        method: "POST",
-        headers: { "Idempotency-Key": segmentId },
-        body: form
+        method: "POST", headers: { "Idempotency-Key": segmentId }, body: form
       }, state).then(function (payload) {
-        if (!isCurrent(panel, state, generation)) return null;
+        if (!isCurrent(panel, state, generation)) return;
+        // The synchronous endpoint returns STT + variants together; no invented
+        // timer/progress estimate. Translate phase projects those returned variants.
+        setStatus(panel, "TRANSLATING");
         mergeSegment(panel, payload.segment);
-        return loadHistory(panel).then(function () { return payload.segment; });
-      }).then(function () {
-        if (isCurrent(panel, state, generation)) setStatus(panel, "RESULT_READY");
+        completeSegment(panel, payload.segment);
+        return loadHistory(panel);
       }).catch(function (error) {
         if (isCurrent(panel, state, generation) && error.name !== "AbortError") {
-          setStatus(panel, "ERROR");
-          setError(panel, errorText(error));
+          recordingFailure(panel, errorText(error, "translationSttError"), error.category || "STT_ERROR");
         }
-      });
-      // The temporary MediaStream wraps the active Group track. Its recorder
-      // is disposable; the Group runtime remains the sole track owner.
+      }).finally(function () { if (!state.disposed) state.submitting = false; });
     }, { once: true });
     setError(panel, "");
-    setStatus(panel, "RECORDING");
     try {
       recorder.start();
-    } catch (error) {
+      setStatus(panel, "RECORDING");
+      state.timer = window.setInterval(function () {
+        if (state.recording === recording && !state.disposed) setStatus(panel, "RECORDING");
+      }, 1000);
+    } catch (_error) {
+      recording.failed = true;
       state.recording = null;
-      setStatus(panel, "ERROR");
-      setError(panel, errorText(error));
+      recordingFailure(panel, translate("translationRecordingError"));
     }
   }
 
   function handleFailure(panel, error) {
     if (!error || error.name === "AbortError") return;
-    setError(panel, errorText(error));
+    setError(panel, errorText(error, error.category === "PROFILE_ERROR" ? "translationProfileError" : undefined), error.category);
     if (panel.dataset.translationState !== "RECORDING" && panel.dataset.translationState !== "STOPPING") setStatus(panel, "ERROR");
   }
 
@@ -464,7 +584,15 @@
     var snapshot = runtime();
     if (!snapshot) return;
     var existing = mounted.get(panel);
-    if (existing && existing.runtimeKey === runtimeKey(snapshot) && !existing.disposed) return;
+    if (existing && existing.runtimeKey === runtimeKey(snapshot) && !existing.disposed) {
+      if (translationAvailable(panel, snapshot) || !existing.submitting) {
+        setAvailability(panel, translationAvailable(panel, snapshot));
+        if (translationAvailable(panel, snapshot) && !existing.historyLoaded && !existing.historyPending) loadHistory(panel);
+        return;
+      }
+      // A terminal media transition invalidates pending capture/requests.
+      disposeState(existing);
+    }
     if (existing) disposeState(existing);
     var state = stateFor(panel, snapshot);
     panel.dataset.translationRuntime = state.runtimeKey;
@@ -486,13 +614,23 @@
     });
     setAvailability(panel, translationAvailable(panel, snapshot));
     panel.querySelector('[data-v2-action="send"]').addEventListener("click", function () {
-      saveProfile(panel).then(function () { return submitText(panel); }).catch(function (error) { handleFailure(panel, error); });
+      if (state.submitting || state.recording || !panel.querySelector("[data-v2-text]").value.trim()) return;
+      state.submitting = true;
+      setStatus(panel, "PREPARING");
+      saveProfile(panel).then(function () { return submitText(panel); }).catch(function (error) { handleFailure(panel, error); })
+        .finally(function () { state.submitting = false; });
     });
-    panel.querySelector('[data-v2-action="record"]').addEventListener("click", function (event) {
+    panel.querySelector('[data-v2-action="record"]').addEventListener("click", function () {
       var current = mounted.get(panel);
       if (current && current.recording) stopRecording(panel);
-      else saveProfile(panel).then(function () { startRecording(panel); }).catch(function (error) { handleFailure(panel, error); });
-      event.currentTarget.setAttribute("aria-pressed", String(Boolean(current && !current.recording)));
+      else if (current && !current.submitting) {
+        current.submitting = true;
+        setStatus(panel, "PREPARING");
+        saveProfile(panel).then(function () { startRecording(panel); }).catch(function (error) {
+          current.submitting = false;
+          handleFailure(panel, error);
+        });
+      }
     });
     ["[data-v2-target]", "[data-v2-source]", "[data-v2-auto-read]"].forEach(function (selector) {
       var control = panel.querySelector(selector);
@@ -501,6 +639,7 @@
       });
     });
     panel.addEventListener("click", function (event) {
+      if (event.target.closest("[data-v2-history-retry]")) { loadHistory(panel); return; }
       var playButton = event.target.closest && event.target.closest("[data-v2-play]");
       if (playButton) {
         play(playButton.dataset.v2Play, playButton.dataset.v2Language, panel, false, "manual");
@@ -510,16 +649,18 @@
       if (!retry) return;
       var currentSnapshot = runtime();
       var currentState = mounted.get(panel);
-      if (!currentSnapshot || !currentState) return;
-      setStatus(panel, "PROCESSING");
+      if (!currentSnapshot || !currentState || currentState.submitting || currentState.recording) return;
+      currentState.submitting = true;
+      setStatus(panel, "TRANSLATING");
       api(endpoint(currentSnapshot, "segments/" + encodeURIComponent(retry.dataset.v2Retry) + "/variants/" + encodeURIComponent(retry.dataset.v2TargetLanguage) + "/retry"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ target_language: retry.dataset.v2TargetLanguage })
       }, currentState).then(function (payload) {
         mergeSegment(panel, payload.segment);
+        completeSegment(panel, payload.segment);
         return loadHistory(panel);
-      }).then(function () { setStatus(panel, "RESULT_READY"); }).catch(function (error) { handleFailure(panel, error); });
+      }).catch(function (error) { handleFailure(panel, error); }).finally(function () { currentState.submitting = false; });
     });
     loadHistory(panel);
   }
@@ -527,6 +668,8 @@
   function disposeState(state) {
     if (!state || state.disposed) return;
     state.disposed = true;
+    window.clearInterval(state.timer);
+    state.timer = 0;
     state.generation += 1;
     state.requests.forEach(function (controller) { try { controller.abort(); } catch (_error) {} });
     state.requests.clear();
@@ -557,11 +700,17 @@
   }
 
   window.addEventListener("group-v3:rendered", mountAll);
+  window.addEventListener("group-v3:translation-segment", function () {
+    activeStates.forEach(function (state) {
+      if (!state.disposed && !state.recording) loadHistory(state.panel);
+    });
+  });
   window.addEventListener("group-video-layout:change", mountAll);
   window.addEventListener("group-v3:media-disconnected", cleanup);
   window.addEventListener("pagehide", cleanup, { once: true });
   window.addEventListener("beforeunload", cleanup, { once: true });
   new MutationObserver(mountAll).observe(document.documentElement, { childList: true, subtree: true });
-  window.GroupV3TranslationController = Object.freeze({ mountAll: mountAll, loadHistory: loadHistory, cleanup: cleanup, play: play, stopPlayback: stopPlayback });
+  window.GroupV3TranslationController = Object.freeze({ mountAll: mountAll, loadHistory: loadHistory, cleanup: cleanup, play: play, stopPlayback: stopPlayback,
+    diagnostics: function () { return traces.slice(); } });
   mountAll();
 }(window, document));

@@ -386,5 +386,32 @@ Object.assign(copy['zh-TW'], {
   spokenLanguageLabel: '我使用的語言', preferredOutputLabel: '我想接收的語言', translationAuthor: '你已傳送', translationReceived: '收到的翻譯', translationOriginal: '原文', translationDistributed: '已分發', translationShowOriginal: '顯示原文', translationUnavailable: '工作階段連線後才能使用翻譯。', translationHistoryError: '無法載入翻譯歷史，請重試。', translationProfileError: '無法儲存語言設定，請重試。', translationConsentRequired: '使用語音翻譯前，請先同意錄音。', translationProviderUnavailable: '翻譯服務尚未就緒。', translationTtsUnavailable: '此裝置不支援語音播放。',
 });
 
+Object.assign(copy.vi, {
+  translationRecord: "Ghi âm", translationStopSave: "Dừng & lưu", translationRecognizing: "Đang nhận dạng giọng nói",
+  translationEmptyAudio: "Chưa thu được âm thanh. Hãy bật mic và ghi lại.",
+  translationRecordingError: "Không ghi được âm thanh. Hãy kiểm tra mic và thử lại.",
+  translationSttError: "Không nhận dạng được giọng nói. Hãy thử ghi lại.",
+  translationVariantError: "Đã lưu nguyên bản; một số bản dịch lỗi. Hãy thử lại bản dịch cần nhận.",
+  translationNoRecipients: "Chưa có người nhận", translationVariants: "Kết quả theo ngôn ngữ",
+  autoReadRecipient: "Tự đọc bản dịch nhận được trên thiết bị này"
+});
+Object.assign(copy.en, {
+  translationRecord: "Record", translationStopSave: "Stop & save", translationRecognizing: "Recognizing speech",
+  translationEmptyAudio: "No audio captured. Enable your microphone and record again.",
+  translationRecordingError: "Could not record audio. Check your microphone and retry.",
+  translationSttError: "Speech recognition failed. Please record again.",
+  translationVariantError: "Original saved; some translations failed. Retry the required language.",
+  translationNoRecipients: "No recipients yet", translationVariants: "Results by language",
+  autoReadRecipient: "Read received translations on this device"
+});
+Object.assign(copy["zh-TW"], {
+  translationRecord: "錄音", translationStopSave: "停止並儲存", translationRecognizing: "正在辨識語音",
+  translationEmptyAudio: "未錄到聲音，請開啟麥克風後重新錄音。",
+  translationRecordingError: "無法錄音，請檢查麥克風並重試。",
+  translationSttError: "語音辨識失敗，請重新錄音。",
+  translationVariantError: "原文已儲存，部分翻譯失敗，請重試所需語言。",
+  translationNoRecipients: "尚無接收者", translationVariants: "各語言結果",
+  autoReadRecipient: "在此裝置朗讀收到的翻譯"
+});
 window.GroupV3I18n = Object.freeze({ copy, localeOptions, translator });
 }(window));

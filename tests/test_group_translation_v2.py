@@ -150,3 +150,70 @@ async def test_v2_rejects_a_second_idempotency_identity(tmp_path):
             {"runtime_kind": "video", "runtime_id": runtime_id, "client_segment_id": "segment-v2-idem", "source_language": "vi", "source_text": "Xin chao"},
             idempotency_key="another-idempotency-key",
         )
+
+
+@pytest.mark.anyio
+async def test_v2_abc_routes_preferences_even_with_legacy_auto_disabled(tmp_path):
+    app, _, provider, space_id, runtime_id = _runtime(tmp_path)
+    from app.group_v3.auth import GroupActor
+    owner_actor = GroupActor("member", "42", "42", "A", "vi", frozenset(SCOPES), "h", "video", AI_ENTITLEMENT)
+    with app.state.database.session() as db, db.begin():
+        profiles = list(db.scalars(select(GroupLanguageProfile).where(GroupLanguageProfile.space_id == space_id)))
+        for profile in profiles:
+            profile.auto_translate_enabled = 0
+        third = GroupMembership(id=str(uuid4()), space_id=space_id, principal_type="member", principal_id="100",
+            principal_user_id="100", display_name="C", role="member", status="active")
+        db.add(third)
+        db.flush()
+        db.add(GroupLanguageProfile(id=str(uuid4()), space_id=space_id, membership_id=third.id,
+            spoken_language="vi", preferred_output_language="vi", auto_translate_enabled=0,
+            auto_read_enabled=0, show_original_enabled=1))
+        db.add(GroupMediaParticipant(id=str(uuid4()), session_id=runtime_id, membership_id=third.id,
+            principal_type="member", principal_id="100", principal_user_id="100", display_name="C",
+            livekit_identity="third", invite_status="joined"))
+    result = await app.state.group_translation_service.submit_text(owner_actor, space_id, {
+        "runtime_kind": "video", "runtime_id": runtime_id, "client_segment_id": "abc-preference-0001",
+        "source_language": "vi", "source_text": "Xin chào"})
+    assert sorted(call["target_language"] for call in provider.calls) == ["en", "zh-TW"]
+    # Sender preview is not counted as a delivered recipient.
+    assert {v["target_language"]: v["recipient_count"] for v in result["variants"]} == {"vi": 1, "en": 0, "zh-TW": 1}
+    for principal, target in [("99", "zh-TW"), ("100", "vi")]:
+        actor = GroupActor("member", principal, principal, "Recipient", "en", frozenset(SCOPES), "h", "video", AI_ENTITLEMENT)
+        item = app.state.group_translation_service.v2_history(actor, space_id, "video", runtime_id, 10)[0]
+        assert item["display_language"] == target and item["state"] == "FINAL"
+        assert item["translated_text"] == ("Xin chào" if target == "vi" else "zh-TW:Xin chào")
+
+
+@pytest.mark.anyio
+async def test_v2_voice_failed_variant_retry_does_not_repeat_stt(tmp_path):
+    app, _, provider, space_id, runtime_id = _runtime(tmp_path)
+    from app.group_v3.auth import GroupActor
+    from datetime import datetime, timezone
+    actor = GroupActor("member", "42", "42", "A", "vi", frozenset(SCOPES), "h", "video", AI_ENTITLEMENT)
+    with app.state.database.session() as db, db.begin():
+        membership = db.scalar(select(GroupMembership).where(GroupMembership.space_id == space_id, GroupMembership.principal_id == "42"))
+        db.add(GroupTranslationConsent(id=str(uuid4()), space_id=space_id, membership_id=membership.id,
+            status="granted", policy_version=app.state.settings.group_translation_policy_version,
+            decided_at=datetime.now(timezone.utc)))
+    provider.fail_targets = {"zh-TW"}
+    result = await app.state.group_translation_service.submit_voice(actor, space_id, {
+        "runtime_kind": "video", "runtime_id": runtime_id, "client_segment_id": "voice-retry-0001",
+        "source_language": "vi", "duration_seconds": 2.5}, b"audio fixture", "voice.m4a", "audio/mp4")
+    assert result["state"] == "PARTIAL" and result["source_text"] == "transcribed source"
+    provider.fail_targets = set()
+    await app.state.group_translation_service.retry_variant(actor, space_id, result["id"], "zh-TW")
+    assert provider.stt_calls == 1
+    assert [c["target_language"] for c in provider.calls].count("en") == 1
+    assert [c["target_language"] for c in provider.calls].count("zh-TW") == 2
+
+
+@pytest.mark.anyio
+async def test_v2_rejects_empty_voice_without_provider_call(tmp_path):
+    app, _, provider, space_id, runtime_id = _runtime(tmp_path)
+    from app.group_v3.auth import GroupActor
+    actor = GroupActor("member", "42", "42", "A", "vi", frozenset(SCOPES), "h", "video", AI_ENTITLEMENT)
+    with pytest.raises(GroupServiceError, match="group_translation_audio_invalid"):
+        await app.state.group_translation_service.submit_voice(actor, space_id, {
+            "runtime_kind": "video", "runtime_id": runtime_id, "client_segment_id": "voice-empty-0001",
+            "source_language": "vi"}, b"", "voice.webm", "audio/webm")
+    assert provider.stt_calls == 0

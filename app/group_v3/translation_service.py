@@ -696,8 +696,9 @@ class GroupTranslationService:
             effective = self._effective_language_profile(
                 db, member, source_language, profile=profile_by_member.get(member.id)
             )
-            if effective["auto_translate_enabled"]:
-                targets.add(effective["preferred_output_language"])
+            # Segment V2 is explicitly submitted. The legacy automatic switch
+            # must not override the participant's chosen output language.
+            targets.add(effective["preferred_output_language"])
         targets.discard(source_language)
         return sorted(targets)[: max(1, int(self.settings.group_translation_max_targets))]
 
@@ -721,8 +722,6 @@ class GroupTranslationService:
             db, membership, segment.source_language, actor=actor, profile=profile
         )
         target = target_override or effective["preferred_output_language"] or segment.source_language
-        if not effective["auto_translate_enabled"] and target_override is None:
-            target = segment.source_language
         if target not in {"vi", "en", "zh-TW"}:
             target = segment.source_language
         source = self.crypto.decrypt_text(
@@ -752,7 +751,7 @@ class GroupTranslationService:
             "target_language": target,
             "source_text": source,
             "translated_text": translated,
-            "state": segment.state if target == segment.source_language or not variant else variant.state,
+            "state": "FINAL" if target == segment.source_language else variant.state if variant else segment.state,
             "failure_code": (variant.failure_code if variant and variant.state == "FAILED" else segment.failure_code),
             "is_original": target == segment.source_language,
             "auto_read_enabled": effective["auto_read_enabled"],
@@ -797,7 +796,6 @@ class GroupTranslationService:
             source_recipient_count = sum(
                 1 for item in effective_by_member.values()
                 if item["preferred_output_language"] == segment.source_language
-                or not item["auto_translate_enabled"]
             )
             variants.append({
                 "target_language": segment.source_language,
@@ -818,13 +816,13 @@ class GroupTranslationService:
                     "translated_text": value,
                     "recipient_count": sum(
                         1 for item in effective_by_member.values()
-                        if item["auto_translate_enabled"]
-                        and item["preferred_output_language"] == row.target_language
+                        if item["preferred_output_language"] == row.target_language
                     ),
                     "failure_code": row.failure_code,
                 })
             payload["variants"] = variants
             payload["author_view"] = True
+            payload["state"] = segment.state
             payload["projection"] = "author"
         else:
             payload["author_view"] = False
@@ -838,14 +836,14 @@ class GroupTranslationService:
                     if segment:
                         segment.state = "FINAL"
             return
-        if self.provider is None:
-            raise GroupServiceError("group_translation_provider_not_configured", 503)
         import asyncio
         semaphore = asyncio.Semaphore(3)
 
         async def one(target: str) -> None:
             async with semaphore:
                 try:
+                    if self.provider is None:
+                        raise GroupServiceError("group_translation_provider_not_configured", 503)
                     result = await self.provider.translate_text(
                         source_text=source_text,
                         source_language=source_language,
@@ -956,7 +954,7 @@ class GroupTranslationService:
             return await self._submit_voice_once(actor, space_id, values, audio, filename, content_type)
 
     async def _submit_voice_once(self, actor: GroupActor, space_id: str, values: dict, audio: bytes, filename: str, content_type: str) -> dict:
-        if len(audio) > self.settings.group_translation_max_audio_bytes or (content_type and not str(content_type).lower().startswith("audio/")):
+        if not audio or len(audio) > self.settings.group_translation_max_audio_bytes or (content_type and not str(content_type).lower().startswith("audio/")):
             raise GroupServiceError("group_translation_audio_invalid", 413)
         duration = values.get("duration_seconds")
         if duration is not None:

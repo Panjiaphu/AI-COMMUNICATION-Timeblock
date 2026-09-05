@@ -14,8 +14,8 @@
         var identity = person.livekit_identity || person.id || "";
         return '<article data-participant-identity="' + esc(identity) + '"><div><strong>' + esc(person.display_name || labels.member || "Member") + '</strong><small>' +
           esc(person.connection_status || person.status || "connected") + ' · ' + esc(person.mic_state || "mic") + ' · ' + esc(person.camera_state || "camera") +
-          '</small></div><div class="group-participant-drawer__actions"><button type="button" data-video-focus="' + esc(identity) + '">' + esc(labels.focus || "Focus") +
-          '</button><button type="button" data-video-hide="' + esc(identity) + '">' + esc(labels.hide || "Hide") + '</button><button type="button" data-video-restore="' + esc(identity) + '">' + esc(labels.restore || "Restore") + '</button></div></article>';
+          '</small></div><div class="group-participant-drawer__actions"><button type="button" data-video-focus="' + esc(identity) + '">' + window.GroupV3Icon("focus", 16) + esc(labels.focus || "Focus") +
+          '</button><button type="button" data-video-hide="' + esc(identity) + '">' + window.GroupV3Icon("eye-off", 16) + esc(labels.hide || "Hide") + '</button><button type="button" data-video-restore="' + esc(identity) + '">' + window.GroupV3Icon("eye", 16) + esc(labels.restore || "Restore") + '</button></div></article>';
       }).join("") + '</div>';
     container.hidden = wasHidden;
   }

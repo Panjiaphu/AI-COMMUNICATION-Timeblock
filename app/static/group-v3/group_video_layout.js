@@ -6,6 +6,7 @@
   var speakerTimer = 0;
   var focusedIdentity = "";
   var hiddenIdentities = new Set();
+  var runtimeKey = "";
 
   function setActiveSpeaker(identity) {
     pendingSpeakerIdentity = String(identity || "");
@@ -19,7 +20,7 @@
   }
 
   function focus(identity) {
-    focusedIdentity = String(identity || "");
+    focusedIdentity = focusedIdentity === String(identity || "") ? "" : String(identity || "");
     window.dispatchEvent(new CustomEvent("group-video-layout:change", { detail: snapshot() }));
     return snapshot();
   }
@@ -73,13 +74,31 @@
   }
 
   function applyDom() {
+    var native = document.querySelector(".native-app");
+    var key = native && native.dataset.runtimeKey || "";
+    if (key !== runtimeKey) {
+      runtimeKey = key;
+      activeSpeakerIdentity = pendingSpeakerIdentity = focusedIdentity = "";
+      hiddenIdentities.clear();
+      window.clearTimeout(speakerTimer);
+    }
     var current = snapshot();
+    var visible = Array.from(document.querySelectorAll(".video-tile[data-video-identity]")).filter(function (tile) {
+      return current.hiddenIdentities.indexOf(tile.dataset.videoIdentity) < 0;
+    });
+    var preferred = current.focusedIdentity || current.activeSpeakerIdentity;
+    var featured = visible.find(function (tile) { return tile.dataset.videoIdentity === preferred; }) || visible[0];
+    document.querySelectorAll(".video-grid").forEach(function (grid) {
+      Array.from(grid.classList).filter(function (name) { return /^count-/.test(name); }).forEach(function (name) { grid.classList.remove(name); });
+      grid.classList.add(layoutClass(visible.length));
+      grid.classList.toggle("has-explicit-focus", Boolean(current.focusedIdentity && featured));
+    });
     document.querySelectorAll(".video-tile[data-video-identity]").forEach(function (tile) {
       var identity = String(tile.dataset.videoIdentity || "");
       var hidden = current.hiddenIdentities.indexOf(identity) >= 0;
       tile.classList.toggle("is-presentation-hidden", hidden);
       tile.classList.toggle("is-speaking", Boolean(current.activeSpeakerIdentity && identity === current.activeSpeakerIdentity));
-      tile.classList.toggle("is-featured", Boolean((current.focusedIdentity || current.activeSpeakerIdentity) && identity === (current.focusedIdentity || current.activeSpeakerIdentity)));
+      tile.classList.toggle("is-featured", tile === featured);
     });
   }
 
@@ -95,4 +114,5 @@
   });
   window.addEventListener("group-video-layout:change", applyDom);
   window.addEventListener("group-v3:rendered", applyDom);
+  window.addEventListener("group-workspace:change", applyDom);
 }(window, document));

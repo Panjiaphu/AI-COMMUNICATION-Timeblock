@@ -39,13 +39,14 @@
       '</select></label><label><span>' + esc(options.targetLabel || "Recipient language") +
       '</span><select data-v2-target aria-label="' + esc(options.targetLabel || "Recipient language") + '">' +
       languageOptions(options.target || "en", labels) + '</select></label></div><div class="group-translation-v2__composer">' +
-      '<textarea data-v2-text rows="2" maxlength="12000" placeholder="' + esc(options.placeholder || "Type a message to translate") +
+      '<textarea data-v2-text data-group-text-entry rows="2" maxlength="12000" placeholder="' + esc(options.placeholder || "Type a message to translate") +
       '" aria-label="' + esc(options.placeholder || "Type a message to translate") + '"></textarea>' +
       '<div class="group-translation-v2__actions"><button type="button" class="action-button action-primary" data-v2-action="send">' +
       esc(options.sendLabel || "Send") + '</button><button type="button" class="action-button action-secondary" data-v2-action="record" aria-pressed="false">' +
       esc(options.recordLabel || "Voice") + '</button></div></div><label class="group-translation-v2__auto-read"><input type="checkbox" data-v2-auto-read ' +
       (options.autoRead ? "checked" : "") + '> ' + esc(options.autoReadLabel || "Auto Read on recipient device") +
       '</label><div data-v2-availability class="group-translation-v2__availability" hidden></div><div data-v2-error class="group-translation-v2__error" role="alert" hidden></div>' +
+      '<div data-v2-warning role="status" hidden><span></span><button type="button" data-v2-history-retry>' + esc(labels.retry || "Retry") + '</button></div>' +
       '<div class="group-translation-v2__history" data-v2-history aria-live="polite"><p class="group-translation-v2__empty">' +
       esc(options.emptyLabel || "No FINAL translations yet.") + '</p></div></section>';
   }
@@ -55,7 +56,7 @@
     var failed = variant.state === "FAILED";
     var playable = variant.state === "FINAL" && Boolean(variant.translated_text);
     return '<div class="group-translation-v2__variant ' + (failed ? "is-failed" : "") + '" data-variant-language="' +
-      esc(variant.target_language) + '"><span>' + esc(labels.distributed || "Distributed") + ' · ' +
+      esc(variant.target_language) + '"><span>' + esc(variant.recipient_count > 0 ? (labels.variants || "Translation") : (labels.noRecipients || "No recipients")) + ' · ' +
       esc(variant.target_language) + ' · ' + esc(variant.state) + ' · ' + esc(String(variant.recipient_count || 0)) +
       ' ' + esc(labels.recipients || "recipients") + '</span><strong>' + esc(text) + '</strong>' +
       (playable ? playButton(variant.translated_text, variant.target_language, labels) : "") +
@@ -72,12 +73,15 @@
     var common = ' class="group-translation-v2__item ' + (failed ? "is-failed" : "") + '" data-segment-id="' +
       esc(item && item.id) + '"';
     if (author) {
-      var variants = (item.variants || []).map(function (variant) { return authorVariant(item, variant, labels); }).join("");
+      var variants = (item.variants || []).filter(function (variant) {
+        return variant.target_language !== item.source_language;
+      }).map(function (variant) { return authorVariant(item, variant, labels); }).join("");
       return '<article' + common + '><div class="group-translation-v2__item-meta"><span>' +
         esc(labels.author || "You sent") + '</span><span>' + esc(item.state || "PROCESSING") +
         '</span></div><p class="group-translation-v2__source-label">' + esc(labels.original || "Original") +
         ' · ' + esc(item.source_language) + '</p><p class="group-translation-v2__source">' + esc(source) +
-        '</p><div class="group-translation-v2__distributed-label">' + esc(labels.distributed || "Distributed") +
+        '</p>' + playButton(source, item.source_language, labels) +
+        '<div class="group-translation-v2__distributed-label">' + esc(labels.variants || "Translation results") +
         '</div><div class="group-translation-v2__variants">' + variants + '</div></article>';
     }
     var original = item && item.show_original_enabled ?

@@ -19,9 +19,9 @@
   function panelControls(labels) {
     labels = labels || {};
     return '<div class="group-radio-translation-controls panel-resize-controls" role="group" aria-label="' + esc(labels.translation || "Radio translation") + '">' +
-      '<button type="button" class="icon-button" data-workspace-action="radio-translation-minus" aria-label="' + esc(labels.minus || "Collapse translation") + '" title="' + esc(labels.minus || "Collapse translation") + '">' + icon("minus", 19) + '</button>' +
+      '<button type="button" class="icon-button" data-workspace-action="radio-translation-minus" aria-label="' + esc(labels.minus || "Collapse translation") + '" title="' + esc(labels.minus || "Collapse translation") + '">' + icon("chevron-down", 19) + '</button>' +
       '<span data-radio-translation-mode-label>COLLAPSED</span>' +
-      '<button type="button" class="icon-button" data-workspace-action="radio-translation-plus" aria-label="' + esc(labels.plus || "Expand translation") + '" title="' + esc(labels.plus || "Expand translation") + '">' + icon("plus", 19) + '</button>' +
+      '<button type="button" class="icon-button" data-workspace-action="radio-translation-plus" aria-label="' + esc(labels.plus || "Expand translation") + '" title="' + esc(labels.plus || "Expand translation") + '">' + icon("chevron-up", 19) + '</button>' +
       '</div>';
   }
 
