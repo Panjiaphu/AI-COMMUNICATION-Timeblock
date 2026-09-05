@@ -7,6 +7,9 @@ body.group-v3-body.group-communication-immersive:has(.native-mobile) #group-nati
     env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   background: #15231f;
 }
+body.group-v3-body.group-communication-immersive .native-mobile {
+  width: 100%; max-width: none; margin: 0;
+}
 .native-mobile .video-call-layout .translation-dock[data-translation-mode] {
   padding-bottom: 0;
 }
@@ -57,6 +60,7 @@ body.group-v3-body.group-communication-immersive:has(.native-mobile) #group-nati
   grid-auto-rows: minmax(0, 1fr); align-content: stretch;
 }
 .video-call-layout .video-grid[data-layout] .video-tile { min-width: 0; min-height: 0; grid-column: auto; grid-row: auto; }
+.native-app .video-call-layout .video-grid[data-layout="GRID"] .video-tile { grid-column: auto; grid-row: auto; }
 .video-call-layout .video-grid[data-layout].count-1 { grid-template-columns: minmax(0, 1fr); }
 .video-call-layout .video-grid[data-layout].count-3,
 .video-call-layout .video-grid[data-layout].count-4 { grid-template-rows: repeat(2, minmax(0, 1fr)); }

@@ -87,6 +87,7 @@ def test_r1_video_layout_presets_reset_and_touch_contract(page, tmp_path, width,
         assert all(b["width"] >= 140 and b["height"] >= 60 for b in boxes), (mode,boxes)
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
         if width < 1000:
+            assert page.locator(".native-main").bounding_box()["width"] == width
             assert page.locator(".video-panel-toolbar").bounding_box()["height"] <= 52
             assert page.locator(".video-grid").bounding_box()["height"] >= page.locator(".video-stage").bounding_box()["height"] * .4
         if mode == "CUSTOM":
