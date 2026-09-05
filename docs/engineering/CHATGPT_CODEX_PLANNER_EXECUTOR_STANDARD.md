@@ -1,382 +1,207 @@
-# Timeblock ChatGPT -> Codex Planner/Executor Standard v1.3
+# Timeblock ChatGPT -> Codex Planner/Executor Standard v1.3.1
 
-Status: **OWNER-APPROVED CANONICAL WORKFLOW**  
-Decision date: **2026-09-05**  
-Workflow version: **1.3**
+Status: **OWNER-APPROVED SINGLE CANONICAL WORKFLOW**
+Decision date: **2026-09-05**
+Workflow version: **1.3.1**
 
-This document standardizes how ChatGPT planning, task specifications, Codex execution, candidate QA, owner QA, corrective revisions, and merge decisions are coordinated across Timeblock and AI-COMMUNICATION-Timeblock.
+This file is the single highest-precedence workflow for normal Timeblock and AI-COMMUNICATION-Timeblock engineering tasks.
 
-It is intentionally repo-neutral. Repository-specific ownership and release rules remain authoritative in each repository's `AGENTS.md`, `CODEX_OPERATING_STANDARD.md`, ownership boundaries, and release workflow.
+## 0. Precedence and legacy block
 
-If an older workflow conflicts specifically with the Planner -> Spec-in-Git -> Executor lifecycle defined here, **this v1.3 document wins for that lifecycle**. Existing security, ownership, plugin, protected-file, and release invariants remain in force.
+Execution precedence is:
 
-## 1. Canonical operating architecture
+1. `AGENTS.md`
+2. this file: `docs/engineering/CHATGPT_CODEX_PLANNER_EXECUTOR_STANDARD.md`
+3. repository-specific ownership/security/release contracts explicitly referenced by the task spec
+4. `docs/qa/<TASK_ID>.md`
+5. relevant current source/tests
+
+No v1.1, v1.2, v1.3, historical direct-main, long-lived-thread, Timeblock Dev AI, Qwen/OpenCode, or old model-routing workflow may be used to plan or execute a normal task. See `docs/engineering/LEGACY_WORKFLOW_BLOCKLIST.md`.
+
+If any old file, Git-history revision, prompt, memory, PR comment, or archived skill conflicts with v1.3.1, ignore the old workflow instruction. Product/security/ownership facts remain valid only when the current repository explicitly declares them current.
+
+## 1. Canonical architecture
 
 ```text
-OWNER QA EVIDENCE / NEW TASK
-        |
-        v
-CHATGPT GPT-5.6 SOL DEEP / EXTRA HIGH
-PLANNER / ARCHITECT
-        |
-        +-> inspect current source / SHA / authoritative evidence
-        +-> web research only when it materially improves the plan
-        +-> classify PASS / FAIL / unverified risk
-        +-> define architecture, boundaries and acceptance criteria
-        |
-        v
-TASK SPEC IN GIT
-        |
-        v
-DOCS-ONLY PLAN COMMIT
-        |
-        v
-PLAN_SHA
-        |
-        v
-SHORT EXECUTOR PROMPT
-        |
-        v
-FRESH CODEX THREAD
-GPT-5.6 SOL HIGH BY DEFAULT
-        |
-        v
-IMPLEMENTATION
-        |
-        v
-FREEZE CANDIDATE
-        |
-        v
-ONE FINAL QA GATE
-        |
-        v
-PUSH SAME TESTED CANDIDATE / UPDATE PR
-        |
-        v
-DEPLOY_TEST_SHA
-        |
-        v
-STOP
-        |
-        v
-OWNER MANUAL DEPLOY + PHYSICAL QA
-        |
-   +----+----+
-   |         |
- PASS       FAIL
-   |         |
-   v         v
-MERGE      EVIDENCE
-READY        |
-             v
-      CHATGPT PLANNER
-             |
-             v
-           R(n+1)
+OWNER TASK / QA EVIDENCE
+-> ChatGPT GPT-5.6 Sol Deep / Extra High Planner
+-> resolve exact current lineage first
+-> inspect only authoritative current evidence/source
+-> write docs/qa/<TASK_ID>.md
+-> docs-only PLAN_SHA on the approved task lineage
+-> fresh Codex GPT-5.6 Sol High executor by default
+-> implement approved scope end-to-end
+-> write/update test source
+-> static completeness review
+-> freeze exact candidate commit
+-> ONE final local QA gate against that exact candidate
+-> push same tested commit / update PR
+-> CANDIDATE_SHA == TESTED_COMMIT_SHA == REMOTE_PR_HEAD_SHA == DEPLOY_TEST_SHA
+-> STOP
+-> owner manually deploys DEPLOY_TEST_SHA
+-> owner manual QA
+   -> PASS: verify SHA/head/main drift, merge normally, report main SHA
+   -> FAIL: collect evidence, create R(n+1), new PLAN_SHA, fresh executor
 ```
 
-## 2. Fixed roles
+## 2. Fixed roles and models
 
-### 2.1 Planner / Architect
-
-Owner default:
+Default Planner / Architect:
 
 ```text
 ChatGPT GPT-5.6 Sol Deep / Extra High
 ```
 
-Planner responsibilities:
-
-- analyze owner QA evidence;
-- inspect the current repository state and exact SHA lineage;
-- research external platform/API behavior only when needed;
-- classify confirmed defects, confirmed passes, and unverified risks;
-- define product decisions, architecture, ownership boundaries, protected contracts, scope and acceptance criteria;
-- write or update the task specification in Git;
-- create a **docs-only** planning commit and report `PLAN_SHA`;
-- produce a short Codex executor prompt that points to the canonical docs and exact task spec.
-
-Planner must not implement production features, mutate runtime behavior, deploy production, or compete with the executor for production-code write ownership.
-
-### 2.2 Executor
-
-Owner default:
+Default Executor:
 
 ```text
-Fresh Codex thread
-GPT-5.6 Sol High
+Fresh Codex GPT-5.6 Sol High
 ```
 
-Executor responsibilities:
-
-- start from the exact `PLAN_SHA` or exact owner-approved continuation SHA;
-- read only canonical engineering docs, the task spec, relevant source and relevant tests;
-- implement the approved scope end-to-end;
-- write/update test source;
-- freeze a candidate before final QA;
-- run one final QA gate appropriate to risk;
-- push the exact tested candidate to the task branch/PR;
-- verify remote PR head equals the tested candidate;
-- report `DEPLOY_TEST_SHA` and stop.
-
-### 2.3 Escalation specialist
-
-Use only for a bounded critical blocker that the normal executor cannot resolve safely.
-
-Owner default:
+Bounded escalation specialist only:
 
 ```text
-Fresh GPT-6 Astra High thread
+Fresh GPT-6 Astra High
 ```
 
-Give the escalation specialist only:
+Astra is not the default long-running executor. Luna/Terra or another cheaper model may be used only when the Planner explicitly records that downgrade in the current task spec for a mechanical, low-risk task. Old score tables never auto-route a task.
 
-- the exact invariant/problem;
-- the current SHA;
-- the smallest relevant file set, normally 2-4 files;
-- one failing test or concrete runtime evidence;
-- expected behavior.
+One task tree has one active write executor. One file has one active write owner.
 
-Do not send the full project history, all QA images, or a giant task narrative to Astra. After the blocker is resolved, return the solution to the sole executor and close the specialist thread.
+If Codex quota changes, preserve the same branch/SHA/task lineage with a compact handoff; do not rediscover the project from scratch. ChatGPT Sol Deep may act as fallback executor if the owner chooses.
 
-### 2.4 Owner
+## 3. Lineage-first planning gate
 
-The owner:
-
-- manually deploys the exact `DEPLOY_TEST_SHA`;
-- performs desktop/mobile/device/multi-account/manual QA as appropriate;
-- decides PASS or FAIL;
-- provides evidence for failures;
-- authorizes merge only after PASS.
-
-## 3. Git is the task source of truth
-
-Important plans must not live only in ChatGPT/Codex conversation history.
-
-Task specifications belong under:
+Before creating or updating a task spec, the Planner must establish:
 
 ```text
-docs/qa/<TASK_ID>.md
+REPOSITORY=
+CURRENT_MAIN_SHA=
+OWNER_DEPLOYED_SHA=
+ACTIVE_PR=
+ACTIVE_PR_HEAD_SHA=
+APPROVED_STARTING_SHA=
+LINEAGE_RELATION=
 ```
 
-Recommended task ID convention:
+Rules:
+
+- Do not assume `main` is the correct starting point.
+- If owner-deployed/live or active-PR lineage is newer than, ahead of, or diverged from `main`, inspect ancestry and use the exact owner-approved continuation lineage.
+- Never create a docs-only `PLAN_SHA` from stale `main` when doing so would drop migrations, runtime fixes, or tested code already present in the active lineage.
+- For cross-repository work, record both exact starting SHAs.
+
+## 4. Git is the task source of truth
+
+Important task specs belong under:
 
 ```text
-TB-<SUBSYSTEM>-<YYYYMMDD>-<NNN>
-TB-<SUBSYSTEM>-<YYYYMMDD>-<NNN>-R1
-TB-<SUBSYSTEM>-<YYYYMMDD>-<NNN>-R2
+docs/qa/TB-<SUBSYSTEM>-<YYYYMMDD>-<NNN>.md
 ```
 
-A task specification should contain, when applicable:
+Corrective revisions use `-R1`, `-R2`, etc.
 
-1. task ID and revision;
-2. repository / branch / PR;
-3. starting SHA / owner-deployed SHA;
-4. owner QA evidence summary;
-5. confirmed PASS items;
-6. confirmed FAIL items;
-7. unverified risks;
-8. owner-approved product decisions;
-9. architecture and invariants;
-10. file ownership / expected files to change;
-11. protected files / protected contracts;
-12. implementation scope;
-13. out of scope;
-14. acceptance criteria;
-15. focused test matrix;
-16. release / SHA workflow;
-17. final report schema.
+A task spec should contain as applicable:
 
-Do not paste raw secret material, unrestricted logs, or unnecessarily large conversation transcripts into task specs.
+- exact repository/branch/PR/start SHA;
+- owner evidence and confirmed PASS/FAIL items;
+- product decisions and architecture invariants;
+- exact task-specific ownership/boundary document paths;
+- exact task-specific release/runtime document paths when needed;
+- files to inspect/change;
+- protected files/contracts;
+- implementation scope and out-of-scope;
+- acceptance criteria;
+- focused final-QA matrix;
+- required plugins/tools and permission scope;
+- final report schema.
 
-## 4. PLAN_SHA contract
+Do not put secrets, huge raw logs, full conversations, or unrelated history in task specs.
 
-Planner commits only the task documentation for the planning checkpoint.
+## 5. PLAN_SHA contract
 
-Example:
+The Planner commits only planning/task documentation to the exact approved task lineage and reports:
 
 ```text
-docs(group): add Group V3 R2 execution specification
+PLAN_SHA=<40-char SHA>
 ```
 
-The resulting full commit SHA is:
+`PLAN_SHA` identifies the exact task-spec revision. It is not the later deploy candidate.
 
-```text
-PLAN_SHA=<40-character SHA>
-```
+If the branch moves after `PLAN_SHA`, the executor must verify ancestry and confirm the new head does not invalidate the task spec before continuing.
 
-`PLAN_SHA` identifies the exact task-spec version the executor must follow.
+## 6. Short executor prompt
 
-The executor must not silently begin from an older SHA. If the branch advanced legitimately after `PLAN_SHA`, it must verify ancestry and that the new changes do not invalidate the task spec before continuing.
-
-For an existing corrective PR, the task spec normally goes into the same branch/PR so lineage remains explicit. For a repository-wide workflow-standard change, use a dedicated docs branch/PR.
-
-## 5. Standard short executor prompt
-
-The Planner should prefer a compact prompt like:
+Prefer a short prompt that names:
 
 ```text
 Repository:
-<repo>
-
 PR:
-<pr>
-
 Branch:
-<branch>
-
-EXACT STARTING SHA:
-<PLAN_SHA>
-
-You are the sole implementation executor.
-
-Read in this order:
-1. AGENTS.md
-2. the repository CODEX_OPERATING_STANDARD.md
-3. the repository ownership-boundary document
-4. the repository release-workflow document
-5. docs/engineering/CHATGPT_CODEX_PLANNER_EXECUTOR_STANDARD.md
-6. docs/qa/<TASK_ID>.md
-
-The task spec is already researched and owner-approved.
-Do not redo product research.
-Do not inspect unrelated repository history.
-Do not expand scope.
-Do not request/create/rotate production secrets unless the task explicitly requires secret administration.
-
-Execute the task end-to-end.
-One active write executor only.
-No owner QA between implementation phases.
-Freeze the candidate before final QA.
-Run one final QA gate.
-Push the exact tested commit to the existing task PR.
-
-Do not deploy production.
-Do not merge main.
-Do not modify protected contracts outside the task spec.
-
-At completion require:
-CANDIDATE_SHA == TESTED_COMMIT_SHA == REMOTE_PR_HEAD_SHA == DEPLOY_TEST_SHA
-
-Report the task-spec final report and STOP.
-OWNER will deploy DEPLOY_TEST_SHA manually and decide PASS/FAIL.
+EXACT STARTING SHA: <PLAN_SHA or approved continuation SHA>
+TASK SPEC: docs/qa/<TASK_ID>.md
 ```
 
-The task spec carries the detail. The executor prompt should not repeat a 1,000-line plan that is already in Git.
+Then instruct the executor:
 
-## 6. One task tree = one active write executor
+1. read `AGENTS.md`;
+2. read this v1.3.1 standard;
+3. read only the exact ownership/security/release docs declared by the task spec;
+4. read the task spec;
+5. inspect only relevant current source/tests;
+6. do not redo Planner research or historical PR archaeology;
+7. implement the full approved scope;
+8. do not execute QA between implementation phases;
+9. freeze candidate before final QA;
+10. run one final gate against the exact frozen candidate;
+11. push the same tested commit;
+12. report exact `DEPLOY_TEST_SHA` and STOP;
+13. do not deploy or merge before owner QA PASS.
 
-Mandatory default:
+## 7. Plugin/tool discipline
+
+Use least privilege. The Planner records:
 
 ```text
-ONE TASK TREE = ONE ACTIVE WRITE EXECUTOR
-ONE FILE = ONE ACTIVE WRITE OWNER
+REQUIRED_PLUGINS=
+OPTIONAL_PLUGINS=
+PLUGIN_NOT_REQUIRED=
+PLUGIN_PERMISSION_SCOPE=
 ```
 
-Do not run separate UI, plugin, radio, backend or migration coding agents concurrently when their write scopes overlap.
+Typical routing:
 
-A second agent may be used as a read-only reviewer or bounded specialist, but it must not push competing production-code changes to the same task tree.
+- GitHub: repository, branch, PR, diff, SHA, merge lineage.
+- Render: only when live deploy/log/env/runtime evidence is material; no automatic deploy unless owner explicitly commands it.
+- OpenAI Developers: only for OpenAI API/realtime/Agents/Apps integration work.
+- Supabase/database tooling: only when that actual database is in scope.
+- Drive/Slack: only when they contain authoritative task evidence.
+- Local Playwright/Chromium: deterministic UI verification in the final QA phase.
+- Cloudflare: approved CLI/API/browser/manual evidence; do not invent a plugin.
 
-Cross-repository work may have one write owner per repository if scopes are truly separated, with an explicit integration contract and exact tested SHA pair.
+A newly required external permission triggers re-planning rather than silent permission expansion.
 
-## 7. Context and token discipline
-
-Planner pays the research/context cost once. Executor should not rediscover the same information.
-
-Planner may consume:
-
-- screenshots and QA evidence;
-- platform comparisons;
-- API/web research;
-- broad source/architecture inspection needed to make the plan.
-
-Executor should consume primarily:
-
-- current canonical engineering docs;
-- current task spec;
-- relevant current source;
-- relevant tests;
-- exact blocker/runtime evidence.
-
-Avoid sending the executor:
-
-- entire old conversations;
-- all historical PR narratives;
-- duplicate prompts;
-- unrelated files;
-- broad web research already summarized in the task spec.
-
-Convert visual evidence into structured entries where possible:
+## 8. Phase discipline
 
 ```text
-EVIDENCE-07
-Viewport: iPhone portrait
-Observed: top controls overlap safe area
-Expected: safe-area inset plus interactive gutter
-Affected surface: Group Video mobile shell
-Severity: P1
+PHASE 0 — resolve exact lineage if needed; NO QA
+PHASE 1 — inspect relevant source/contracts/tests; NO QA
+PHASE 2 — implement all production changes; NO QA
+PHASE 3 — write/update regression test source; DO NOT EXECUTE
+PHASE 4 — static completeness/protected-boundary review; NO QA
+PHASE 5 — create/freeze local candidate commit
+PHASE 6 — ONE final local QA gate against exact candidate
+PHASE 7 — push exact same candidate / update PR
+PHASE 8 — report exact SHA and STOP
 ```
 
-Attach the original screenshot only when visual geometry itself is necessary for implementation or acceptance.
+Full repository QA is not automatic. Use the smallest complete final gate justified by risk. Hosted GitHub Actions are not an iterative edit/fail/edit substitute for deterministic local final QA.
 
-## 8. Task lifecycle and revisions
+If final QA fails, fix the defect, create a new candidate commit, and rerun only the affected final gate. Do not reuse a failed candidate's evidence.
 
-Canonical state flow:
+## 9. Candidate SHA contract
 
-```text
-PLANNING
--> PLAN_COMMITTED
--> IMPLEMENTING
--> CANDIDATE_FROZEN
--> FINAL_QA
--> OWNER_QA_PENDING
--> OWNER_PASS
--> MERGE_READY
--> MERGED
-```
-
-Failure path:
-
-```text
-OWNER_QA_FAIL
--> EVIDENCE_COLLECTED
--> R(n+1)_PLANNING
--> NEW TASK SPEC REVISION
--> NEW PLAN_SHA
--> FRESH EXECUTOR THREAD
-```
-
-Do not overwrite the history of an older revision. Preserve R1/R2/R3 task docs when they are materially useful evidence.
-
-## 9. Candidate and SHA contract
-
-Planner checkpoint:
-
-```text
-PLAN_SHA
-```
-
-Executor candidate:
-
-```text
-CANDIDATE_SHA
-```
-
-QA identity:
-
-```text
-TESTED_COMMIT_SHA
-TESTED_TREE_SHA
-```
-
-Remote handoff:
-
-```text
-REMOTE_PR_HEAD_SHA
-DEPLOY_TEST_SHA
-```
-
-Mandatory release invariant:
+Before owner deployment QA:
 
 ```text
 CANDIDATE_SHA
@@ -385,89 +210,43 @@ CANDIDATE_SHA
 == DEPLOY_TEST_SHA
 ```
 
-If they differ:
+If these differ:
 
 ```text
 READY_FOR_OWNER_MANUAL_QA=NO
 ```
 
-After reporting the deploy SHA, the executor must not amend, add cleanup commits, push extra changes, deploy, or merge.
+After reporting `DEPLOY_TEST_SHA`, no cleanup commit, amend, extra push, deploy, or merge is allowed without creating a new candidate and invalidating prior QA evidence.
 
-## 10. QA architecture
+## 10. Owner QA
 
-Do not perform owner QA between implementation phases.
+Owner deploys exactly `DEPLOY_TEST_SHA` and reports PASS or FAIL with evidence.
 
-Canonical executor sequence:
-
-```text
-IMPLEMENT COMPLETE APPROVED SCOPE
--> WRITE/UPDATE TEST SOURCE
--> STATIC COMPLETENESS REVIEW
--> FREEZE CANDIDATE COMMIT
--> ONE FINAL QA GATE
--> PUSH EXACT TESTED COMMIT
-```
-
-The final gate should be the smallest complete verification set justified by risk:
-
-- syntax / lint where relevant;
-- focused backend/frontend regression;
-- browser verification for affected UI;
-- migration validation when schema changes;
-- protected-boundary regression where required;
-- repository-wide suite only when genuinely justified by cross-cutting risk.
-
-Hosted CI is not an iterative edit/fail/edit substitute for deterministic local candidate QA unless repository policy explicitly requires hosted evidence.
-
-## 11. READY_FOR_OWNER_QA is not READY_FOR_PRODUCTION
-
-A candidate may correctly report:
+Before accepting QA, ChatGPT verifies:
 
 ```text
-READY_FOR_OWNER_MANUAL_QA=YES
-READY_FOR_PRODUCTION=NO
-OWNER_MANUAL_QA=PENDING
+DEPLOYED_SHA == DEPLOY_TEST_SHA
 ```
 
-That is the normal state before the owner deploys the candidate.
+PASS path:
 
-Physical-device, real-provider, multi-account or production-environment checks that can only occur after deployment are owner-QA responsibilities unless the task spec explicitly assigns a safe equivalent environment to the executor.
+- verify PR head still equals QA SHA;
+- refetch current main;
+- verify merge will preserve the tested tree/contract;
+- if safe, merge normally and report final main SHA;
+- if integration changes the tested tree, create a new integration candidate and require owner QA again.
 
-## 12. Owner QA FAIL path
+FAIL path:
 
-When owner QA fails, do not immediately send the old executor a patch request.
+- verify deployed SHA;
+- analyze evidence;
+- create `TASK_ID-R(n+1)`;
+- create a new docs-only `PLAN_SHA` on the correct continuation lineage;
+- start a fresh executor thread.
 
-Use:
+## 11. Cross-repository tasks
 
-```text
-1. collect evidence;
-2. verify deployed SHA;
-3. Planner analyzes source + evidence;
-4. classify confirmed defect vs unverified risk;
-5. re-evaluate architecture/model/tool needs;
-6. create R(n+1) task spec;
-7. docs-only commit -> new PLAN_SHA;
-8. start a fresh executor thread.
-```
-
-This prevents accumulation of ad-hoc patches and stale conversation context.
-
-## 13. Owner QA PASS path
-
-Only after owner PASS:
-
-1. verify deployed SHA equals `DEPLOY_TEST_SHA`;
-2. verify PR head has not drifted;
-3. inspect current main for drift;
-4. ensure the merge path preserves the tested tree or build a new integration candidate if it does not;
-5. merge normally through the PR path;
-6. verify and report final main SHA.
-
-Never force-push protected history to manufacture a match.
-
-## 14. Cross-repository tasks
-
-When Timeblock and AI-COMMUNICATION-Timeblock both change:
+When both repositories change, record:
 
 ```text
 TIMEBLOCK_PLAN_SHA=
@@ -477,11 +256,11 @@ GUILUA_DEPLOY_TEST_SHA=
 PAIR_TESTED_TOGETHER=YES|NO
 ```
 
-Each repository keeps one active write owner. Do not claim a cross-system PASS unless the exact required SHA pair was tested together where the contract requires it.
+Keep one active write owner per repository/file boundary. Do not claim a cross-system PASS unless the exact required SHA pair was tested together where the contract requires it.
 
-## 15. Completion definition
+## 12. Completion definition
 
-A production task is CLOSED only when:
+A production task is closed only when:
 
 ```text
 PLAN_COMMITTED=YES
@@ -495,24 +274,10 @@ MERGED_TO_MAIN=YES
 TESTED_TREE_PRESERVED=YES
 ```
 
-## 16. Canonical shorthand
+## 13. Canonical shorthand
 
-The owner may say:
+When the owner says:
 
 > Planner -> Spec-in-Git -> Codex Executor -> Owner QA
 
-This means:
-
-```text
-PLANNER = ChatGPT GPT-5.6 Sol Deep / Extra High
-SPEC = docs/qa/<TASK_ID>.md
-PLAN_SHA = docs-only Git checkpoint
-EXECUTOR = fresh Codex GPT-5.6 Sol High by default
-ESCALATION = bounded fresh GPT-6 Astra High specialist only when needed
-QA = one final executor QA gate
-HANDOFF = exact DEPLOY_TEST_SHA
-OWNER = manual deploy + physical/manual QA
-MERGE = only after owner PASS
-```
-
-This is the canonical Planner/Executor workflow for Timeblock engineering v1.3.
+it means this **v1.3.1** workflow only. Do not load, execute, or revive older workflow versions.
