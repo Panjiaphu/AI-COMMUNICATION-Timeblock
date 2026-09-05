@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
@@ -33,8 +34,8 @@ class FakeV2Provider:
         return SpeechTranscriptionResult(text="transcribed source", model="fake-stt", request_id="stt-v2")
 
 
-def _runtime(tmp_path):
-    app = _native_app(tmp_path, group_translation_enabled=True, openai_api_key="server-only")
+def _runtime(tmp_path, **overrides):
+    app = _native_app(tmp_path, group_translation_enabled=True, openai_api_key="server-only", **overrides)
     provider = FakeV2Provider([])
     app.state.group_translation_service.provider = provider
     session = app.state.bff_session_store.create_group_session(
@@ -61,8 +62,8 @@ def _runtime(tmp_path):
             db.add(media)
             db.flush()
             db.add_all([
-                GroupMediaParticipant(id=str(uuid4()), session_id=media.id, membership_id=owner.id, principal_type="member", principal_id="42", principal_user_id="42", display_name="Nguyen Minh", livekit_identity="owner", invite_status="joined"),
-                GroupMediaParticipant(id=str(uuid4()), session_id=media.id, membership_id=guest.id, principal_type="member", principal_id="99", principal_user_id="99", display_name="Guest", livekit_identity="guest", invite_status="joined"),
+                GroupMediaParticipant(id=str(uuid4()), session_id=media.id, membership_id=owner.id, principal_type="member", principal_id="42", principal_user_id="42", display_name="Nguyen Minh", livekit_identity="owner", invite_status="joined", joined_at=datetime.now(timezone.utc)),
+                GroupMediaParticipant(id=str(uuid4()), session_id=media.id, membership_id=guest.id, principal_type="member", principal_id="99", principal_user_id="99", display_name="Guest", livekit_identity="guest", invite_status="joined", joined_at=datetime.now(timezone.utc)),
             ])
             space_id, runtime_id = space.id, media.id
     return app, session, provider, space_id, runtime_id

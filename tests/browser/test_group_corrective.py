@@ -33,7 +33,7 @@ window.__makeStream=()=> {
 };
 window.GroupV3DeviceManager={
  enumerate:async()=>({audioInputs:[],videoInputs:[],audioOutputs:[]}),remembered:()=>'',remember:()=>{},
- acquire:async()=>{__mediaCounts.acquire++;return window.__local=__makeStream();},
+ acquire:async(options)=>{__mediaCounts.acquire++;const stream=__makeStream();if(options?.mediaKind==='audio')stream.getVideoTracks().forEach(t=>{t.stop();stream.removeTrack(t);});return window.__local=stream;},
  startMeter:()=>()=>{},stop:()=>{if(window.__local)__local.getTracks().forEach(t=>t.stop());},
  setOutput:async()=>{},normalizeError:e=>({code:e.code||'device_error'}),onDeviceChange:()=>()=>{}
 };
@@ -69,13 +69,151 @@ def page(chromium_browser):
     context.close()
 
 
-def boot(page, surface="video", connected=True):
+@pytest.mark.parametrize("width,height", [(1440,900),(390,844),(844,390)])
+@pytest.mark.parametrize("count", [2,3,4])
+def test_r1_video_layout_presets_reset_and_touch_contract(page, tmp_path, width, height, count):
+    page.set_viewport_size({"width":width,"height":height})
+    boot(page, participant_count=count)
+    assert page.url.endswith("/group/video")
+    expect(page.locator(".video-stage")).to_be_visible()
+    before = page.evaluate("({...__mediaCounts})")
+    for mode in ["GRID","SPEAKER","CUSTOM","AUTO"]:
+        page.locator("[data-video-layout]").select_option(mode)
+        expect(page.locator(".video-grid")).to_have_attribute("data-layout",mode)
+        tiles = page.locator(".video-tile:visible")
+        assert tiles.count() == count
+        boxes = [tiles.nth(i).bounding_box() for i in range(count)]
+        # Filmstrip may page horizontally; it must never be an unusable sliver.
+        assert all(b["width"] >= 140 and b["height"] >= 60 for b in boxes), (mode,boxes)
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        if mode == "CUSTOM":
+            page.locator("[data-video-drag]").first.press("ArrowRight")
+            assert page.evaluate("GroupV3VideoLayout.snapshot().customOrder.length") == count
+    page.locator("[data-video-reset]").click()
+    assert page.evaluate("GroupV3VideoLayout.snapshot().customOrder") == []
+    assert page.evaluate("({...__mediaCounts})") == before
+    page.screenshot(path=str(tmp_path/f"r1-video-{width}-{count}.png"), animations="disabled")
+
+@pytest.mark.parametrize("locale,label", [("vi","Phát hiện ngôn ngữ"),("en","Detect language"),("zh-TW","自動偵測語言")])
+def test_r1_auto_detect_text_keeps_profile_canonical(page, locale, label):
+    boot(page, locale=locale)
+    page.locator("[data-workspace-action=translation-plus]").click()
+    expect(page.locator("[data-v2-source] option[value=auto]")).to_have_text(label)
+    page.locator("[data-v2-source]").select_option("auto")
+    requests=[]
+    page.on("request",lambda r:requests.append(r) if r.method == "PUT" and r.url.endswith("/translation/profile") else None)
+    def submit(route):
+        assert route.request.post_data_json["source_language"] == "auto"
+        route.fulfill(content_type="application/json",body=json.dumps({"segment":{
+            "id":"auto-text","source_language":"en","source_text":"Hello team","state":"FINAL","author_view":True,"variants":[]}}))
+    page.route("**/translation/segments/text",submit)
+    page.locator("[data-v2-text]").fill("Hello team")
+    page.locator("[data-v2-action=send]").click()
+    expect(page.locator("[data-segment-id=auto-text]")).to_be_visible()
+    assert requests and all(r.post_data_json["spoken_language"] != "auto" for r in requests)
+    assert "auto" not in page.locator("[data-segment-id=auto-text]").inner_text()
+
+def test_r1_auto_voice_busy_recoverable_error_and_retry(page):
+    button=voice_setup(page)
+    page.locator("[data-v2-source]").select_option("auto")
+    uploads=[]
+    def failed(route):
+        uploads.append(route.request.post_data_buffer)
+        route.fulfill(status=422,content_type="application/json",
+            body='{"detail":"group_translation_detected_language_unsupported"}')
+    page.route("**/translation/segments/voice",failed)
+    button.click()
+    expect(button).to_have_attribute("data-voice-icon","save")
+    # Observe the busy icon before the mocked response resolves.
+    page.evaluate("""() => {window.__voiceIcons=[];new MutationObserver(()=>{
+      __voiceIcons.push(document.querySelector('[data-v2-action=record]').dataset.voiceIcon);
+    }).observe(document.querySelector('[data-v2-action=record]'),{attributes:true,attributeFilter:['data-voice-icon']});}""")
+    button.click()
+    expect(page.locator("[data-v2-error]")).to_contain_text("chọn ngôn ngữ")
+    expect(button).to_have_attribute("data-voice-icon","mic")
+    assert len(uploads)==1 and b"\r\n\r\nauto\r\n" in uploads[0]
+    assert "languages" in page.evaluate("__voiceIcons")
+    button.click()
+    expect(button).to_have_attribute("data-voice-icon","save")
+
+def test_r1_video_history_visible_after_ended_runtime(page):
+    boot(page)
+    item={"id":"ended-video-text","runtime_kind":"video","source_language":"vi","source_text":"Durable source",
+        "state":"FINAL","author_view":True,"speaker_display_name":"Nguyễn Minh","created_at":"2026-09-05T07:00:00Z","variants":[]}
+    page.route("**/translation/v2-history?*",lambda r:r.fulfill(content_type="application/json",body=json.dumps({"segments":[item]})))
+    page.locator(".call-control-dock [data-action=leave-media]").click()
+    page.wait_for_function("!GroupV3Runtime.snapshot().media_connected")
+    page.evaluate("document.querySelector('[data-surface=\"chat-translation\"]').click()")
+    expect(page.locator("[data-segment-id=ended-video-text]")).to_be_visible()
+    expect(page.locator("[data-segment-id=ended-video-text]")).to_contain_text("Durable source")
+    expect(page.locator("[data-segment-id=ended-video-text] time")).to_have_attribute("datetime","2026-09-05T07:00:00Z")
+
+@pytest.mark.parametrize("width,height", [(1440,900),(390,844),(844,390)])
+def test_r1_radio_tap_stop_text_history_leave_reopen(page,tmp_path,width,height):
+    page.set_viewport_size({"width":width,"height":height})
+    boot(page,surface="radio",connected=False)
+    page.locator(".radio-ptt").click()
+    page.wait_for_function("GroupV3Runtime.snapshot().media_connected")
+    page.evaluate("()=>{window.__testMime='audio/mp4';"+RECORDER+"}")
+    page.locator(".radio-ptt").click()
+    expect(page.locator(".radio-ptt")).to_have_attribute("data-action","stop-radio")
+    assert page.evaluate("__recorders") == 1 and page.evaluate("__mediaCounts.acquire") == 1
+    page.locator(".radio-ptt").click()
+    expect(page.locator("[data-segment-id=radio-segment]")).to_be_visible()
+    expect(page.locator(".radio-ptt")).to_have_attribute("data-action","start-radio")
+    expect(page.locator(".radio-ptt")).to_have_count(1)
+    dock=page.locator(".radio-room-dock").bounding_box()
+    assert dock["y"]+dock["height"] <= height
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    page.screenshot(path=str(tmp_path/f"r1-radio-{width}.png"),animations="disabled")
+    page.locator(".radio-room-dock [data-action=leave-radio]").click()
+    page.wait_for_url("**/group/chat")
+    page.locator("[data-surface=radio]").click()
+    expect(page.locator("[data-segment-id=radio-segment]")).to_be_visible()
+
+def test_r1_device_loss_exit_and_leave_while_talking(page):
+    boot(page,surface="radio",connected=False)
+    page.locator(".radio-ptt").click()
+    page.wait_for_function("GroupV3Runtime.snapshot().media_connected")
+    page.evaluate("()=>{window.__testMime='audio/mp4';"+RECORDER+"}")
+    page.locator(".radio-ptt").click()
+    expect(page.locator(".radio-ptt")).to_have_attribute("data-action","stop-radio")
+    page.evaluate("GroupV3Runtime.getLocalAudioTrack().dispatchEvent(new Event('ended'))")
+    expect(page.locator(".radio-recovery")).to_be_visible()
+    page.locator(".radio-room-header [data-action=leave-radio]").click()
+    page.wait_for_url("**/group/chat")
+    page.locator("[data-surface=radio]").click()
+    page.locator(".radio-ptt").click()
+    page.wait_for_function("GroupV3Runtime.snapshot().media_connected")
+    page.locator(".radio-ptt").click()
+    expect(page.locator(".radio-ptt")).to_have_attribute("data-action","stop-radio")
+    page.once("dialog",lambda dialog:dialog.accept())
+    page.locator(".radio-room-dock [data-action=leave-radio]").click()
+    page.wait_for_url("**/group/chat")
+
+def test_r1_old_radio_translation_url_alias_and_unified_settings(page):
+    boot(page,surface="radio-translation",connected=False)
+    page.wait_for_url("**/group/chat-translation?tab=radio")
+    expect(page.locator("[data-surface=radio-translation]")).to_have_count(0)
+    expect(page.locator("[data-action=history-tab][data-tab=radio]")).to_have_attribute("aria-pressed","true")
+    expect(page.locator("[data-form=save-profile]")).to_have_count(1)
+    expect(page.locator("[data-action=toggle-auto-translate]")).to_have_count(0)
+    expect(page.locator(".mobile-language-bar")).to_have_count(0)
+
+
+def boot(page, surface="video", connected=True, locale="vi", participant_count=2):
     members = [dict(id="m1", principal_type="member", principal_id="42", principal_user_id="42",
         display_name="Nguyễn Minh", role="owner", status="active"),
         dict(id="m2", principal_type="member", principal_id="84", principal_user_id="84",
         display_name="Trần An", role="member", status="active")]
     people = [dict(id="p1", membership_id="m1", livekit_identity="owner", display_name="Nguyễn Minh", invite_status="joined", media_connected=True),
         dict(id="p2", membership_id="m2", livekit_identity="guest", display_name="Trần An", invite_status="joined", media_connected=True)]
+    for index in range(2, participant_count):
+        people.append(dict(id=f"p{index+1}", membership_id=f"m{index+1}", livekit_identity=f"guest{index}", display_name=f"QA {index}", invite_status="joined", media_connected=True))
+    radio_people = [dict(p, status="joined", joined_at="2026-09-05T07:00:00Z") for p in people]
+    radio_session = dict(id="r1", title="QA Radio", status="ready", participants=radio_people)
+    radio_history = []
+    radio_events = []
     session = dict(id="r1", media_kind="video", title="QA Video", status="active", participants=people)
     profile = dict(spoken_language="vi", preferred_output_language="zh-TW", auto_translate_enabled=False, auto_read_enabled=False)
     template = (ROOT / "app/templates/group_communication_v3.html").read_text(encoding="utf-8")
@@ -83,7 +221,7 @@ def boot(page, surface="video", connected=True):
     # and their production load order are unchanged.
     import re
     template = re.sub(r'<script src="https://cdn.jsdelivr.net[^<]+</script>', "", template)
-    html = Environment().from_string(template).render(locale="vi", runtime_config={"locale":"vi", "initial_surface":surface})
+    html = Environment().from_string(template).render(locale=locale, runtime_config={"locale":locale, "initial_surface":surface})
     def handle(route):
         path = urlparse(route.request.url).path
         if path.startswith("/static/"):
@@ -97,7 +235,7 @@ def boot(page, surface="video", connected=True):
             return route.fulfill(content_type="text/html", body=html)
         payload = {}
         if path == "/api/group/session":
-            payload = dict(principal=dict(type="member", id="42", user_id="42", locale="vi"), group_authorized=True, direct_available=False)
+            payload = dict(principal=dict(type="member", id="42", user_id="42", locale=locale), group_authorized=True, direct_available=False)
         elif path == "/api/group/spaces":
             payload = {"spaces":[dict(id="s1",title="Điều phối QA",status="active",version=1)]}
         elif path.endswith("/memberships"): payload={"memberships":members}
@@ -105,12 +243,27 @@ def boot(page, surface="video", connected=True):
             if route.request.method == "PUT": profile.update(route.request.post_data_json)
             payload={"profile":profile}
         elif path.endswith("/translation/consent"): payload={"consent":{"status":"granted"}}
+        elif path.endswith("/radio/sessions"): payload={"sessions":[radio_session]}
+        elif path.endswith("/radio/room/join"): payload={"session":radio_session}
+        elif path.endswith("/radio/history"): payload={"bursts":radio_history}
+        elif path.endswith("/floor/acquire"):
+            radio_events.append("acquire")
+            payload={"floor_token":"floor-qa", "burst":{"id":"burst-qa","started_at":"2026-09-05T07:00:00Z","state":"talking"}}
+        elif path.endswith("/floor/stop"):
+            radio_events.append("release")
+            payload={"burst":{"id":"burst-qa","state":"finalizing"}}
+        elif path.endswith("/bursts/burst-qa/transcribe"):
+            assert radio_events[-1] == "release", radio_events
+            radio_events.append("stt")
+            segment={"id":"radio-segment","runtime_kind":"radio","source_text":"Radio text fixture","source_language":"vi","author_view":True,"state":"FINAL","variants":[]}
+            radio_history.append({"id":"burst-qa","state":"final","speaker_display_name":"Nguyễn Minh","started_at":"2026-09-05T07:00:00Z","segment":segment})
+            payload={"segment":segment}
         elif path.endswith("/sessions"): payload={"sessions":[session]}
-        elif path.endswith("/radio/sessions/r1"): payload={"session":session,"floor":None}
+        elif path.endswith("/radio/sessions/r1"): payload={"session":radio_session,"floor":None}
         elif path.endswith("/radio/sessions/r1/join"): payload={"session":session}
         elif path.endswith("/connection-state"): payload={"session":session}
         elif path.endswith("/media-grant"):
-            payload={"grant":{"provider":"livekit-cloud","url":"wss://fixture.invalid","token":"fixture-only","participant_identity":"owner","media_kind":"video"}}
+            payload={"grant":{"provider":"livekit-cloud","url":"wss://fixture.invalid","token":"fixture-only","participant_identity":"owner","media_kind":"audio" if "/radio/" in path else "video"}}
         route.fulfill(content_type="application/json", body=json.dumps(payload))
     page.route("**/*", handle)
     page.goto("http://127.0.0.1:8765/group/" + surface)
@@ -139,8 +292,8 @@ def test_mobile_geometry_and_panel_modes(page, tmp_path, width, height):
     page.set_viewport_size({"width":width,"height":height})
     boot(page)
     g = geometry(page)
-    assert g[".native-main"]["y"] == 0, g
-    assert g[".surface-content"]["height"] == height, g
+    assert g[".native-main"]["y"] >= 8, g
+    assert g[".surface-content"]["height"] == height - 8, g
     assert g[".translation-dock"]["height"] <= 64, g
     assert g[".translation-dock"]["bottom"] == height, g
     assert g[".translation-safety-layer"]["display"] == "none", g
@@ -293,24 +446,19 @@ def test_record_double_click_during_profile_save_is_single_capture(page):
     assert page.evaluate("__recorders") == 1
 
 
-def test_radio_translation_preflight_never_requests_floor(page, tmp_path):
+def test_radio_room_join_has_one_ptt_and_no_microphone_or_text_composer(page, tmp_path):
     requests=[]
     page.on("request", lambda request:requests.append(request.url))
     boot(page, surface="radio", connected=False)
-    page.locator('[data-action="reconnect-radio"]').click()
+    page.locator('.radio-ptt').click()
     page.wait_for_function("GroupV3Runtime.snapshot().media_connected")
-    expect(page.locator(".radio-mobile-dock [data-action=start-radio]")).to_be_visible()
-    for mode in ["HALF","FULL","HALF","COLLAPSED"]:
-        action = "plus" if mode in ["FULL"] or mode == "HALF" and page.locator(".radio-translation-card").get_attribute("data-radio-translation-mode") == "COLLAPSED" else "minus"
-        page.locator('[data-workspace-action="radio-translation-'+action+'"]').click()
-        expect(page.locator(".radio-translation-card")).to_have_attribute("data-radio-translation-mode",mode)
-        expect(page.locator(".radio-mobile-dock [data-action=start-radio]")).to_be_visible()
-    page.locator('[data-workspace-action="radio-translation-plus"]').click()
-    page.locator('[data-v2-action="record"]').click()
-    expect(page.locator("[data-v2-error]")).to_have_attribute("data-error-category","RECORDING_ERROR")
+    expect(page.locator(".radio-ptt")).to_have_count(1)
+    expect(page.locator(".radio-ptt")).to_have_attribute("data-action","start-radio")
+    expect(page.locator(".radio-room textarea")).to_have_count(0)
+    expect(page.locator(".radio-room [data-v2-panel]")).to_have_count(0)
     assert not any("/floor/" in url for url in requests)
     assert page.evaluate("__mediaCounts.acquire") == 0
-    page.screenshot(path=str(tmp_path / "radio-preflight.png"))
+    page.screenshot(path=str(tmp_path / "radio-room-ready.png"))
 
 
 def test_focus_hide_restore_never_republishes_or_reattaches(page):

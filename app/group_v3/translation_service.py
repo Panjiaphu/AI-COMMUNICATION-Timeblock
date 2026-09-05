@@ -678,6 +678,70 @@ class GroupTranslationService:
         if not consent or consent.status != "granted" or consent.policy_version != self.settings.group_translation_policy_version:
             raise GroupServiceError("group_translation_voice_consent_required", 409)
 
+    def _authorize_v2_history(self, db, actor, space_id, runtime_kind, runtime_id):
+        """Archive reads preserve membership/participation, not active transport state."""
+        member = self._membership(db, space_id, actor)
+        if runtime_kind in {"call", "video"}:
+            session = db.get(GroupMediaSession, runtime_id)
+            expected = "video" if runtime_kind == "video" else "audio"
+            if not session or session.space_id != space_id or session.media_kind != expected:
+                raise GroupServiceError("group_translation_runtime_not_found", 404)
+            participant = db.scalar(select(GroupMediaParticipant).where(
+                GroupMediaParticipant.session_id == runtime_id,
+                GroupMediaParticipant.membership_id == member.id,
+                GroupMediaParticipant.joined_at.is_not(None),
+            ))
+        elif runtime_kind == "radio":
+            session = db.get(GroupRadioSession, runtime_id)
+            if not session or session.space_id != space_id:
+                raise GroupServiceError("group_translation_runtime_not_found", 404)
+            participant = db.scalar(select(GroupRadioParticipant).where(
+                GroupRadioParticipant.radio_session_id == runtime_id,
+                GroupRadioParticipant.membership_id == member.id,
+                GroupRadioParticipant.joined_at.is_not(None),
+            ))
+        else:
+            raise GroupServiceError("group_translation_runtime_not_found", 404)
+        if not participant:
+            raise GroupServiceError("group_translation_participant_required", 403)
+        return member
+
+    def _submission_context(self, db, actor, space_id, values):
+        # Only the authenticated Radio finalize entry point sets this private value.
+        burst_id = values.get("_radio_burst_id")
+        if not burst_id:
+            return self._require_v2_runtime(db, actor, space_id, values["runtime_kind"], values["runtime_id"])
+        member = self._authorize_v2_history(db, actor, space_id, "radio", values["runtime_id"])
+        burst = db.get(GroupRadioBurst, burst_id)
+        if (not burst or burst.space_id != space_id or burst.radio_session_id != values["runtime_id"]
+                or burst.speaker_membership_id != member.id or burst.stopped_at is None
+                or burst.state == "talking" or values["client_segment_id"] != burst.id):
+            raise GroupServiceError("group_radio_burst_not_released", 409)
+        joined_ids = list(db.scalars(select(GroupRadioParticipant.membership_id).where(
+            GroupRadioParticipant.radio_session_id == burst.radio_session_id,
+            GroupRadioParticipant.joined_at.is_not(None),
+            GroupRadioParticipant.joined_at <= burst.stopped_at,
+            or_(GroupRadioParticipant.left_at.is_(None), GroupRadioParticipant.left_at >= burst.started_at),
+        )).all())
+        return member, joined_ids
+
+    async def _resolve_source_language(self, actor, language, source_text, client_id):
+        if language in {"vi", "en", "zh-TW"}:
+            return language
+        if language != "auto":
+            raise GroupServiceError("group_translation_language_invalid", 400)
+        if self.provider is None or not hasattr(self.provider, "detect_supported_language"):
+            raise GroupServiceError("group_translation_provider_not_configured", 503)
+        try:
+            resolved = await self.provider.detect_supported_language(
+                source_text, actor.key, f"group-v2-detect:{client_id}"
+            )
+        except Exception as exc:
+            raise GroupServiceError("group_translation_provider_unavailable", 502) from exc
+        if resolved not in {"vi", "en", "zh-TW"}:
+            raise GroupServiceError("group_translation_detected_language_unsupported", 422)
+        return resolved
+
     def _target_languages(self, db, space_id: str, membership_ids: list[str], source_language: str) -> list[str]:
         if not membership_ids:
             return []
@@ -746,6 +810,7 @@ class GroupTranslationService:
             "runtime_kind": segment.runtime_kind,
             "runtime_id": segment.runtime_id,
             "speaker_membership_id": segment.speaker_membership_id,
+            "speaker_display_name": (db.get(GroupMembership, segment.speaker_membership_id).display_name),
             "input_kind": segment.input_kind,
             "source_language": segment.source_language,
             "target_language": target,
@@ -891,7 +956,7 @@ class GroupTranslationService:
         if not source_text or len(source_text) > 12000:
             raise GroupServiceError("group_translation_text_invalid", 400)
         source_language = str(values.get("source_language") or "")
-        if source_language not in {"vi", "en", "zh-TW"}:
+        if source_language not in {"vi", "en", "zh-TW", "auto"}:
             raise GroupServiceError("group_translation_language_invalid", 400)
         runtime_kind = values["runtime_kind"]
         client_segment_id = str(values["client_segment_id"]).strip()
@@ -903,9 +968,23 @@ class GroupTranslationService:
         input_kind = str(values.get("input_kind") or "text")
         if input_kind not in {"text", "voice"}:
             raise GroupServiceError("group_translation_input_invalid", 400)
+        # Authorize before sending untrusted text to a provider. Detection mode
+        # never enters either the profile table or canonical source column.
+        with self.database.session() as db:
+            member, _ = self._submission_context(db, actor, space_id, values)
+            existing = db.scalar(select(GroupTranslationSegment).where(
+                GroupTranslationSegment.space_id == space_id,
+                GroupTranslationSegment.runtime_kind == runtime_kind,
+                GroupTranslationSegment.runtime_id == values["runtime_id"],
+                GroupTranslationSegment.speaker_membership_id == member.id,
+                GroupTranslationSegment.client_segment_id == client_segment_id,
+            ))
+            if existing:
+                return self._project_v2(db, actor, existing)
+        source_language = await self._resolve_source_language(actor, source_language, source_text, client_segment_id)
         with self.database.session() as db:
             with db.begin():
-                membership, joined_ids = self._require_v2_runtime(db, actor, space_id, runtime_kind, values["runtime_id"])
+                membership, joined_ids = self._submission_context(db, actor, space_id, values)
                 existing = db.scalar(select(GroupTranslationSegment).where(
                     GroupTranslationSegment.space_id == space_id,
                     GroupTranslationSegment.runtime_kind == runtime_kind,
@@ -954,6 +1033,8 @@ class GroupTranslationService:
             return await self._submit_voice_once(actor, space_id, values, audio, filename, content_type)
 
     async def _submit_voice_once(self, actor: GroupActor, space_id: str, values: dict, audio: bytes, filename: str, content_type: str) -> dict:
+        if values.get("source_language") not in {"vi", "en", "zh-TW", "auto"}:
+            raise GroupServiceError("group_translation_language_invalid", 400)
         if not audio or len(audio) > self.settings.group_translation_max_audio_bytes or (content_type and not str(content_type).lower().startswith("audio/")):
             raise GroupServiceError("group_translation_audio_invalid", 413)
         duration = values.get("duration_seconds")
@@ -965,7 +1046,7 @@ class GroupTranslationService:
                 raise GroupServiceError("group_translation_audio_invalid", 400) from exc
         with self.database.session() as db:
             with db.begin():
-                membership, _joined_ids = self._require_v2_runtime(db, actor, space_id, values["runtime_kind"], values["runtime_id"])
+                membership, _joined_ids = self._submission_context(db, actor, space_id, values)
                 self._voice_consent_required(db, space_id, membership.id)
                 existing = db.scalar(select(GroupTranslationSegment).where(
                     GroupTranslationSegment.space_id == space_id,
@@ -993,12 +1074,88 @@ class GroupTranslationService:
         values["input_kind"] = "voice"
         return await self.submit_text(actor, space_id, values)
 
-    def v2_history(self, actor: GroupActor, space_id: str, runtime_kind: str | None, runtime_id: str | None, limit: int) -> list[dict]:
+    async def submit_radio_voice(self, actor, space_id, session_id, burst_id, fields, audio, filename, content_type):
+        """A durable single attempt per released burst; no audio is retained for retry."""
+        values = {"runtime_kind": "radio", "runtime_id": session_id, "client_segment_id": burst_id,
+                  "_radio_burst_id": burst_id, "duration_seconds": fields.get("duration_seconds")}
         with self.database.session() as db:
+            with db.begin():
+                member, _ = self._submission_context(db, actor, space_id, values)
+                self._voice_consent_required(db, space_id, member.id)
+                burst = db.get(GroupRadioBurst, burst_id)
+                values["source_language"] = fields.get("source_language") or burst.source_language
+                if values["source_language"] not in {"vi", "en", "zh-TW", "auto"}:
+                    raise GroupServiceError("group_translation_language_invalid", 400)
+                existing = db.scalar(select(GroupTranslationSegment).where(
+                    GroupTranslationSegment.space_id == space_id,
+                    GroupTranslationSegment.runtime_kind == "radio",
+                    GroupTranslationSegment.runtime_id == session_id,
+                    GroupTranslationSegment.speaker_membership_id == member.id,
+                    GroupTranslationSegment.client_segment_id == burst_id,
+                ))
+                if existing:
+                    return self._project_v2(db, actor, existing)
+                # Compare-and-set is effective across workers and repeat requests.
+                claimed = db.execute(update(GroupRadioProcessingJob).where(
+                    GroupRadioProcessingJob.burst_id == burst_id,
+                    GroupRadioProcessingJob.status == "ready",
+                ).values(status="processing", updated_at=_now())).rowcount
+                if not claimed:
+                    raise GroupServiceError("group_radio_transcription_already_submitted", 409)
+        try:
+            result = await self._submit_voice_once(actor, space_id, values, audio, filename, content_type)
+        except Exception:
+            with self.database.session() as db:
+                with db.begin():
+                    db.execute(update(GroupRadioProcessingJob).where(
+                        GroupRadioProcessingJob.burst_id == burst_id,
+                        GroupRadioProcessingJob.status == "processing",
+                    ).values(status="failed", failure_code="group_radio_transcription_failed", updated_at=_now()))
+                    burst = db.get(GroupRadioBurst, burst_id)
+                    if burst:
+                        burst.state, burst.finalized_at = "failed", _now()
+                        if self.event_broker:
+                            self.event_broker.enqueue_in_transaction(db, space_id, "radio.message_changed", resource_id=burst_id)
+            if self.event_broker:
+                await self.event_broker.publish(space_id, "radio.message_changed", resource_id=burst_id)
+            raise
+        with self.database.session() as db:
+            with db.begin():
+                burst = db.get(GroupRadioBurst, burst_id)
+                if burst:
+                    burst.state = "final" if result["state"] == "FINAL" else "failed"
+                    burst.source_language = result["source_language"]
+                    burst.finalized_at = _now()
+                    db.execute(update(GroupRadioProcessingJob).where(GroupRadioProcessingJob.burst_id == burst_id)
+                        .values(status="completed", updated_at=_now()))
+                    if self.event_broker:
+                        self.event_broker.enqueue_in_transaction(db, space_id, "radio.message_changed", resource_id=burst_id)
+        if self.event_broker:
+            await self.event_broker.publish(space_id, "radio.message_changed", resource_id=burst_id)
+        return result
+
+    def discard_radio_clip(self, actor, space_id, session_id, burst_id):
+        values = {"runtime_kind": "radio", "runtime_id": session_id, "client_segment_id": burst_id,
+                  "_radio_burst_id": burst_id}
+        with self.database.session() as db:
+            with db.begin():
+                self._submission_context(db, actor, space_id, values)
+                changed = db.execute(update(GroupRadioProcessingJob).where(
+                    GroupRadioProcessingJob.burst_id == burst_id, GroupRadioProcessingJob.status == "ready",
+                ).values(status="failed", failure_code="group_translation_audio_invalid", updated_at=_now())).rowcount
+                if changed:
+                    burst = db.get(GroupRadioBurst, burst_id)
+                    burst.state, burst.finalized_at = "failed", _now()
+                    if self.event_broker:
+                        self.event_broker.enqueue_in_transaction(db, space_id, "radio.message_changed", resource_id=burst_id)
+
+    def v2_history(self, actor: GroupActor, space_id: str, runtime_kind: str | None, runtime_id: str | None, limit: int, before_id: str | None = None) -> list[dict]:
+        with self.database.session() as db:
+            membership = self._membership(db, space_id, actor)
             if runtime_kind and runtime_id:
-                self._require_v2_runtime(db, actor, space_id, runtime_kind, runtime_id)
-            else:
-                membership = self._membership(db, space_id, actor)
+                self._authorize_v2_history(db, actor, space_id, runtime_kind, runtime_id)
+            elif runtime_id:
+                raise GroupServiceError("invalid_runtime_kind", 400)
             query = select(GroupTranslationSegment).where(GroupTranslationSegment.space_id == space_id)
             if runtime_kind:
                 query = query.where(GroupTranslationSegment.runtime_kind == runtime_kind)
@@ -1007,19 +1164,26 @@ class GroupTranslationService:
             if not runtime_id:
                 media_ids = select(GroupMediaParticipant.session_id).where(
                     GroupMediaParticipant.membership_id == membership.id,
-                    GroupMediaParticipant.invite_status == "joined",
+                    GroupMediaParticipant.joined_at.is_not(None),
                 )
                 radio_ids = select(GroupRadioParticipant.radio_session_id).where(
                     GroupRadioParticipant.membership_id == membership.id,
-                    GroupRadioParticipant.status == "joined",
+                    GroupRadioParticipant.joined_at.is_not(None),
                 )
                 query = query.where(or_(
                     and_(GroupTranslationSegment.runtime_kind.in_(("call", "video")), GroupTranslationSegment.runtime_id.in_(media_ids)),
                     and_(GroupTranslationSegment.runtime_kind == "radio", GroupTranslationSegment.runtime_id.in_(radio_ids)),
                 ))
+            if before_id:
+                cursor = db.get(GroupTranslationSegment, before_id)
+                if not cursor or cursor.space_id != space_id:
+                    raise GroupServiceError("invalid_history_cursor", 400)
+                self._authorize_v2_history(db, actor, space_id, cursor.runtime_kind, cursor.runtime_id)
+                query = query.where(or_(GroupTranslationSegment.created_at < cursor.created_at,
+                    and_(GroupTranslationSegment.created_at == cursor.created_at, GroupTranslationSegment.id < cursor.id)))
             rows = list(
                 db.scalars(
-                    query.order_by(GroupTranslationSegment.created_at.desc()).limit(
+                    query.order_by(GroupTranslationSegment.created_at.desc(), GroupTranslationSegment.id.desc()).limit(
                         max(1, min(limit, 100))
                     )
                 ).all()

@@ -6,8 +6,8 @@
       .replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
   }
 
-  function languageOptions(selected, labels) {
-    return ["vi", "en", "zh-TW"].map(function (language) {
+  function languageOptions(selected, labels, detect) {
+    return (detect ? ["auto", "vi", "en", "zh-TW"] : ["vi", "en", "zh-TW"]).map(function (language) {
       return '<option value="' + language + '" ' + (language === selected ? "selected" : "") + ">" +
         esc((labels && labels[language]) || language) + "</option>";
     }).join("");
@@ -21,6 +21,7 @@
   }
 
   function retryButton(item, language, labels) {
+    if (labels.readOnly) return "";
     return '<button type="button" class="group-translation-v2__retry" data-v2-retry="' +
       esc(item.id) + '" data-v2-target-language="' + esc(language) + '">' +
       esc(labels.retry || "Retry") + "</button>";
@@ -35,7 +36,7 @@
       esc(options.subtitle || "Text first · voice on demand") + '</h2></div><span data-v2-status class="group-translation-v2__status" role="status" aria-live="polite">' +
       esc(options.readyLabel || "Ready") + '</span></div><div class="group-translation-v2__languages"><label><span>' +
       esc(options.sourceLabel || "Spoken language") + '</span><select data-v2-source aria-label="' +
-      esc(options.sourceLabel || "Spoken language") + '">' + languageOptions(options.source || "vi", labels) +
+      esc(options.sourceLabel || "Spoken language") + '">' + languageOptions(options.source || "vi", labels, true) +
       '</select></label><label><span>' + esc(options.targetLabel || "Recipient language") +
       '</span><select data-v2-target aria-label="' + esc(options.targetLabel || "Recipient language") + '">' +
       languageOptions(options.target || "en", labels) + '</select></label></div><div class="group-translation-v2__composer">' +
@@ -56,9 +57,9 @@
     var failed = variant.state === "FAILED";
     var playable = variant.state === "FINAL" && Boolean(variant.translated_text);
     return '<div class="group-translation-v2__variant ' + (failed ? "is-failed" : "") + '" data-variant-language="' +
-      esc(variant.target_language) + '"><span>' + esc(variant.recipient_count > 0 ? (labels.variants || "Translation") : (labels.noRecipients || "No recipients")) + ' · ' +
-      esc(variant.target_language) + ' · ' + esc(variant.state) + ' · ' + esc(String(variant.recipient_count || 0)) +
-      ' ' + esc(labels.recipients || "recipients") + '</span><strong>' + esc(text) + '</strong>' +
+      esc(variant.target_language) + '"><span>' + esc(labels.readOnly || variant.recipient_count > 0 ? (labels.variants || "Translation") : (labels.noRecipients || "No recipients")) + ' · ' +
+      esc(variant.target_language) + ' · ' + esc(variant.state) +
+      (labels.readOnly ? '' : ' · ' + esc(String(variant.recipient_count || 0)) + ' ' + esc(labels.recipients || "recipients")) + '</span><strong>' + esc(text) + '</strong>' +
       (playable ? playButton(variant.translated_text, variant.target_language, labels) : "") +
       (failed ? retryButton(item, variant.target_language, labels) : "") + '</div>';
   }
@@ -72,11 +73,15 @@
     var finalText = translated == null ? (labels.pending || "Processing…") : translated;
     var common = ' class="group-translation-v2__item ' + (failed ? "is-failed" : "") + '" data-segment-id="' +
       esc(item && item.id) + '"';
+    var metadata = '<div class="translation-history-context"><strong>' + esc(item.speaker_display_name || "") +
+      '</strong><time datetime="' + esc(item.created_at || "") + '">' +
+      esc(item.created_at ? new Date(item.created_at).toLocaleString() : "") +
+      '</time></div>';
     if (author) {
       var variants = (item.variants || []).filter(function (variant) {
         return variant.target_language !== item.source_language;
       }).map(function (variant) { return authorVariant(item, variant, labels); }).join("");
-      return '<article' + common + '><div class="group-translation-v2__item-meta"><span>' +
+      return '<article' + common + '>' + metadata + '<div class="group-translation-v2__item-meta"><span>' +
         esc(labels.author || "You sent") + '</span><span>' + esc(item.state || "PROCESSING") +
         '</span></div><p class="group-translation-v2__source-label">' + esc(labels.original || "Original") +
         ' · ' + esc(item.source_language) + '</p><p class="group-translation-v2__source">' + esc(source) +
@@ -85,9 +90,9 @@
         '</div><div class="group-translation-v2__variants">' + variants + '</div></article>';
     }
     var original = item && item.show_original_enabled ?
-      '<details class="group-translation-v2__original"><summary>' + esc(labels.showOriginal || "Show original") +
-      '</summary><p>' + esc(source) + '</p></details>' : "";
-    return '<article' + common + '><div class="group-translation-v2__item-meta"><span>' +
+      '<details class="group-translation-v2__original"' + (labels.readOnly ? ' open' : '') + '><summary>' + esc(labels.showOriginal || "Show original") +
+      '</summary><p>' + esc(item.source_language) + ' · ' + esc(source) + '</p></details>' : "";
+    return '<article' + common + '>' + metadata + '<div class="group-translation-v2__item-meta"><span>' +
       esc(labels.received || "Received translation") + ' · ' + esc(item && item.display_language || item && item.target_language) +
       '</span><span>' + esc(item && item.state || "PROCESSING") + '</span></div><p class="group-translation-v2__result">' +
       esc(finalText) + '</p>' + playButton(translated, item && item.target_language, labels) + original + '</article>';

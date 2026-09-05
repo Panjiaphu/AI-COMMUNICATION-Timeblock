@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, File, Form, Header, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Header, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.group_translation.provider import GroupTranslationProviderError
 from app.group_v3.auth import require_group_actor, require_write_origin
+from app.group_v3.voice_input import read_voice_form
 from app.group_v3.translation_schemas import (
     LanguageProfileUpdate,
     TranslationConsentUpdate,
@@ -142,23 +143,19 @@ async def submit_translation_text(
 async def submit_translation_voice(
     request: Request,
     space_id: str,
-    audio: UploadFile = File(...),
-    runtime_kind: str = Form(...),
-    runtime_id: str = Form(...),
-    client_segment_id: str = Form(...),
-    source_language: str = Form(...),
-    duration_seconds: float | None = Form(default=None),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> JSONResponse:
     require_write_origin(request)
     actor = require_group_actor(request, "group.translation.use")
-    if runtime_kind not in {"call", "video", "radio"} or source_language not in {"vi", "en", "zh-TW"}:
+    fields, data, filename, content_type = await read_voice_form(request)
+    runtime_kind = fields.get("runtime_kind")
+    runtime_id = fields.get("runtime_id")
+    client_segment_id = fields.get("client_segment_id")
+    source_language = fields.get("source_language")
+    if runtime_kind not in {"call", "video", "radio"} or source_language not in {"vi", "en", "zh-TW", "auto"}:
         raise HTTPException(status_code=400, detail="invalid_translation_segment")
     if idempotency_key and str(idempotency_key).strip() != str(client_segment_id).strip():
         raise HTTPException(status_code=400, detail="group_translation_idempotency_mismatch")
-    data = await audio.read(request.app.state.settings.group_translation_max_audio_bytes + 1)
-    if len(data) > request.app.state.settings.group_translation_max_audio_bytes:
-        raise HTTPException(status_code=413, detail="group_translation_audio_invalid")
     result = await request.app.state.group_translation_service.submit_voice(
         actor,
         _id(space_id, "space_id"),
@@ -167,11 +164,11 @@ async def submit_translation_voice(
             "runtime_id": _id(runtime_id, "runtime_id"),
             "client_segment_id": _id(client_segment_id, "client_segment_id", 128),
             "source_language": source_language,
-            "duration_seconds": duration_seconds,
+            "duration_seconds": fields.get("duration_seconds"),
         },
         data,
-        audio.filename or "voice.webm",
-        audio.content_type or "application/octet-stream",
+        filename,
+        content_type,
     )
     return _json({"segment": result}, status_code=201)
 
@@ -200,12 +197,13 @@ async def translation_v2_history(
     runtime_kind: str | None = Query(default=None),
     runtime_id: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=100),
+    before_id: str | None = Query(default=None, max_length=36),
 ) -> JSONResponse:
     actor = require_group_actor(request, "group.translation.use")
     if runtime_kind not in {None, "call", "video", "radio"}:
         raise HTTPException(status_code=400, detail="invalid_runtime_kind")
     result = request.app.state.group_translation_service.v2_history(
-        actor, _id(space_id, "space_id"), runtime_kind, _id(runtime_id, "runtime_id") if runtime_id else None, limit
+        actor, _id(space_id, "space_id"), runtime_kind, _id(runtime_id, "runtime_id") if runtime_id else None, limit, before_id
     )
     return _json({"segments": result})
 

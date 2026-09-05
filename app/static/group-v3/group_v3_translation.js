@@ -44,6 +44,7 @@
   function labels() {
     return {
       vi: translate("vietnamese"),
+      auto: translate("translationDetectLanguage"),
       en: translate("english"),
       "zh-TW": translate("traditionalChinese"),
       author: translate("translationAuthor"),
@@ -161,6 +162,7 @@
       group_translation_participant_required: "translationUnavailable",
       group_translation_voice_consent_required: "translationConsentRequired",
       group_translation_provider_not_configured: "translationProviderUnavailable"
+      ,group_translation_detected_language_unsupported: "group_translation_detected_language_unsupported"
     };
     var key = known[code] || fallbackKey || "translationError";
     var value = translate(key);
@@ -297,6 +299,17 @@
     return true;
   }
 
+  // Archive playback is generated from authorized TEXT, never a recorded file.
+  document.addEventListener("click", function (event) {
+    var button = event.target.closest && event.target.closest("[data-translation-archive] [data-v2-play]");
+    if (!button) return;
+    var snapshot = runtime() || {};
+    if (snapshot.device_lost) return;
+    var state = stateFor(document.body, snapshot);
+    state.archive = true;
+    play(button.dataset.v2Play, button.dataset.v2Language, document.body, false, "archive");
+  });
+
   function maybeAutoRead(segments, panel, snapshot) {
     if (!snapshot) return;
     var key = runtimeKey(snapshot);
@@ -317,6 +330,16 @@
     if (candidate) {
       play(candidate.translated_text, candidate.display_language || candidate.target_language, panel, true, playbackKey(snapshot, candidate));
     }
+  }
+
+  function readRadioHistory(segments) {
+    var snapshot = runtime();
+    if (!snapshot || snapshot.runtime_kind !== "radio" || !snapshot.runtime_id) return;
+    var state = stateFor(document.body, snapshot);
+    state.archive = true;
+    maybeAutoRead(segments, document.body, Object.assign({}, snapshot, {
+      auto_read: Boolean(snapshot.auto_read && snapshot.media_connected && !snapshot.device_lost)
+    }));
   }
 
   function loadHistory(panel) {
@@ -373,7 +396,7 @@
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        spoken_language: source && source.value || snapshot.spoken_language || "vi",
+        spoken_language: source && source.value !== "auto" && source.value || snapshot.spoken_language || "vi",
         preferred_output_language: target && target.value || snapshot.target_language || "vi",
         auto_translate_enabled: Boolean(snapshot.auto_translate),
         auto_read_enabled: Boolean(autoRead && autoRead.checked),
@@ -702,7 +725,7 @@
   window.addEventListener("group-v3:rendered", mountAll);
   window.addEventListener("group-v3:translation-segment", function () {
     activeStates.forEach(function (state) {
-      if (!state.disposed && !state.recording) loadHistory(state.panel);
+      if (!state.disposed && !state.recording && !state.archive) loadHistory(state.panel);
     });
   });
   window.addEventListener("group-video-layout:change", mountAll);
@@ -710,7 +733,7 @@
   window.addEventListener("pagehide", cleanup, { once: true });
   window.addEventListener("beforeunload", cleanup, { once: true });
   new MutationObserver(mountAll).observe(document.documentElement, { childList: true, subtree: true });
-  window.GroupV3TranslationController = Object.freeze({ mountAll: mountAll, loadHistory: loadHistory, cleanup: cleanup, play: play, stopPlayback: stopPlayback,
+  window.GroupV3TranslationController = Object.freeze({ mountAll: mountAll, loadHistory: loadHistory, cleanup: cleanup, play: play, stopPlayback: stopPlayback, readRadioHistory: readRadioHistory,
     diagnostics: function () { return traces.slice(); } });
   mountAll();
 }(window, document));

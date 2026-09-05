@@ -25,5 +25,53 @@
       '</div>';
   }
 
-  window.GroupV3RadioUi = Object.freeze({ panelControls: panelControls });
+  function timeline(items, labels, t) {
+    return (items || []).map(function (item) {
+      var segment = item.segment;
+      var name = item.speaker_display_name || "";
+      var time = item.started_at ? new Date(item.started_at).toLocaleString() : "";
+      return '<article class="radio-message" data-radio-burst="' + esc(item.id) + '"><header><strong>' +
+        esc(name) + '</strong><time datetime="' + esc(item.started_at || "") + '">' + esc(time) +
+        '</time><span>' + esc(t("radioState_" + item.state)) + '</span></header>' +
+        (segment ? window.GroupV3TranslationView.historyItem(Object.assign({}, segment, { show_original_enabled: true }), labels) :
+          '<p role="status">' + esc(t(item.state === "failed" || item.state === "device_lost" ? "radioTextFailed" :
+            item.state === "talking" ? "talkingNow" : "radioTextProcessing")) + '</p>') + '</article>';
+    }).join("");
+  }
+
+  function room(options) {
+    var t = options.t, current = options.state;
+    function button(action, label, name, disabled, extra) {
+      return '<button type="button" class="action-button ' + (extra || "") + '" data-action="' + action +
+        '" aria-label="' + esc(t(label)) + '" ' + (disabled ? "disabled " : "") + '>' + icon(name) + '<span>' + esc(t(label)) + '</span></button>';
+    }
+    var talking = current === "TALKING";
+    var disconnected = current === "DISCONNECTED";
+    var primary = button(talking ? "stop-radio" : disconnected ? "join-radio" : "start-radio",
+      talking ? "stopBurst" : disconnected ? "joinRadioRoom" : "startTalking", talking ? "save" : "mic",
+      ["READY", "TALKING", "DISCONNECTED"].indexOf(current) < 0, "action-primary radio-ptt");
+    var members = options.participants || [];
+    var speaker = talking ? t("talkingNow") : options.floor && options.floor.display_name || t("floorAvailable");
+    var recovery = current === "DEVICE_LOST" ? '<aside class="radio-recovery" role="alert"><span>' +
+      esc(t("deviceLostTitle")) + '</span><small>' + esc(t("devicePrivacy")) + '</small>' +
+      button("reconnect-radio", "reconnectDevice", "headphones") + '</aside>' : "";
+    return '<section class="radio-content radio-room surface-content state-' + current.toLowerCase() + '">' +
+      '<header class="radio-room-header">' + button("leave-radio", "backToGroup", "log-out") +
+      '<h1>' + esc(t("groupRadio")) + ' · ' + esc(options.title) + '</h1>' +
+      button("radio-members", "participants", "users") + '</header>' +
+      '<div class="radio-floor" role="status"><strong>' + esc(speaker) + '</strong><span data-radio-elapsed></span><small>' +
+      esc(t("radioState_" + current.toLowerCase())) + '</small></div>' + recovery +
+      '<div class="radio-timeline" data-translation-archive aria-label="' + esc(t("translationHistory")) + '">' +
+      (options.error ? '<p role="alert">' + esc(options.error) + '</p>' : "") +
+      (timeline(options.history, options.labels, t) || '<p class="radio-empty">' + esc(t("radioRoomEmpty")) + '</p>') +
+      button("history-more", "historyOlder", "history") + '</div>' +
+      '<footer class="radio-room-dock">' + primary + button("leave-radio", "leaveRadio", "log-out") +
+      '</footer><aside class="radio-room-members" ' + (options.membersOpen ? "" : "hidden") + '><header><h2>' +
+      esc(t("participants")) + '</h2>' + button("radio-members", "close", "users") + '</header>' +
+      members.map(function (person) { return '<div><strong>' + esc(person.display_name) + '</strong><small>' +
+        esc(t("radioMember_" + person.status)) + '</small></div>'; }).join("") +
+      '</aside><div class="audio-host" data-audio-host></div></section>';
+  }
+
+  window.GroupV3RadioUi = Object.freeze({ panelControls: panelControls, room: room, timeline: timeline });
 }(window));

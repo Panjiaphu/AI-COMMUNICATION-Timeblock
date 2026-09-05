@@ -66,7 +66,7 @@ class TranslationSegmentTextCreate(StrictModel):
     @field_validator("source_language")
     @classmethod
     def validate_source_language(cls, value):
-        if value not in LANGUAGES:
+        if value not in LANGUAGES | {"auto"}:
             raise ValueError("invalid_language")
         return value
 

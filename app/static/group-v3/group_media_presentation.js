@@ -15,7 +15,7 @@
     target.classList.toggle("has-video", node.readyState >= 2 && node.videoWidth > 0 &&
       (!track || (track.readyState !== "ended" && track.enabled !== false && !track.muted)) &&
       !(entry.track && entry.track.isMuted));
-    target.dataset.videoFit = "FIT";
+    if (!target.dataset.videoFit) target.dataset.videoFit = "FIT";
   }
   function place(entry) {
     var host = root();
