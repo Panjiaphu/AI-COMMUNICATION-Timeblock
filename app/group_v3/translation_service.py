@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import asyncio
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -51,6 +52,10 @@ class GroupTranslationService:
         self.crypto = crypto
         self.provider = provider
         self.event_broker = event_broker
+        # Gunicorn runs one worker for this service.  Serialize duplicate voice
+        # submissions per canonical client id so the provider STT request is
+        # issued once even when the browser retries before the first response.
+        self._voice_locks: dict[str, asyncio.Lock] = {}
 
     def set_runtime_dependencies(self, provider=None, event_broker=None) -> None:
         """Allow application startup to wire the provider after construction."""
@@ -99,6 +104,51 @@ class GroupTranslationService:
             "auto_read_enabled": bool(item.auto_read_enabled),
             "show_original_enabled": bool(item.show_original_enabled),
             "updated_at": _iso(item.updated_at),
+        }
+
+    def _effective_language_profile(
+        self,
+        db,
+        membership: GroupMembership,
+        source_language: str,
+        actor: GroupActor | None = None,
+        profile: GroupLanguageProfile | None = None,
+    ) -> dict:
+        """Resolve one profile for every joined member without silent drops.
+
+        Membership rows do not duplicate the account locale.  Until a member
+        saves Translation settings, the deterministic fallback is the current
+        segment's canonical source language. Routing, projections and counts
+        all use this same resolver.
+        """
+        if profile is None:
+            profile = db.scalar(select(GroupLanguageProfile).where(
+                GroupLanguageProfile.space_id == membership.space_id,
+                GroupLanguageProfile.membership_id == membership.id,
+            ))
+        if profile:
+            spoken = profile.spoken_language if profile.spoken_language in {"vi", "en", "zh-TW"} else source_language
+            preferred = profile.preferred_output_language if profile.preferred_output_language in {"vi", "en", "zh-TW"} else source_language
+            return {
+                "spoken_language": spoken,
+                "preferred_output_language": preferred,
+                "auto_translate_enabled": bool(profile.auto_translate_enabled),
+                "auto_read_enabled": bool(profile.auto_read_enabled),
+                "show_original_enabled": bool(profile.show_original_enabled),
+                "profile_source": "stored",
+            }
+        # The fallback is deliberately the same for the speaker and every
+        # recipient: routing cannot read an external account locale from a
+        # membership row, so using actor.locale only in projection would make
+        # a missing-profile member disappear from its own variant.
+        fallback = source_language
+        return {
+            "spoken_language": fallback,
+            "preferred_output_language": fallback,
+            "auto_translate_enabled": True,
+            "auto_read_enabled": False,
+            "show_original_enabled": True,
+            "profile_source": "fallback",
         }
 
     def get_profile(self, actor: GroupActor, space_id: str) -> dict:
@@ -629,11 +679,25 @@ class GroupTranslationService:
             raise GroupServiceError("group_translation_voice_consent_required", 409)
 
     def _target_languages(self, db, space_id: str, membership_ids: list[str], source_language: str) -> list[str]:
+        if not membership_ids:
+            return []
+        members = list(db.scalars(select(GroupMembership).where(
+            GroupMembership.space_id == space_id,
+            GroupMembership.id.in_(set(membership_ids)),
+            GroupMembership.status == "active",
+        )).all())
         profiles = list(db.scalars(select(GroupLanguageProfile).where(
             GroupLanguageProfile.space_id == space_id,
             GroupLanguageProfile.membership_id.in_(set(membership_ids)),
-        )).all()) if membership_ids else []
-        targets = {p.preferred_output_language for p in profiles if p.preferred_output_language in {"vi", "en", "zh-TW"}}
+        )).all())
+        profile_by_member = {profile.membership_id: profile for profile in profiles}
+        targets = set()
+        for member in members:
+            effective = self._effective_language_profile(
+                db, member, source_language, profile=profile_by_member.get(member.id)
+            )
+            if effective["auto_translate_enabled"]:
+                targets.add(effective["preferred_output_language"])
         targets.discard(source_language)
         return sorted(targets)[: max(1, int(self.settings.group_translation_max_targets))]
 
@@ -653,7 +717,12 @@ class GroupTranslationService:
             GroupLanguageProfile.space_id == segment.space_id,
             GroupLanguageProfile.membership_id == membership.id,
         ))
-        target = target_override or (profile.preferred_output_language if profile else actor.locale) or segment.source_language
+        effective = self._effective_language_profile(
+            db, membership, segment.source_language, actor=actor, profile=profile
+        )
+        target = target_override or effective["preferred_output_language"] or segment.source_language
+        if not effective["auto_translate_enabled"] and target_override is None:
+            target = segment.source_language
         if target not in {"vi", "en", "zh-TW"}:
             target = segment.source_language
         source = self.crypto.decrypt_text(
@@ -686,7 +755,11 @@ class GroupTranslationService:
             "state": segment.state if target == segment.source_language or not variant else variant.state,
             "failure_code": (variant.failure_code if variant and variant.state == "FAILED" else segment.failure_code),
             "is_original": target == segment.source_language,
-            "auto_read_enabled": bool(profile.auto_read_enabled) if profile else False,
+            "auto_read_enabled": effective["auto_read_enabled"],
+            "show_original_enabled": effective["show_original_enabled"],
+            "profile_source": effective["profile_source"],
+            "display_language": target,
+            "projection": "recipient",
             "created_at": _iso(segment.created_at),
         }
         # The speaker receives an author projection with every generated
@@ -708,8 +781,24 @@ class GroupTranslationService:
                 GroupLanguageProfile.space_id == segment.space_id,
                 GroupLanguageProfile.membership_id.in_(set(recipients)),
             )).all()) if recipients else []
+            profile_by_member = {item.membership_id: item for item in profiles}
+            members = list(db.scalars(select(GroupMembership).where(
+                GroupMembership.space_id == segment.space_id,
+                GroupMembership.id.in_(set(recipients)),
+                GroupMembership.status == "active",
+            )).all()) if recipients else []
+            effective_by_member = {
+                item.id: self._effective_language_profile(
+                    db, item, segment.source_language, profile=profile_by_member.get(item.id)
+                )
+                for item in members
+            }
             variants = []
-            source_recipient_count = sum(1 for profile in profiles if profile.preferred_output_language == segment.source_language)
+            source_recipient_count = sum(
+                1 for item in effective_by_member.values()
+                if item["preferred_output_language"] == segment.source_language
+                or not item["auto_translate_enabled"]
+            )
             variants.append({
                 "target_language": segment.source_language,
                 "state": "FINAL",
@@ -727,11 +816,16 @@ class GroupTranslationService:
                     "target_language": row.target_language,
                     "state": row.state,
                     "translated_text": value,
-                    "recipient_count": sum(1 for profile in profiles if profile.preferred_output_language == row.target_language),
+                    "recipient_count": sum(
+                        1 for item in effective_by_member.values()
+                        if item["auto_translate_enabled"]
+                        and item["preferred_output_language"] == row.target_language
+                    ),
                     "failure_code": row.failure_code,
                 })
             payload["variants"] = variants
             payload["author_view"] = True
+            payload["projection"] = "author"
         else:
             payload["author_view"] = False
         return payload
@@ -803,6 +897,11 @@ class GroupTranslationService:
             raise GroupServiceError("group_translation_language_invalid", 400)
         runtime_kind = values["runtime_kind"]
         client_segment_id = str(values["client_segment_id"]).strip()
+        if not 8 <= len(client_segment_id) <= 128 or any(character.isspace() for character in client_segment_id):
+            raise GroupServiceError("group_translation_segment_id_invalid", 400)
+        supplied_idempotency = str(idempotency_key or "").strip()
+        if supplied_idempotency and supplied_idempotency != client_segment_id:
+            raise GroupServiceError("group_translation_idempotency_mismatch", 400)
         input_kind = str(values.get("input_kind") or "text")
         if input_kind not in {"text", "voice"}:
             raise GroupServiceError("group_translation_input_invalid", 400)
@@ -843,6 +942,20 @@ class GroupTranslationService:
             return self._project_v2(db, actor, segment) if segment else payload
 
     async def submit_voice(self, actor: GroupActor, space_id: str, values: dict, audio: bytes, filename: str, content_type: str) -> dict:
+        lock_key = ":".join(
+            (
+                str(space_id),
+                str(values.get("runtime_kind") or ""),
+                str(values.get("runtime_id") or ""),
+                str(actor.key),
+                str(values.get("client_segment_id") or ""),
+            )
+        )
+        lock = self._voice_locks.setdefault(lock_key, asyncio.Lock())
+        async with lock:
+            return await self._submit_voice_once(actor, space_id, values, audio, filename, content_type)
+
+    async def _submit_voice_once(self, actor: GroupActor, space_id: str, values: dict, audio: bytes, filename: str, content_type: str) -> dict:
         if len(audio) > self.settings.group_translation_max_audio_bytes or (content_type and not str(content_type).lower().startswith("audio/")):
             raise GroupServiceError("group_translation_audio_invalid", 413)
         duration = values.get("duration_seconds")

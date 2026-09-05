@@ -13,6 +13,21 @@ another source segment. Durable events contain only a space and resource ID;
 clients re-read authorized history. Final text is visible before optional
 recipient-local `speechSynthesis`; automatic reading is off by default.
 
+Every joined member participates in routing even before saving a
+`GroupLanguageProfile`. The effective-profile fallback uses the canonical
+source language for that segment, so the member receives the original-language
+projection and is counted in the Author View. A stored profile takes precedence
+as soon as it is saved. The browser Translation controller is the only profile
+writer and synchronizes the shared Group runtime profile after a successful
+PUT; failures remain visible to the user.
+
+Auto Read is recipient-owned: a new FINAL segment is played once only on a
+recipient device with Auto Read enabled, never on the speaker's own device.
+Playback is local browser `speechSynthesis` because no Group-owned TTS endpoint
+is part of the current schema; this is an explicit fallback and is never
+published into LiveKit or Radio/PTT. History/SSE/rerender/reconnect and layout
+changes use a runtime/segment/language/state dedupe key.
+
 The normal Group V3 path does not capture remote audio, publish PTT audio to a
 translation service, create a browser provider session, or request a second
 microphone. Legacy reservation endpoints remain for compatibility but are not

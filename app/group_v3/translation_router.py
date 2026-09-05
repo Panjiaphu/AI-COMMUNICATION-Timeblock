@@ -148,11 +148,14 @@ async def submit_translation_voice(
     client_segment_id: str = Form(...),
     source_language: str = Form(...),
     duration_seconds: float | None = Form(default=None),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> JSONResponse:
     require_write_origin(request)
     actor = require_group_actor(request, "group.translation.use")
     if runtime_kind not in {"call", "video", "radio"} or source_language not in {"vi", "en", "zh-TW"}:
         raise HTTPException(status_code=400, detail="invalid_translation_segment")
+    if idempotency_key and str(idempotency_key).strip() != str(client_segment_id).strip():
+        raise HTTPException(status_code=400, detail="group_translation_idempotency_mismatch")
     data = await audio.read(request.app.state.settings.group_translation_max_audio_bytes + 1)
     if len(data) > request.app.state.settings.group_translation_max_audio_bytes:
         raise HTTPException(status_code=413, detail="group_translation_audio_invalid")

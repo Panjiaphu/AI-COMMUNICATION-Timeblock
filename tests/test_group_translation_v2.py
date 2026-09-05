@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy import select
 
 from app.group_translation.provider import GroupTranslationProviderError, TextTranslationResult, SpeechTranscriptionResult
+from app.group_v3.service import GroupServiceError
 from fastapi.testclient import TestClient
 
 from app.models import GroupLanguageProfile, GroupMediaParticipant, GroupMediaSession, GroupMembership, GroupTranslationConsent, GroupTranslationSegment, GroupTranslationVariant, GroupSpace
@@ -109,3 +110,43 @@ async def test_v2_voice_calls_stt_once_and_reuses_segment(tmp_path):
     second = await app.state.group_translation_service.submit_voice(actor, space_id, values, b"audio", "voice.webm", "audio/webm")
     assert first["source_text"] == "transcribed source" and second["id"] == first["id"]
     assert provider.stt_calls == 1
+
+
+@pytest.mark.anyio
+async def test_v2_missing_profile_uses_same_deterministic_fallback_for_routing_and_projection(tmp_path):
+    app, _session, provider, space_id, runtime_id = _runtime(tmp_path)
+    with app.state.database.session() as db:
+        with db.begin():
+            guest = db.scalar(select(GroupMembership).where(GroupMembership.space_id == space_id, GroupMembership.principal_id == "99"))
+            profile = db.scalar(select(GroupLanguageProfile).where(GroupLanguageProfile.membership_id == guest.id))
+            db.delete(profile)
+    owner = __import__("app.group_v3.auth", fromlist=["GroupActor"]).GroupActor("member", "42", "42", "Nguyen Minh", "vi", frozenset(SCOPES), "h", "video", AI_ENTITLEMENT)
+    submitted = await app.state.group_translation_service.submit_text(
+        owner,
+        space_id,
+        {"runtime_kind": "video", "runtime_id": runtime_id, "client_segment_id": "segment-v2-missing", "source_language": "vi", "source_text": "Xin chao"},
+    )
+    assert submitted["projection"] == "author"
+    source_variant = next(item for item in submitted["variants"] if item["target_language"] == "vi")
+    assert source_variant["recipient_count"] == 1
+    assert [call["target_language"] for call in provider.calls] == ["en"]
+
+    guest_actor = __import__("app.group_v3.auth", fromlist=["GroupActor"]).GroupActor("member", "99", "99", "Guest", "zh-TW", frozenset(SCOPES), "h", "video", AI_ENTITLEMENT)
+    received = app.state.group_translation_service.v2_history(guest_actor, space_id, "video", runtime_id, 10)
+    assert received[0]["projection"] == "recipient"
+    assert received[0]["profile_source"] == "fallback"
+    assert received[0]["display_language"] == "vi"
+    assert received[0]["translated_text"] == "Xin chao"
+
+
+@pytest.mark.anyio
+async def test_v2_rejects_a_second_idempotency_identity(tmp_path):
+    app, _session, _provider, space_id, runtime_id = _runtime(tmp_path)
+    actor = __import__("app.group_v3.auth", fromlist=["GroupActor"]).GroupActor("member", "42", "42", "Nguyen Minh", "vi", frozenset(SCOPES), "h", "video", AI_ENTITLEMENT)
+    with pytest.raises(GroupServiceError, match="group_translation_idempotency_mismatch"):
+        await app.state.group_translation_service.submit_text(
+            actor,
+            space_id,
+            {"runtime_kind": "video", "runtime_id": runtime_id, "client_segment_id": "segment-v2-idem", "source_language": "vi", "source_text": "Xin chao"},
+            idempotency_key="another-idempotency-key",
+        )

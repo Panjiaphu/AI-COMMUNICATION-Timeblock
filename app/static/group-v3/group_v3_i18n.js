@@ -371,16 +371,19 @@ Object.assign(copy.vi, {
   translationTextFirst: 'Văn bản trước, âm thanh tùy chọn', translationTextPlaceholder: 'Nhập nội dung cần dịch…', translationSend: 'Gửi văn bản', translationRecord: 'Ghi âm thủ công',
   translationReadyState: 'Sẵn sàng', translationRecording: 'Đang ghi âm', translationStopping: 'Đang dừng ghi âm', translationProcessing: 'Đang xử lý', translationResultReady: 'Đã có bản dịch', translationError: 'Lỗi dịch',
   translationPending: 'Đang chờ bản dịch…', translationRetry: 'Thử lại', translationPlay: 'Phát trên thiết bị này', translationMicUnavailable: 'Hãy tham gia cuộc gọi và bật mic trước khi ghi âm.',
+  spokenLanguageLabel: 'Ngôn ngữ tôi sử dụng', preferredOutputLabel: 'Ngôn ngữ tôi muốn nhận', translationAuthor: 'Bạn đã gửi', translationReceived: 'Bản dịch nhận được', translationOriginal: 'Nguyên bản', translationDistributed: 'Đã phân phối', translationShowOriginal: 'Xem nguyên bản', translationUnavailable: 'Bản dịch chỉ khả dụng khi phiên đã kết nối.', translationHistoryError: 'Không tải được lịch sử bản dịch. Hãy thử lại.', translationProfileError: 'Không lưu được ngôn ngữ. Hãy thử lại.', translationConsentRequired: 'Cần xác nhận quyền ghi âm của bạn trước khi dùng giọng nói.', translationProviderUnavailable: 'Dịch vụ dịch hiện chưa sẵn sàng.', translationTtsUnavailable: 'Thiết bị này chưa hỗ trợ phát giọng nói.',
 });
 Object.assign(copy.en, {
   translationTextFirst: 'Text first, optional voice', translationTextPlaceholder: 'Type text to translate…', translationSend: 'Send text', translationRecord: 'Record manually',
   translationReadyState: 'Ready', translationRecording: 'Recording', translationStopping: 'Stopping recording', translationProcessing: 'Processing', translationResultReady: 'Translation ready', translationError: 'Translation error',
   translationPending: 'Translation pending…', translationRetry: 'Retry', translationPlay: 'Play on this device', translationMicUnavailable: 'Join the call and enable your microphone before recording.',
+  spokenLanguageLabel: 'Language I speak', preferredOutputLabel: 'Language I want to receive', translationAuthor: 'You sent', translationReceived: 'Received translation', translationOriginal: 'Original', translationDistributed: 'Distributed', translationShowOriginal: 'Show original', translationUnavailable: 'Translation is available after the session is connected.', translationHistoryError: 'Translation history could not be loaded. Try again.', translationProfileError: 'Language settings could not be saved. Try again.', translationConsentRequired: 'Grant recording consent before using voice translation.', translationProviderUnavailable: 'The translation service is not ready.', translationTtsUnavailable: 'Speech playback is not supported on this device.',
 });
 Object.assign(copy['zh-TW'], {
   translationTextFirst: '文字優先，可選語音', translationTextPlaceholder: '輸入要翻譯的文字…', translationSend: '傳送文字', translationRecord: '手動錄音',
   translationReadyState: '就緒', translationRecording: '正在錄音', translationStopping: '正在停止錄音', translationProcessing: '處理中', translationResultReady: '翻譯完成', translationError: '翻譯錯誤',
   translationPending: '翻譯處理中…', translationRetry: '重試', translationPlay: '在此裝置播放', translationMicUnavailable: '加入通話並開啟麥克風後才能錄音。',
+  spokenLanguageLabel: '我使用的語言', preferredOutputLabel: '我想接收的語言', translationAuthor: '你已傳送', translationReceived: '收到的翻譯', translationOriginal: '原文', translationDistributed: '已分發', translationShowOriginal: '顯示原文', translationUnavailable: '工作階段連線後才能使用翻譯。', translationHistoryError: '無法載入翻譯歷史，請重試。', translationProfileError: '無法儲存語言設定，請重試。', translationConsentRequired: '使用語音翻譯前，請先同意錄音。', translationProviderUnavailable: '翻譯服務尚未就緒。', translationTtsUnavailable: '此裝置不支援語音播放。',
 });
 
 window.GroupV3I18n = Object.freeze({ copy, localeOptions, translator });

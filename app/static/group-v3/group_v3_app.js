@@ -2403,6 +2403,12 @@
       if (!localStream) return null;
       return localStream.getAudioTracks()[0] || null;
     },
+    updateProfile: function (profile) {
+      if (!profile || typeof profile !== "object") return null;
+      state.profile = Object.assign({}, state.profile || {}, profile);
+      window.dispatchEvent(new CustomEvent("group-v3:profile-updated", { detail: state.profile }));
+      return Object.assign({}, state.profile);
+    },
     translationFinal: async function () {
       if (!state.space) return;
       var payload = await optional("/api/group/spaces/" + encodeURIComponent(state.space.id) + "/translation/history?limit=50", { events: [] });
