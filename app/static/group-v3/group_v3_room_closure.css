@@ -45,7 +45,7 @@ body.group-v3-body.group-communication-immersive:has(.native-mobile) #group-nati
 .context-heading { position: relative; }
 .context-heading > button { float: right; min-height: 44px; min-width: 44px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
-.video-layout-select select { font: inherit; font-size: 14px; border-radius: 10px; min-height: 44px; width: 136px; padding: 6px; }
+.video-layout-select select { font: inherit; font-size: 14px; color: #124b42; background: white; border-radius: 10px; min-height: 44px; width: 136px; padding: 6px; }
 .video-stage > .call-status-line { padding-right: 300px; }
 .video-stage .video-tile-actions { display: flex; flex-wrap: wrap; max-width: calc(100% - 12px); gap: 4px; }
 .video-stage .video-tile-actions button { min-width: 44px; width: 44px; min-height: 44px; height: 44px; }
@@ -77,14 +77,14 @@ body.group-v3-body.group-communication-immersive:has(.native-mobile) #group-nati
 .video-call-layout .video-grid[data-layout] .video-compact-summary { display: none; }
 .native-mobile .video-call-layout[data-video-mode="COMPACT"] .video-grid[data-layout] .video-tile:not(.is-presentation-hidden) { display: grid; }
 .native-mobile .video-call-layout[data-video-mode="COMPACT"] .video-grid[data-layout].has-explicit-focus .video-tile:not(.is-featured) { display: none; }
-.native-mobile .video-call-layout .video-stage {
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+body.group-communication-immersive .native-mobile .video-call-layout .video-stage {
+  grid-template-rows: 44px 44px minmax(0, 1fr) auto;
 }
 .native-mobile .video-stage > .call-status-line { grid-row: 1; padding-right: 0; gap: 6px; flex-wrap: nowrap; }
 .native-mobile .video-stage > .video-panel-toolbar { grid-row: 2; justify-self: stretch; }
 .native-mobile .video-panel-toolbar > .panel-resize-controls { width: 100%; justify-content: flex-end; gap: 6px; }
 .native-mobile .video-panel-toolbar .video-layout-select { margin-right: auto; }
-.native-mobile .video-stage > .video-grid { grid-row: 3; }
+body.group-communication-immersive .native-mobile .video-stage > .video-grid { grid-row: 3; min-height: 0; }
 .native-mobile .video-stage > .call-control-dock { grid-row: 4; }
 .native-mobile .video-grid[data-layout] { grid-template-rows: minmax(0, 1fr); }
 .native-mobile .video-grid[data-layout]:is(.count-5, .count-6) { grid-template-rows: repeat(3, minmax(0, 1fr)); }

@@ -171,7 +171,7 @@ async def test_v2_abc_routes_preferences_even_with_legacy_auto_disabled(tmp_path
             auto_read_enabled=0, show_original_enabled=1))
         db.add(GroupMediaParticipant(id=str(uuid4()), session_id=runtime_id, membership_id=third.id,
             principal_type="member", principal_id="100", principal_user_id="100", display_name="C",
-            livekit_identity="third", invite_status="joined"))
+            livekit_identity="third", invite_status="joined", joined_at=datetime.now(timezone.utc)))
     result = await app.state.group_translation_service.submit_text(owner_actor, space_id, {
         "runtime_kind": "video", "runtime_id": runtime_id, "client_segment_id": "abc-preference-0001",
         "source_language": "vi", "source_text": "Xin chào"})

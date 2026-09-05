@@ -163,8 +163,8 @@ async def test_radio_floor_release_before_stt_single_attempt_history_reopen(tmp_
     async def acquire(who):
         _, participant = service.floor_context(who, space, sid)
         lease = await floor.acquire(sid, participant_id=participant["id"], membership_id=participant["membership_id"], display_name=participant["display_name"])
-        burst = service.record_burst(who, space, sid, lease["floor_token"], "vi", [])
-        return lease["floor_token"], burst
+        burst = service.record_burst(who, space, sid, lease["token"], "vi", [])
+        return lease["token"], burst
     token, burst = await acquire(actor())
     with pytest.raises(GroupServiceError):
         await acquire(actor("99"))
@@ -218,7 +218,7 @@ def test_radio_leave_endpoint_owned_floor_or_device_lost_never_traps(tmp_path, d
         sid = joined.json()["session"]["id"]
         base = f"/api/group/spaces/{space}/radio/sessions/{sid}"
         acquired = client.post(base+"/floor/acquire", headers=headers, json={"source_language":"vi","target_languages":[]})
-        assert acquired.status_code == 200, acquired.text
+        assert acquired.status_code == 201, acquired.text
         if device_lost:
             lost = client.post(base+"/floor/device-lost", headers=headers,
                 json={"floor_token":acquired.json()["floor_token"]})

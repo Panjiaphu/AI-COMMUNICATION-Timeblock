@@ -618,8 +618,9 @@ def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     assert "speechSynthesis" in translation_js
     assert "private_audio_playback\": \"suppressed" in radio_router
     assert radio_router.index("group_radio_floor.release") < radio_router.index("stop_burst_after_floor_release")
-    assert 'data-surface="chat-translation"' in app_js
-    assert 'data-surface="radio-translation"' in app_js
+    assert '["chat-translation", "languages", "chatTranslation"]' in app_js
+    assert 'data-surface="radio-translation"' not in app_js
+    assert '/group/chat-translation?tab=radio' in app_js
     assert 'chatTranslation:' in i18n_js
     assert 'radioTranslation:' in i18n_js
     assert "const vi =" in i18n_js

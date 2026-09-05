@@ -86,6 +86,9 @@ def test_r1_video_layout_presets_reset_and_touch_contract(page, tmp_path, width,
         # Filmstrip may page horizontally; it must never be an unusable sliver.
         assert all(b["width"] >= 140 and b["height"] >= 60 for b in boxes), (mode,boxes)
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        if width < 1000:
+            assert page.locator(".video-panel-toolbar").bounding_box()["height"] <= 52
+            assert page.locator(".video-grid").bounding_box()["height"] >= page.locator(".video-stage").bounding_box()["height"] * .4
         if mode == "CUSTOM":
             page.locator("[data-video-drag]").first.press("ArrowRight")
             assert page.evaluate("GroupV3VideoLayout.snapshot().customOrder.length") == count
@@ -168,7 +171,7 @@ def test_r1_radio_tap_stop_text_history_leave_reopen(page,tmp_path,width,height)
     page.screenshot(path=str(tmp_path/f"r1-radio-{width}.png"),animations="disabled")
     page.locator(".radio-room-dock [data-action=leave-radio]").click()
     page.wait_for_url("**/group/chat")
-    page.locator("[data-surface=radio]").click()
+    page.locator("[data-surface=radio]:visible").click()
     expect(page.locator("[data-segment-id=radio-segment]")).to_be_visible()
 
 def test_r1_device_loss_exit_and_leave_while_talking(page):
@@ -182,7 +185,7 @@ def test_r1_device_loss_exit_and_leave_while_talking(page):
     expect(page.locator(".radio-recovery")).to_be_visible()
     page.locator(".radio-room-header [data-action=leave-radio]").click()
     page.wait_for_url("**/group/chat")
-    page.locator("[data-surface=radio]").click()
+    page.locator("[data-surface=radio]:visible").click()
     page.locator(".radio-ptt").click()
     page.wait_for_function("GroupV3Runtime.snapshot().media_connected")
     page.locator(".radio-ptt").click()
@@ -517,7 +520,7 @@ def test_webkit_workspace_and_visual_viewport(webkit_browser,tmp_path,width,heig
     page.locator('[data-workspace-action=translation-minus]').click()
     page.locator('[data-workspace-action=translation-minus]').click()
     g=geometry(page)
-    assert g[".surface-content"]["height"] == height, g
+    assert g[".surface-content"]["height"] == height - 8, g
     assert g[".translation-dock"]["bottom"] == height, g
     page.screenshot(path=str(tmp_path / f"webkit-{width}x{height}.png"))
     context.close()

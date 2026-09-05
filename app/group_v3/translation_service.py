@@ -1179,8 +1179,12 @@ class GroupTranslationService:
                 if not cursor or cursor.space_id != space_id:
                     raise GroupServiceError("invalid_history_cursor", 400)
                 self._authorize_v2_history(db, actor, space_id, cursor.runtime_kind, cursor.runtime_id)
-                query = query.where(or_(GroupTranslationSegment.created_at < cursor.created_at,
-                    and_(GroupTranslationSegment.created_at == cursor.created_at, GroupTranslationSegment.id < cursor.id)))
+                # Compare database values without rebinding a SQL timestamp as a
+                # microsecond-formatted Python datetime (SQLite legacy rows).
+                cursor_time = select(GroupTranslationSegment.created_at).where(
+                    GroupTranslationSegment.id == cursor.id).scalar_subquery()
+                query = query.where(or_(GroupTranslationSegment.created_at < cursor_time,
+                    and_(GroupTranslationSegment.created_at == cursor_time, GroupTranslationSegment.id < cursor.id)))
             rows = list(
                 db.scalars(
                     query.order_by(GroupTranslationSegment.created_at.desc(), GroupTranslationSegment.id.desc()).limit(

@@ -454,8 +454,9 @@ class GroupRadioService:
                 if not cursor or cursor.space_id != space_id:
                     raise GroupServiceError("invalid_history_cursor", 400)
                 translation_service._authorize_v2_history(db, actor, space_id, "radio", cursor.radio_session_id)
-                query = query.where(or_(GroupRadioBurst.started_at < cursor.started_at,
-                    and_(GroupRadioBurst.started_at == cursor.started_at, GroupRadioBurst.id < cursor.id)))
+                cursor_time = select(GroupRadioBurst.started_at).where(GroupRadioBurst.id == cursor.id).scalar_subquery()
+                query = query.where(or_(GroupRadioBurst.started_at < cursor_time,
+                    and_(GroupRadioBurst.started_at == cursor_time, GroupRadioBurst.id < cursor.id)))
             rows = db.scalars(query.order_by(GroupRadioBurst.started_at.desc(), GroupRadioBurst.id.desc())
                               .limit(max(1, min(limit, 100)))).all()
             result = []
