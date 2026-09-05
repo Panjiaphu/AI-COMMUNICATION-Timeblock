@@ -1,73 +1,85 @@
 # AI-COMMUNICATION-Timeblock engineering contract
 
-## Highest-precedence engineering workflow
+This repository owns the native Group communication runtime defined by its current ownership contracts. Preserve current Group/Direct boundaries, security controls, migrations, runtime contracts, and protected release lineage.
 
-Read these before planning or implementing product-engineering tasks:
+## Single canonical engineering workflow
 
-1. `docs/engineering/CODEX_OPERATING_STANDARD.md`
-2. `docs/engineering/OWNERSHIP_BOUNDARIES.md`
-3. `docs/engineering/RELEASE_WORKFLOW.md`
-4. `docs/engineering/CHATGPT_CODEX_PLANNER_EXECUTOR_STANDARD.md`
-5. task-specific `docs/qa/<TASK_ID>.md` when one exists
+For every normal product-engineering task, read in this order:
 
-These documents define the owner-approved Timeblock/Guilua workflow. The Planner/Executor lifecycle is version `1.3` and supersedes older long-prompt / long-lived-Codex-thread / direct-main-before-owner-QA instructions wherever they conflict. Existing Guilua security, ownership, plugin, protected-file and release invariants remain authoritative.
+1. `docs/engineering/CHATGPT_CODEX_PLANNER_EXECUTOR_STANDARD.md` — **v1.3.1, single canonical workflow**
+2. `docs/engineering/LEGACY_WORKFLOW_BLOCKLIST.md`
+3. the exact current ownership/security/release documents named by the task spec
+4. `docs/qa/<TASK_ID>.md`
+5. relevant current source/tests
+
+`docs/engineering/CODEX_OPERATING_STANDARD.md` is a legacy compatibility tombstone and must not be used as execution authority.
+
+Do not execute v1.1/v1.2/v1.3 workflow revisions, historical direct-main instructions, old model-score routing, or stale PR/conversation workflow instructions.
 
 ## Canonical path
 
 ```text
-owner task report / QA evidence
--> ChatGPT 5.6 Sol Deep/Extra High Planner analyzes, researches when needed, and writes a Git task spec
--> Planner commits docs-only task spec and reports PLAN_SHA
+owner task / QA evidence
+-> ChatGPT GPT-5.6 Sol Deep / Extra High Planner
+-> resolve exact current lineage first
+-> write docs/qa/<TASK_ID>.md
+-> docs-only PLAN_SHA on approved lineage
 -> fresh Codex GPT-5.6 Sol High executor by default
--> executor reads canonical docs + task spec + relevant current source/tests only
 -> implement all approved production changes
 -> write/update test source
--> NO owner QA between implementation phases
--> create/freeze exact local candidate commit
--> ONE final local QA gate against that exact candidate
--> push the same tested candidate to the task branch/PR
--> verify remote PR head == tested candidate == DEPLOY_TEST_SHA
+-> NO QA between implementation phases
+-> freeze exact candidate commit
+-> ONE final local QA gate against exact candidate
+-> push same tested candidate / update PR
+-> CANDIDATE_SHA == TESTED_COMMIT_SHA == REMOTE_PR_HEAD_SHA == DEPLOY_TEST_SHA
 -> report exact SHA and STOP
 -> owner manually deploys exact SHA
 -> owner manual QA
-   -> PASS: verify no drift, merge through PR, report main SHA
-   -> FAIL: ChatGPT creates R(n+1) task spec, new PLAN_SHA, and a fresh executor thread
+   -> PASS: verify no drift, merge normally, report main SHA
+   -> FAIL: Planner creates R(n+1), new PLAN_SHA, fresh executor
 ```
+
+## Lineage gate
+
+Never assume `main` is the correct starting point. Before planning or writing code, resolve current main, owner-deployed/live SHA, active PR/head, ancestry/divergence, migration lineage, and exact owner-approved continuation SHA. Never create a docs-only plan from stale main when that would drop already-deployed migrations, tested Group fixes, or active PR work.
 
 ## Planner / executor boundary
 
-- Planner/Architect default: ChatGPT GPT-5.6 Sol Deep / Extra High.
-- Executor default: a fresh Codex GPT-5.6 Sol High thread.
-- GPT-6 Astra High is reserved for a bounded critical blocker with a narrow file/evidence packet, not for carrying the full project history.
-- Planner writes plans/task specs and docs-only planning checkpoints; it does not compete for production-code write ownership.
-- One task tree has one active write executor; one file has one active write owner.
-- Important task context belongs in Git under `docs/qa/<TASK_ID>.md` rather than only in conversation history.
-- If executor quota/model availability changes, continue the same task/branch/SHA lineage using the existing HANDOFF_PACKET contract; do not rediscover the project from scratch.
+- Planner default: ChatGPT GPT-5.6 Sol Deep / Extra High.
+- Executor default: fresh Codex GPT-5.6 Sol High.
+- GPT-6 Astra High: bounded critical blocker specialist only.
+- Cheaper executor model: allowed only when the current task spec explicitly authorizes a low-risk mechanical downgrade.
+- One task tree = one active write executor.
+- One file = one active write owner.
+- Planner owns analysis/spec; executor owns production implementation.
+- If executor quota changes, preserve branch/SHA/task lineage with a compact handoff instead of rediscovering the project.
 
-## Core ownership rules
+## Core ownership
 
-- Native Group V3 runtime belongs to `Panjiaphu/AI-COMMUNICATION-Timeblock`.
-- Direct/legacy Timeblock capabilities remain governed by their existing Timeblock contracts and must not be silently migrated into Guilua.
-- Cross-repository work must identify one active write owner per repo/file boundary.
-- One file has one active write owner.
-- Do not force-push, rewrite published history, or bypass protected-branch workflow.
+- Native Group V3 runtime belongs to this repository.
+- Direct/legacy Timeblock capabilities remain protected by their current Timeblock contracts and must not be silently migrated here.
+- Cross-repository work must identify one write owner per repository/file boundary and preserve exact tested SHA pairs where integration requires it.
 
 ## QA and release discipline
 
 - No QA execution between implementation phases.
-- Full repository QA is not automatic; match the final gate to task risk.
+- Freeze candidate commit before final QA.
+- Final QA must test that exact candidate tree.
+- Full repository QA is not automatic; match verification to task risk.
 - GitHub Actions are not an iterative edit/fail/edit loop.
-- `CANDIDATE_SHA`, `TESTED_COMMIT_SHA`, `REMOTE_PR_HEAD_SHA`, and `DEPLOY_TEST_SHA` must identify the same tested code tree before owner QA.
-- `PLAN_SHA` is a planning checkpoint and is intentionally distinct from the later deploy candidate SHA.
-- Owner physical/manual QA is authoritative and must never be inferred by ChatGPT or Codex.
-- Do not automatically deploy Render unless the owner explicitly requests it.
+- Do not automatically deploy Render.
+- Do not merge main before owner QA PASS.
+- Never force-push or rewrite published history.
+- Never claim owner/device/manual QA without owner evidence.
 
 ## Plugin/tool discipline
 
-Enable only task-relevant integrations. GitHub is the normal repo/PR/SHA tool. Render is only for runtime/deploy/log/env evidence when material. OpenAI Developers is only for OpenAI API/realtime integration work. Browser tooling is used only when UI/runtime verification is required. Broader plugin permissions require explicit re-planning.
+Use only task-relevant tools under least privilege. GitHub is normal for repo/PR/SHA work. Render is only for material runtime/deploy/log/env evidence. OpenAI Developers is only for OpenAI/realtime integration. Browser/database/Drive/Slack/Cloudflare tooling is enabled only when the task actually requires it.
 
 ## Context discipline
 
-Planner may consume broad QA evidence, screenshots, architecture research and external platform/API comparisons once. Executor should consume the canonical docs, exact task spec, relevant current source/tests, and exact blocker evidence only.
+Prefer current source, current SHA, current ownership contracts, task spec, relevant tests and concrete evidence. Do not load old conversations, historical PR narratives, archived workflow versions, or unrelated Timeblock Dev AI material into normal task execution.
 
-Prefer current source, current SHA, current contracts, relevant tests, actual logs/screenshots, and exact defect evidence. Do not load historical PR narratives, full old conversations, duplicate prompts, or unrelated Timeblock Dev AI materials unless the task explicitly requires them.
+## Reporting
+
+Report base/start, PLAN, candidate, tested, PR-head, deploy, paired-repo and final-main SHA values as separate facts. Current v1.3.1 workflow is the only execution authority.
