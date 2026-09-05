@@ -471,6 +471,110 @@ def test_native_radio_floor_media_grant_stop_and_leave_are_end_to_end(tmp_path):
         assert left.json()["ended_for_all"] is False
 
 
+def test_group_media_join_stays_ringing_until_provider_connection(tmp_path):
+    app = _native_app(
+        tmp_path,
+        group_media_enabled=True,
+        group_livekit_url="wss://group-v3.livekit.cloud",
+        group_livekit_api_key="livekit-api-key",
+        group_livekit_api_secret="livekit-api-secret",
+    )
+    owner_session = app.state.bff_session_store.create_group_session(
+        principal=_handoff_payload("video")["principal"],
+        scope=SCOPES,
+        expires_at=_future(),
+        handoff_id="media-owner-handoff",
+        surface="video",
+        entitlement=AI_ENTITLEMENT,
+    )
+    invitee_principal = {
+        "type": "member",
+        "id": "84",
+        "user_id": "84",
+        "display_name": "Tran An",
+        "locale": "en",
+    }
+    invitee_session = app.state.bff_session_store.create_group_session(
+        principal=invitee_principal,
+        scope=SCOPES,
+        expires_at=_future(),
+        handoff_id="media-invitee-handoff",
+        surface="video",
+        entitlement=AI_ENTITLEMENT,
+    )
+    headers = {"Origin": PUBLIC_ORIGIN}
+
+    with TestClient(app) as client:
+        client.cookies.set(app.state.settings.guilua_session_cookie, owner_session.session_id)
+        created_space = client.post(
+            "/api/group/spaces",
+            json={"title": "Media lifecycle", "description": "Two-phase join"},
+            headers={**headers, "Idempotency-Key": "media-space-0001"},
+        )
+        assert created_space.status_code == 201
+        space_id = created_space.json()["space"]["id"]
+        invitee = client.post(
+            f"/api/group/spaces/{space_id}/memberships",
+            json={
+                "principal_type": "member",
+                "principal_id": "84",
+                "principal_user_id": "84",
+                "display_name": "Tran An",
+                "role": "member",
+            },
+            headers=headers,
+        )
+        assert invitee.status_code == 201
+        invitee_membership_id = invitee.json()["membership"]["id"]
+        created = client.post(
+            f"/api/group/spaces/{space_id}/sessions",
+            json={"media_kind": "video", "title": "Media lifecycle", "participant_membership_ids": [invitee_membership_id]},
+            headers=headers,
+        )
+        assert created.status_code == 201
+        session_id = created.json()["session"]["id"]
+        assert created.json()["session"]["status"] == "ringing"
+        owner_participant = next(item for item in created.json()["session"]["participants"] if item["membership_id"] != invitee_membership_id)
+        assert owner_participant["invite_status"] == "joined"
+        assert owner_participant["connection_status"] == "not_connected"
+
+        client.cookies.set(app.state.settings.guilua_session_cookie, invitee_session.session_id)
+        joined = client.post(
+            f"/api/group/spaces/{space_id}/sessions/{session_id}/join",
+            headers=headers,
+        )
+        assert joined.status_code == 200
+        assert joined.json()["session"]["status"] == "ringing"
+        invitee_participant = next(item for item in joined.json()["session"]["participants"] if item["membership_id"] == invitee_membership_id)
+        assert invitee_participant["invite_status"] == "joined"
+        assert invitee_participant["connection_status"] == "not_connected"
+
+        connecting = client.post(
+            f"/api/group/spaces/{space_id}/sessions/{session_id}/connection-state",
+            json={"status": "connecting"},
+            headers=headers,
+        )
+        assert connecting.status_code == 200
+        assert connecting.json()["session"]["status"] == "ringing"
+
+        grant = client.post(
+            f"/api/group/spaces/{space_id}/sessions/{session_id}/media-grant",
+            headers=headers,
+        )
+        assert grant.status_code == 200
+        assert grant.json()["grant"]["provider"] == "livekit-cloud"
+
+        connected = client.post(
+            f"/api/group/spaces/{space_id}/sessions/{session_id}/connection-state",
+            json={"status": "connected"},
+            headers=headers,
+        )
+        assert connected.status_code == 200
+        assert connected.json()["session"]["status"] == "active"
+        invitee_participant = next(item for item in connected.json()["session"]["participants"] if item["membership_id"] == invitee_membership_id)
+        assert invitee_participant["connection_status"] == "connected"
+
+
 def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     app = create_app(Settings(app_env="test", debug=True))
     route_paths = set(app.openapi()["paths"])
@@ -482,6 +586,9 @@ def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     template = (ROOT / "app/templates/group_communication_v3.html").read_text(encoding="utf-8")
     direct_template = (ROOT / "app/templates/communication.html").read_text(encoding="utf-8")
     app_js = (ROOT / "app/static/group-v3/group_v3_app.js").read_text(encoding="utf-8")
+    device_manager_js = (ROOT / "app/static/group-v3/group_device_manager.js").read_text(encoding="utf-8")
+    runtime_css = (ROOT / "app/static/group-v3/group_v3_runtime.css").read_text(encoding="utf-8")
+    group_css = (ROOT / "app/static/group-v3/group_v3.css").read_text(encoding="utf-8")
     translation_js = (ROOT / "app/static/group-v3/group_v3_translation.js").read_text(encoding="utf-8")
     i18n_js = (ROOT / "app/static/group-v3/group_v3_i18n.js").read_text(encoding="utf-8")
     radio_router = (ROOT / "app/group_v3/radio_router.py").read_text(encoding="utf-8")
@@ -492,18 +599,28 @@ def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     assert "localStorage" not in app_js + translation_js
     assert "sessionStorage" not in app_js + translation_js
     assert "OPENAI_API_KEY" not in app_js + translation_js + template
-    assert "https://api.openai.com/v1/realtime/calls" in translation_js
-    assert "/v1/realtime/translations/calls" not in translation_js
+    assert "https://api.openai.com/v1/realtime/calls" not in translation_js
+    assert "RTCPeerConnection" not in translation_js
+    assert "MediaStream([track])" in translation_js
+    assert "data-group-translation-v2" in app_js
     connect_media = app_js[
         app_js.index("async function connectMedia") : app_js.index("async function connectRadio")
     ]
-    assert connect_media.index('state.mediaSession.status !== "active"') < connect_media.index("connectWithGrant")
-    assert "if (publish)" in app_js and "getUserMedia" in app_js
-    assert "selectAudioOutput" in translation_js
+    assert "state.mediaSession.status !== \"active\" && state.mediaSession.status !== \"ringing\"" in connect_media
+    assert connect_media.index("updateMediaConnectionState(\"connecting\")") < connect_media.index("connectWithGrant")
+    assert "if (publish)" in app_js and "getUserMedia" in device_manager_js
+    assert "group_device_manager.js?v=20260904-prejoin-1" in template
+    assert "data-media-member-search" in app_js and "data-media-no-results" in app_js
+    assert "data-media-member-search" in app_js[app_js.index("function inviteForm"):app_js.index("function callDock")]
+    assert "width: min(760px, calc(100% - 48px))" in runtime_css
+    assert "max-height: min(38dvh, 300px)" in runtime_css
+    assert ".chat-content.state-active_video { grid-template-rows: minmax(0, 1fr) auto; }" in group_css
+    assert "speechSynthesis" in translation_js
     assert "private_audio_playback\": \"suppressed" in radio_router
     assert radio_router.index("group_radio_floor.release") < radio_router.index("stop_burst_after_floor_release")
-    assert 'data-surface="chat-translation"' in app_js
-    assert 'data-surface="radio-translation"' in app_js
+    assert '["chat-translation", "languages", "chatTranslation"]' in app_js
+    assert 'data-surface="radio-translation"' not in app_js
+    assert '/group/chat-translation?tab=radio' in app_js
     assert 'chatTranslation:' in i18n_js
     assert 'radioTranslation:' in i18n_js
     assert "const vi =" in i18n_js
@@ -514,8 +631,8 @@ def test_native_routes_and_ui_enforce_v3_safety_boundaries():
     assert "AI-COMMUNICATION 會持久保存成員資格" in i18n_js
     assert "Timeblock durably stores" not in i18n_js
     assert "Timeblock lưu bền" not in i18n_js
-    assert 'group_v3_i18n.js?v=20260904-logout-1' in template
-    assert 'group_v3_app.js?v=20260904-logout-1' in template
+    assert 'group_v3_i18n.js?v=20260904-p8-1' in template
+    assert 'group_v3_app.js?v=20260904-p8-1' in template
     assert 'class="logout-navigation"' in app_js
     assert 'mobileLogout: logout' in app_js
     assert "logout: 'Đăng xuất'" in i18n_js
@@ -587,3 +704,39 @@ def test_group_invitation_migration_advances_single_head_and_is_reversible_sourc
     assert 'down_revision = "20260902_0018"' in migration
     assert '"group_invitations"' in migration
     assert 'op.drop_table("group_invitations")' in migration
+
+
+def test_group_media_connection_migration_advances_single_head_and_is_reversible_source():
+    migration = (
+        ROOT / "alembic/versions/20260904_0020_group_media_connection_state.py"
+    ).read_text(encoding="utf-8")
+    assert 'revision = "20260904_0020"' in migration
+    outbox_migration = (
+        ROOT / "alembic/versions/20260904_0021_group_event_outbox.py"
+    ).read_text(encoding="utf-8")
+    assert 'revision = "20260904_0021"' in outbox_migration
+    assert "group_event_outbox" in outbox_migration
+    assert 'down_revision = "20260903_0019"' in migration
+    assert '"connection_status"' in migration
+    assert '"connection_error_code"' in migration
+    assert 'op.create_check_constraint(' in migration
+    assert 'op.drop_constraint(' in migration
+    assert 'op.drop_column("group_media_participants", "connection_status")' in migration
+
+
+def test_group_owner_invariant_migration_is_present_and_reversible_source():
+    migration = (ROOT / "alembic/versions/20260904_0022_group_owner_invariant.py").read_text(encoding="utf-8")
+    assert 'revision = "20260904_0022"' in migration
+    assert 'down_revision = "20260904_0021"' in migration
+    assert "uq_group_memberships_active_owner" in migration
+    assert "sqlite_where" in migration and "postgresql_where" in migration
+    assert 'op.drop_index("uq_group_memberships_active_owner"' in migration
+
+
+def test_group_translation_v2_migration_is_single_head_and_encrypted_source_only():
+    migration = (ROOT / "alembic/versions/20260904_0023_group_translation_v2.py").read_text(encoding="utf-8")
+    assert 'revision = "20260904_0023"' in migration
+    assert 'down_revision = "20260904_0022"' in migration
+    assert "group_translation_segments" in migration
+    assert "group_translation_variants" in migration
+    assert "source_ciphertext" in migration and "translated_ciphertext" in migration
